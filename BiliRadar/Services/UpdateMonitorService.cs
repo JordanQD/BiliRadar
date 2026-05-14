@@ -29,6 +29,11 @@ public sealed class UpdateMonitorService
         return updates;
     }
 
+    public Task<BiliVideoUpdatePage> LoadMoreAsync(CancellationToken cancellationToken = default)
+    {
+        return _dataProvider.GetMoreVideoUpdatesAsync(cancellationToken);
+    }
+
     public Task AddToViewLaterAsync(long aid, CancellationToken cancellationToken = default)
     {
         return _dataProvider.AddToViewLaterAsync(aid, cancellationToken);

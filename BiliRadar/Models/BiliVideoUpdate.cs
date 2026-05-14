@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace BiliRadar.Models;
 
@@ -18,3 +19,8 @@ public sealed record BiliVideoUpdate(
     string Description,
     int LikeCount,
     int CommentCount);
+
+public sealed record BiliVideoUpdatePage(
+    IReadOnlyList<BiliVideoUpdate> Items,
+    string NextOffset,
+    bool HasMore);

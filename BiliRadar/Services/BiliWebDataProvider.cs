@@ -12,11 +12,15 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
 {
     private const string NavUrl = "https://api.bilibili.com/x/web-interface/nav";
     private const string FollowingsUrl = "https://api.bilibili.com/x/relation/followings";
-    private const string AllMomentsUrl = "https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/all?type=video&timezone_offset=-480";
+    private const string AllMomentsUrl = "https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/all";
     private const string AddToViewLaterUrl = "https://api.bilibili.com/x/v2/history/toview/add";
-    private const string BrowserUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+    internal const string BrowserUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+    private const int RequestMaxAttemptCount = 3;
+    private static readonly TimeSpan RequestRetryDelay = TimeSpan.FromMilliseconds(500);
     private readonly CookieStore _cookieStore;
     private readonly HttpClient _httpClient;
+    private string _nextOffset = string.Empty;
+    private bool _hasMoreUpdates;
 
     public BiliWebDataProvider(CookieStore cookieStore)
     {
@@ -67,7 +71,24 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
             return Array.Empty<BiliVideoUpdate>();
         }
 
-        return await TryGetVideoUpdatesAsync(AllMomentsUrl, cookie, cancellationToken).ConfigureAwait(false);
+        var page = await TryGetVideoUpdatesAsync(CreateAllMomentsUrl(), cookie, cancellationToken).ConfigureAwait(false);
+        _nextOffset = page.NextOffset;
+        _hasMoreUpdates = page.HasMore;
+        return page.Items;
+    }
+
+    public async Task<BiliVideoUpdatePage> GetMoreVideoUpdatesAsync(CancellationToken cancellationToken = default)
+    {
+        var cookie = _cookieStore.GetCookieString();
+        if (string.IsNullOrWhiteSpace(cookie) || !_hasMoreUpdates || string.IsNullOrWhiteSpace(_nextOffset))
+        {
+            return new BiliVideoUpdatePage(Array.Empty<BiliVideoUpdate>(), _nextOffset, false);
+        }
+
+        var page = await TryGetVideoUpdatesAsync(CreateAllMomentsUrl(_nextOffset), cookie, cancellationToken).ConfigureAwait(false);
+        _nextOffset = page.NextOffset;
+        _hasMoreUpdates = page.HasMore;
+        return page;
     }
 
     public async Task AddToViewLaterAsync(long aid, CancellationToken cancellationToken = default)
@@ -130,7 +151,7 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
         throw new InvalidOperationException("Cookie 已保存，但没有拿到登录用户 UID。");
     }
 
-    private async Task<IReadOnlyList<BiliVideoUpdate>> TryGetVideoUpdatesAsync(string url, string cookie, CancellationToken cancellationToken)
+    private async Task<BiliVideoUpdatePage> TryGetVideoUpdatesAsync(string url, string cookie, CancellationToken cancellationToken)
     {
         using var document = await SendJsonAsync(url, cookie, cancellationToken).ConfigureAwait(false);
         EnsureBiliSuccess(document.RootElement);
@@ -139,7 +160,7 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
             || !data.TryGetProperty("items", out var items)
             || items.ValueKind != JsonValueKind.Array)
         {
-            return Array.Empty<BiliVideoUpdate>();
+            return new BiliVideoUpdatePage(Array.Empty<BiliVideoUpdate>(), string.Empty, false);
         }
 
         var updates = new List<BiliVideoUpdate>();
@@ -152,7 +173,17 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
             }
         }
 
-        return updates;
+        var nextOffset = GetString(data, "offset");
+        var hasMore = GetBool(data, "has_more");
+        return new BiliVideoUpdatePage(updates, nextOffset, hasMore);
+    }
+
+    private static string CreateAllMomentsUrl(string offset = "")
+    {
+        var url = $"{AllMomentsUrl}?type=video&timezone_offset=-480";
+        return string.IsNullOrWhiteSpace(offset)
+            ? url
+            : $"{url}&offset={Uri.EscapeDataString(offset)}";
     }
 
     private static BiliVideoUpdate? TryCreateVideoUpdate(JsonElement item)
@@ -251,17 +282,33 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
 
     private async Task<JsonDocument> SendJsonAsync(string url, string cookie, CancellationToken cancellationToken)
     {
-        using var request = CreateWebRequest(HttpMethod.Get, url, cookie);
-        using var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
-        var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        if (!response.IsSuccessStatusCode)
+        for (var attempt = 1; attempt <= RequestMaxAttemptCount; attempt++)
         {
-            var message = TryGetBiliErrorMessage(body);
-            throw new InvalidOperationException(
-                $"HTTP {(int)response.StatusCode} {response.ReasonPhrase}: {message}");
+            try
+            {
+                using var request = CreateWebRequest(HttpMethod.Get, url, cookie);
+                using var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+                var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                if (!response.IsSuccessStatusCode)
+                {
+                    var message = TryGetBiliErrorMessage(body);
+                    throw new InvalidOperationException(
+                        $"HTTP {(int)response.StatusCode} {response.ReasonPhrase}: {message}");
+                }
+
+                return JsonDocument.Parse(body);
+            }
+            catch (HttpRequestException) when (attempt < RequestMaxAttemptCount)
+            {
+                await Task.Delay(RequestRetryDelay * attempt, cancellationToken).ConfigureAwait(false);
+            }
+            catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested && attempt < RequestMaxAttemptCount)
+            {
+                await Task.Delay(RequestRetryDelay * attempt, cancellationToken).ConfigureAwait(false);
+            }
         }
 
-        return JsonDocument.Parse(body);
+        throw new InvalidOperationException("B 站接口请求失败，请稍后重试。");
     }
 
     private static void EnsureBiliSuccess(JsonElement root)
@@ -335,6 +382,24 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
 
     private static string GetString(JsonElement element, string propertyName)
         => element.TryGetProperty(propertyName, out var value) ? value.GetString() ?? string.Empty : string.Empty;
+
+    private static bool GetBool(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out var value))
+        {
+            return false;
+        }
+
+        return value.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Number when value.TryGetInt32(out var number) => number != 0,
+            JsonValueKind.String when bool.TryParse(value.GetString(), out var flag) => flag,
+            JsonValueKind.String when int.TryParse(value.GetString(), out var number) => number != 0,
+            _ => false,
+        };
+    }
 
     private static string GetCookieValue(string cookie, string key)
     {

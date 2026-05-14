@@ -11,5 +11,7 @@ public interface IBiliDataProvider
 
     Task<IReadOnlyList<BiliVideoUpdate>> GetRecentVideoUpdatesAsync(CancellationToken cancellationToken = default);
 
+    Task<BiliVideoUpdatePage> GetMoreVideoUpdatesAsync(CancellationToken cancellationToken = default);
+
     Task AddToViewLaterAsync(long aid, CancellationToken cancellationToken = default);
 }
