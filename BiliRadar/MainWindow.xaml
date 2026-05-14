@@ -12,7 +12,7 @@
 
     <Grid
         x:Name="RootGrid"
-        Width="348"
+        Width="420"
         MinHeight="100"
         Background="{ThemeResource LayerOnAcrylicFillColorDefaultBrush}">
         <Grid.RowDefinitions>
@@ -28,27 +28,20 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
-        <Grid Padding="16,14,12,8" ColumnSpacing="8">
+        <Grid Padding="8,8,12,4" ColumnSpacing="8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <StackPanel Spacing="2">
-                <TextBlock
-                    FontSize="18"
-                    FontWeight="SemiBold"
-                    Text="BiliRadar" />
-                <TextBlock
-                    FontSize="12"
-                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    Text="{x:Bind LastCheckedText, Mode=OneWay}" />
-            </StackPanel>
+            <SelectorBar
+                x:Name="ContentSelectorBar"
+                SelectionChanged="ContentSelectorBar_SelectionChanged">
+                <SelectorBarItem x:Name="FollowingSelectorItem" Text="关注" Icon="Contact" />
+                <SelectorBarItem x:Name="HistorySelectorItem" Text="历史" Icon="Clock" />
+                <SelectorBarItem x:Name="ViewLaterSelectorItem" Text="稍后再看" Icon="Favorite" />
+            </SelectorBar>
 
             <Button
                 Grid.Column="1"
@@ -60,115 +53,17 @@
                 <FontIcon FontSize="15" Glyph="&#xE72C;" />
             </Button>
 
-            <Button
-                Grid.Column="2"
-                Width="34"
-                Height="34"
-                Padding="0"
-                Click="HideButton_Click"
-                Style="{StaticResource SubtleButtonStyle}">
-                <FontIcon FontSize="14" Glyph="&#xE711;" />
-            </Button>
-        </Grid>
-
-        <Grid Grid.Row="1" Padding="12,4,12,10" ColumnSpacing="8">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-
-            <Border
-                Padding="10"
-                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                BorderThickness="1"
-                CornerRadius="8">
-                <StackPanel>
-                    <TextBlock
-                        FontSize="12"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Text="视频动态" />
-                    <TextBlock
-                        FontSize="26"
-                        FontWeight="SemiBold"
-                        Text="{x:Bind UnreadCount, Mode=OneWay}" />
-                </StackPanel>
-            </Border>
-
-            <Border
-                Grid.Column="1"
-                Padding="10"
-                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                BorderThickness="1"
-                CornerRadius="8">
-                <StackPanel>
-                    <TextBlock
-                        FontSize="12"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Text="关注人数" />
-                    <TextBlock
-                        FontSize="26"
-                        FontWeight="SemiBold"
-                        Text="{x:Bind FollowingCount, Mode=OneWay}" />
-                </StackPanel>
-            </Border>
-        </Grid>
-
-        <Grid Grid.Row="2" Padding="12,0,12,10" RowSpacing="8">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
-
-            <PasswordBox
-                x:Name="CookieBox"
-                PlaceholderText="粘贴 B 站 Cookie"
-                PasswordRevealMode="Peek" />
-
-            <Grid Grid.Row="1" ColumnSpacing="8">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-
-                <TextBlock
-                    VerticalAlignment="Center"
-                    FontSize="12"
-                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    MaxLines="6"
-                    Text="{x:Bind StatusText, Mode=OneWay}"
-                    TextTrimming="WordEllipsis"
-                    TextWrapping="Wrap" />
-
-                <Button
-                    Grid.Column="1"
-                    MinWidth="64"
-                    Click="SaveCookieButton_Click"
-                    Content="保存" />
-
-                <Button
-                    Grid.Column="2"
-                    MinWidth="64"
-                    Click="ClearCookieButton_Click"
-                    Content="清除" />
-            </Grid>
         </Grid>
 
         <ScrollViewer
-            Grid.Row="3"
-            MinHeight="360"
-            MaxHeight="420"
+            x:Name="VideoScrollViewer"
+            Grid.Row="1"
+            MinHeight="500"
+            MaxHeight="560"
             Padding="10,0,10,0"
+            ViewChanged="VideoScrollViewer_ViewChanged"
             VerticalScrollBarVisibility="Auto">
-            <StackPanel>
-                <TextBlock
-                    Margin="0,6,0,10"
-                    FontSize="13"
-                    FontWeight="SemiBold"
-                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    Text="视频动态" />
+            <StackPanel x:Name="FollowingPagePanel">
                 <StackPanel
                     x:Name="VideoCardsPanel"
                     Spacing="10" />
@@ -176,29 +71,70 @@
         </ScrollViewer>
 
         <Grid
-            Grid.Row="4"
-            Padding="12,8,12,12"
-            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-            BorderThickness="0,1,0,0"
-            ColumnSpacing="8">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-
-            <ProgressRing
-                Width="18"
-                Height="18"
-                HorizontalAlignment="Left"
-                IsActive="{x:Bind IsLoading, Mode=OneWay}"
-                Visibility="{x:Bind LoadingVisibility, Mode=OneWay}" />
-
-            <Button
-                Grid.Column="1"
-                MinWidth="92"
-                Click="RefreshButton_Click"
-                Content="立即刷新" />
+            x:Name="HistoryPagePanel"
+            Grid.Row="1"
+            MinHeight="500"
+            Padding="18,24"
+            Visibility="Collapsed">
+            <StackPanel
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Spacing="8">
+                <FontIcon
+                    HorizontalAlignment="Center"
+                    FontSize="28"
+                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                    Glyph="&#xE823;" />
+                <TextBlock
+                    HorizontalAlignment="Center"
+                    FontSize="14"
+                    FontWeight="SemiBold"
+                    Text="历史记录" />
+                <TextBlock
+                    HorizontalAlignment="Center"
+                    FontSize="12"
+                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                    Text="这里先留空，后面接入历史数据。" />
+            </StackPanel>
         </Grid>
+
+        <Grid
+            x:Name="ViewLaterPagePanel"
+            Grid.Row="1"
+            MinHeight="500"
+            Padding="18,24"
+            Visibility="Collapsed">
+            <StackPanel
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Spacing="8">
+                <FontIcon
+                    HorizontalAlignment="Center"
+                    FontSize="28"
+                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                    Glyph="&#xE734;" />
+                <TextBlock
+                    HorizontalAlignment="Center"
+                    FontSize="14"
+                    FontWeight="SemiBold"
+                    Text="稍后再看" />
+                <TextBlock
+                    HorizontalAlignment="Center"
+                    FontSize="12"
+                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                    Text="这里先留空，后面接入稍后再看列表。" />
+            </StackPanel>
+        </Grid>
+
+        <InfoBar
+            x:Name="StatusInfoBar"
+            Grid.Row="1"
+            Margin="12,8,12,12"
+            VerticalAlignment="Bottom"
+            IsClosable="True"
+            IsOpen="{x:Bind IsStatusInfoOpen, Mode=OneWay}"
+            Message="{x:Bind StatusText, Mode=OneWay}"
+            Severity="{x:Bind StatusSeverity, Mode=OneWay}" />
         </Grid>
     </Grid>
 </Window>

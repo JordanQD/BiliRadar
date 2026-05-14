@@ -37,4 +37,9 @@ public sealed class MockBiliDataProvider : IBiliDataProvider
 
         return Task.FromResult(updates);
     }
+
+    public Task<BiliVideoUpdatePage> GetMoreVideoUpdatesAsync(CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(new BiliVideoUpdatePage([], string.Empty, false));
+    }
 }
