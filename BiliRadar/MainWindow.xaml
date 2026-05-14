@@ -28,7 +28,8 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
         <Grid Padding="16,14,12,8" ColumnSpacing="8">
@@ -114,22 +115,64 @@
             </Border>
         </Grid>
 
+        <Grid Grid.Row="2" Padding="12,0,12,10" RowSpacing="8">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <PasswordBox
+                x:Name="CookieBox"
+                PlaceholderText="粘贴 B 站 Cookie"
+                PasswordRevealMode="Peek" />
+
+            <Grid Grid.Row="1" ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock
+                    VerticalAlignment="Center"
+                    FontSize="12"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Text="{x:Bind StatusText, Mode=OneWay}"
+                    TextTrimming="CharacterEllipsis"
+                    TextWrapping="NoWrap" />
+
+                <Button
+                    Grid.Column="1"
+                    MinWidth="64"
+                    Click="SaveCookieButton_Click"
+                    Content="保存" />
+
+                <Button
+                    Grid.Column="2"
+                    MinWidth="64"
+                    Click="ClearCookieButton_Click"
+                    Content="清除" />
+            </Grid>
+        </Grid>
+
         <ListView
-            Grid.Row="2"
+            Grid.Row="3"
+            MinHeight="240"
+            MaxHeight="420"
             Padding="6,0"
-            ItemsSource="{x:Bind Updates, Mode=OneWay}"
+            ItemsSource="{x:Bind Following, Mode=OneWay}"
             SelectionMode="None">
             <ListView.Header>
                 <TextBlock
-                    Margin="10,0,0,8"
+                    Margin="10,6,0,8"
                     FontSize="13"
                     FontWeight="SemiBold"
                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    Text="最近视频" />
+                    Text="关注的人" />
             </ListView.Header>
             <ListView.ItemTemplate>
-                <DataTemplate x:DataType="models:VideoUpdateRow">
-                    <Grid Padding="8,8" ColumnSpacing="8">
+                <DataTemplate x:DataType="models:CreatorRow">
+                    <Grid Padding="8,7" ColumnSpacing="8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
@@ -137,43 +180,41 @@
                         </Grid.ColumnDefinitions>
 
                         <Border
-                            Width="32"
-                            Height="32"
-                            Background="{ThemeResource AccentFillColorDefaultBrush}"
-                            CornerRadius="7">
-                            <FontIcon
-                                FontSize="16"
-                                Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
-                                Glyph="&#xE714;" />
+                            Width="28"
+                            Height="28"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6">
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                FontSize="13"
+                                FontWeight="SemiBold"
+                                Text="{x:Bind Initial}" />
                         </Border>
 
-                        <StackPanel Grid.Column="1" Spacing="2">
-                            <TextBlock
-                                FontWeight="SemiBold"
-                                Text="{x:Bind Title}"
-                                TextTrimming="CharacterEllipsis"
-                                TextWrapping="NoWrap" />
-                            <TextBlock
-                                FontSize="12"
-                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Text="{x:Bind CreatorName}"
-                                TextTrimming="CharacterEllipsis"
-                                TextWrapping="NoWrap" />
-                        </StackPanel>
+                        <TextBlock
+                            Grid.Column="1"
+                            VerticalAlignment="Center"
+                            FontWeight="SemiBold"
+                            Text="{x:Bind Name}"
+                            TextTrimming="CharacterEllipsis"
+                            TextWrapping="NoWrap" />
 
                         <TextBlock
                             Grid.Column="2"
                             VerticalAlignment="Center"
                             FontSize="12"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Text="{x:Bind IsUnreadText}" />
+                            Text="{x:Bind Mid}" />
                     </Grid>
                 </DataTemplate>
             </ListView.ItemTemplate>
         </ListView>
 
         <Grid
-            Grid.Row="3"
+            Grid.Row="4"
             Padding="12,8,12,12"
             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
             BorderThickness="0,1,0,0"

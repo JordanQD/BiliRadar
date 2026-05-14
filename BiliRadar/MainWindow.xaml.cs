@@ -25,7 +25,8 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     private const double WindowMaxWorkAreaHeightRatio = 0.75;
     private const int DefaultDpi = 96;
     private const uint MdtEffectiveDpi = 0;
-    private readonly UpdateMonitorService _updateMonitorService = new(new MockBiliDataProvider());
+    private readonly CookieStore _cookieStore = new();
+    private readonly UpdateMonitorService _updateMonitorService;
     private readonly AppWindow _appWindow;
     private readonly nint _hwnd;
     private bool _allowClose;
@@ -35,6 +36,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     private int _unreadCount;
     private int _followingCount;
     private string _lastCheckedText = "尚未检查";
+    private string _statusText = "粘贴 B 站 Cookie 后保存并刷新。";
 
     public MainWindow()
     {
@@ -43,6 +45,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
 
         Updates = [];
         Following = [];
+        _updateMonitorService = new(new BiliWebDataProvider(_cookieStore));
         _hwnd = WindowNative.GetWindowHandle(this);
         _appWindow = AppWindow.GetFromWindowId(Microsoft.UI.Win32Interop.GetWindowIdFromWindow(_hwnd));
         _appWindow.Title = "BiliRadar";
@@ -95,6 +98,12 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         private set => SetProperty(ref _lastCheckedText, value);
     }
 
+    public string StatusText
+    {
+        get => _statusText;
+        private set => SetProperty(ref _statusText, value);
+    }
+
     public Visibility LoadingVisibility => IsLoading ? Visibility.Visible : Visibility.Collapsed;
 
     public bool IsVisible => _isVisible;
@@ -141,6 +150,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         IsLoading = true;
         try
         {
+            StatusText = _cookieStore.HasCookie ? "正在刷新..." : "还没有保存 Cookie。";
             var following = await _updateMonitorService.GetFollowingAsync();
             var updates = await _updateMonitorService.RefreshAsync();
 
@@ -159,7 +169,14 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             FollowingCount = Following.Count;
             UnreadCount = Updates.Count(item => item.IsUnread);
             LastCheckedText = _updateMonitorService.LastCheckedAt.ToString("HH:mm:ss");
+            StatusText = _cookieStore.HasCookie
+                ? $"已获取 {FollowingCount} 个关注用户。"
+                : "粘贴 B 站 Cookie 后保存并刷新。";
             AdjustWindowSizeToContent();
+        }
+        catch (Exception ex)
+        {
+            StatusText = ex.Message;
         }
         finally
         {
@@ -175,6 +192,26 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     private void HideButton_Click(object sender, RoutedEventArgs e)
     {
         HideRequested?.Invoke();
+    }
+
+    private async void SaveCookieButton_Click(object sender, RoutedEventArgs e)
+    {
+        _cookieStore.SaveCookieString(CookieBox.Password);
+        CookieBox.Password = string.Empty;
+        StatusText = "Cookie 已保存。";
+        await RefreshAsync();
+    }
+
+    private void ClearCookieButton_Click(object sender, RoutedEventArgs e)
+    {
+        _cookieStore.Clear();
+        Following.Clear();
+        Updates.Clear();
+        FollowingCount = 0;
+        UnreadCount = 0;
+        LastCheckedText = "尚未检查";
+        StatusText = "Cookie 已清除。";
+        AdjustWindowSizeToContent();
     }
 
     private void MainWindow_Activated(object sender, WindowActivatedEventArgs args)
