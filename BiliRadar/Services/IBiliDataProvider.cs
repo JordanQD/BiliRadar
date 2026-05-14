@@ -10,4 +10,6 @@ public interface IBiliDataProvider
     Task<IReadOnlyList<BiliCreator>> GetFollowingAsync(CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<BiliVideoUpdate>> GetRecentVideoUpdatesAsync(CancellationToken cancellationToken = default);
+
+    Task AddToViewLaterAsync(long aid, CancellationToken cancellationToken = default);
 }
