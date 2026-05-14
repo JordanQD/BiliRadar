@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "BiliRadar (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "BiliRadar (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
