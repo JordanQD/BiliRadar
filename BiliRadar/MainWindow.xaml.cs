@@ -226,14 +226,29 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
                 ShowStatus($"视频动态加载失败：{ex.Message}", InfoBarSeverity.Error);
             }
 
-            Updates.Clear();
-            _loadedUpdateIds.Clear();
+            var newRows = new List<VideoUpdateRow>();
             foreach (var update in updates.OrderByDescending(item => item.PublishedAt))
             {
-                AddUpdateIfNew(update);
+                if (_loadedUpdateIds.Add(update.Id))
+                {
+                    var row = new VideoUpdateRow(update);
+                    Updates.Insert(newRows.Count, row);
+                    newRows.Add(row);
+                }
             }
 
-            RenderVideoCards();
+            if (VideoCardsPanel.Children.Count == 0)
+            {
+                RenderVideoCards();
+            }
+            else
+            {
+                for (var index = newRows.Count - 1; index >= 0; index--)
+                {
+                    VideoCardsPanel.Children.Insert(0, CreateVideoCard(newRows[index]));
+                }
+            }
+
             _hasMoreUpdates = Updates.Count > 0;
             UnreadCount = Updates.Count(item => item.IsUnread);
             LastCheckedText = _updateMonitorService.LastCheckedAt.ToString("HH:mm:ss");
