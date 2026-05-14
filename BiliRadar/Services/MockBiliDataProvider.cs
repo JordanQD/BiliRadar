@@ -20,14 +20,19 @@ public sealed class MockBiliDataProvider : IBiliDataProvider
         return Task.FromResult(Creators);
     }
 
+    public Task AddToViewLaterAsync(long aid, CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
+    }
+
     public Task<IReadOnlyList<BiliVideoUpdate>> GetRecentVideoUpdatesAsync(CancellationToken cancellationToken = default)
     {
         var now = DateTimeOffset.Now;
         IReadOnlyList<BiliVideoUpdate> updates =
         [
-            new("BV1FRAME01", 123456, "影视飓风", "一条模拟的新视频更新，之后由 bili-kernel provider 替换", now.AddMinutes(-18), "https://www.bilibili.com", true),
-            new("BV1FRAME02", 345678, "巫师财经", "关注列表轮询框架已经就位", now.AddHours(-2), "https://www.bilibili.com", true),
-            new("BV1FRAME03", 567890, "老师好我叫何同学", "这里会显示已读/未读和发布时间", now.AddDays(-1), "https://www.bilibili.com", false),
+            new("BV1FRAME01", 1001, 123456, "影视飓风", "一条模拟的新视频更新，之后由 bili-kernel provider 替换", now.AddMinutes(-18), "https://www.bilibili.com", true, string.Empty, string.Empty, "18 分钟前投稿了视频", string.Empty, string.Empty, 0, 0),
+            new("BV1FRAME02", 1002, 345678, "巫师财经", "关注列表轮询框架已经就位", now.AddHours(-2), "https://www.bilibili.com", true, string.Empty, string.Empty, "2 小时前投稿了视频", string.Empty, string.Empty, 0, 0),
+            new("BV1FRAME03", 1003, 567890, "老师好我叫何同学", "这里会显示已读/未读和发布时间", now.AddDays(-1), "https://www.bilibili.com", false, string.Empty, string.Empty, "昨天投稿了视频", string.Empty, string.Empty, 0, 0),
         ];
 
         return Task.FromResult(updates);

@@ -87,7 +87,7 @@
                     <TextBlock
                         FontSize="12"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Text="未读更新" />
+                        Text="视频动态" />
                     <TextBlock
                         FontSize="26"
                         FontWeight="SemiBold"
@@ -137,9 +137,10 @@
                     VerticalAlignment="Center"
                     FontSize="12"
                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    MaxLines="6"
                     Text="{x:Bind StatusText, Mode=OneWay}"
-                    TextTrimming="CharacterEllipsis"
-                    TextWrapping="NoWrap" />
+                    TextTrimming="WordEllipsis"
+                    TextWrapping="Wrap" />
 
                 <Button
                     Grid.Column="1"
@@ -155,63 +156,24 @@
             </Grid>
         </Grid>
 
-        <ListView
+        <ScrollViewer
             Grid.Row="3"
-            MinHeight="240"
+            MinHeight="360"
             MaxHeight="420"
-            Padding="6,0"
-            ItemsSource="{x:Bind Following, Mode=OneWay}"
-            SelectionMode="None">
-            <ListView.Header>
+            Padding="10,0,10,0"
+            VerticalScrollBarVisibility="Auto">
+            <StackPanel>
                 <TextBlock
-                    Margin="10,6,0,8"
+                    Margin="0,6,0,10"
                     FontSize="13"
                     FontWeight="SemiBold"
                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    Text="关注的人" />
-            </ListView.Header>
-            <ListView.ItemTemplate>
-                <DataTemplate x:DataType="models:CreatorRow">
-                    <Grid Padding="8,7" ColumnSpacing="8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-
-                        <Border
-                            Width="28"
-                            Height="28"
-                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                            BorderThickness="1"
-                            CornerRadius="6">
-                            <TextBlock
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                FontSize="13"
-                                FontWeight="SemiBold"
-                                Text="{x:Bind Initial}" />
-                        </Border>
-
-                        <TextBlock
-                            Grid.Column="1"
-                            VerticalAlignment="Center"
-                            FontWeight="SemiBold"
-                            Text="{x:Bind Name}"
-                            TextTrimming="CharacterEllipsis"
-                            TextWrapping="NoWrap" />
-
-                        <TextBlock
-                            Grid.Column="2"
-                            VerticalAlignment="Center"
-                            FontSize="12"
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Text="{x:Bind Mid}" />
-                    </Grid>
-                </DataTemplate>
-            </ListView.ItemTemplate>
-        </ListView>
+                    Text="视频动态" />
+                <StackPanel
+                    x:Name="VideoCardsPanel"
+                    Spacing="10" />
+            </StackPanel>
+        </ScrollViewer>
 
         <Grid
             Grid.Row="4"

@@ -28,4 +28,9 @@ public sealed class UpdateMonitorService
         LastCheckedAt = DateTimeOffset.Now;
         return updates;
     }
+
+    public Task AddToViewLaterAsync(long aid, CancellationToken cancellationToken = default)
+    {
+        return _dataProvider.AddToViewLaterAsync(aid, cancellationToken);
+    }
 }
