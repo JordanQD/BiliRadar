@@ -17,6 +17,9 @@ bin/
 obj/
 **/bin/
 **/obj/
+.verify-bin/
+.verify-obj/
+BiliRadar/artifacts/
 
 # WinUI / MSIX packaging output
 AppPackages/

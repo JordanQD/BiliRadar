@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="BiliRadar.Pages.AboutSettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ScrollViewer>
+        <StackPanel
+            MaxWidth="720"
+            Padding="32,28"
+            Spacing="16">
+            <TextBlock
+                Style="{ThemeResource TitleTextBlockStyle}"
+                Text="关于" />
+            <TextBlock
+                Style="{ThemeResource SubtitleTextBlockStyle}"
+                Text="BiliRadar" />
+            <TextBlock
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Text="一个放在任务栏托盘里的 B 站动态雷达。" />
+        </StackPanel>
+    </ScrollViewer>
+</Page>

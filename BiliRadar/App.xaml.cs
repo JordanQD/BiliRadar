@@ -8,6 +8,7 @@ namespace BiliRadar;
 public partial class App : Application
 {
     private MainWindow? _mainWindow;
+    private SettingsWindow? _settingsWindow;
     private TrayIconService? _trayIconService;
     private bool _isExiting;
 
@@ -37,6 +38,7 @@ public partial class App : Application
             _trayIconService = new TrayIconService(
                 "BiliRadar",
                 ToggleMainWindow,
+                ShowSettingsWindow,
                 RefreshUpdates,
                 ExitApplication);
             _trayIconService.SetupTrayIcon();
@@ -80,6 +82,17 @@ public partial class App : Application
         _mainWindow?.HideWindow();
     }
 
+    private void ShowSettingsWindow()
+    {
+        if (_settingsWindow is null)
+        {
+            _settingsWindow = new SettingsWindow();
+            _settingsWindow.Closed += SettingsWindow_Closed;
+        }
+
+        _settingsWindow.ShowWindow();
+    }
+
     private async void RefreshUpdates()
     {
         if (_mainWindow is null)
@@ -96,8 +109,18 @@ public partial class App : Application
         _isExiting = true;
         _trayIconService?.Destroy();
         _trayIconService = null;
-            _mainWindow?.CloseForExit();
+        _settingsWindow?.Close();
+        _settingsWindow = null;
+        _mainWindow?.CloseForExit();
         Exit();
     }
 
+    private void SettingsWindow_Closed(object sender, WindowEventArgs args)
+    {
+        if (_settingsWindow is not null)
+        {
+            _settingsWindow.Closed -= SettingsWindow_Closed;
+            _settingsWindow = null;
+        }
+    }
 }

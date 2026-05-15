@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="BiliRadar.SettingsWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="BiliRadar 设置">
+
+    <Window.SystemBackdrop>
+        <MicaBackdrop />
+    </Window.SystemBackdrop>
+
+    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TitleBar
+            x:Name="titleBar"
+            BackRequested="TitleBar_BackRequested"
+            IsBackButtonVisible="{x:Bind navFrame.CanGoBack, Mode=OneWay}"
+            IsPaneToggleButtonVisible="True"
+            PaneToggleRequested="TitleBar_PaneToggleRequested"
+            Title="BiliRadar 设置" />
+
+        <NavigationView
+            x:Name="navView"
+            Grid.Row="1"
+            IsBackButtonVisible="Collapsed"
+            IsPaneToggleButtonVisible="False"
+            IsSettingsVisible="False"
+            PaneDisplayMode="Left"
+            SelectionChanged="NavView_SelectionChanged">
+            <NavigationView.MenuItems>
+                <NavigationViewItem
+                    x:Name="GeneralNavItem"
+                    Content="常规"
+                    Icon="Home"
+                    Tag="general" />
+                <NavigationViewItem
+                    Content="账号"
+                    Icon="Contact"
+                    Tag="account" />
+                <NavigationViewItem
+                    Content="关于"
+                    Icon="Help"
+                    Tag="about" />
+            </NavigationView.MenuItems>
+
+            <Frame
+                x:Name="navFrame"
+                Navigated="NavFrame_Navigated" />
+        </NavigationView>
+    </Grid>
+</Window>
