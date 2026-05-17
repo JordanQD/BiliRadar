@@ -65,6 +65,28 @@
             VerticalScrollBarVisibility="Auto">
             <StackPanel x:Name="FollowingPagePanel">
                 <StackPanel
+                    x:Name="LiveCreatorsSection"
+                    Margin="0,4,0,10"
+                    Spacing="6"
+                    Visibility="Collapsed">
+                    <TextBlock
+                        FontSize="12"
+                        FontWeight="SemiBold"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Text="正在直播" />
+                    <ScrollViewer
+                        HorizontalScrollBarVisibility="Auto"
+                        HorizontalScrollMode="Enabled"
+                        VerticalScrollBarVisibility="Disabled"
+                        VerticalScrollMode="Disabled"
+                        ZoomMode="Disabled">
+                        <StackPanel
+                            x:Name="LiveCreatorCardsPanel"
+                            Orientation="Horizontal"
+                            Spacing="10" />
+                    </ScrollViewer>
+                </StackPanel>
+                <StackPanel
                     x:Name="VideoCardsPanel"
                     Spacing="10" />
             </StackPanel>

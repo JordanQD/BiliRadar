@@ -20,9 +20,40 @@ public sealed class MockBiliDataProvider : IBiliDataProvider
         return Task.FromResult(Creators);
     }
 
+    public Task<IReadOnlyList<BiliLiveCreator>> GetFollowingLiveCreatorsAsync(CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<BiliLiveCreator> creators =
+        [
+            new(123456, 101, "影视飓风", string.Empty, "模拟直播间：今天聊聊影像", "https://live.bilibili.com/101"),
+            new(567890, 102, "老师好我叫何同学", string.Empty, "模拟直播间：桌面小实验", "https://live.bilibili.com/102"),
+        ];
+
+        return Task.FromResult(creators);
+    }
+
     public Task AddToViewLaterAsync(long aid, CancellationToken cancellationToken = default)
     {
         return Task.CompletedTask;
+    }
+
+    public Task RemoveFromViewLaterAsync(long aid, CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
+    }
+
+    public Task FollowCreatorAsync(long mid, CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
+    }
+
+    public Task UnfollowCreatorAsync(long mid, CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
+    }
+
+    public Task<bool> IsCreatorFollowedAsync(long mid, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(mid is 123456 or 345678 or 567890);
     }
 
     public Task<IReadOnlyList<BiliVideoUpdate>> GetRecentVideoUpdatesAsync(CancellationToken cancellationToken = default)
