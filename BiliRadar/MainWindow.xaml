@@ -28,6 +28,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
         <Grid Padding="8,8,12,4" ColumnSpacing="8">
             <Grid.ColumnDefinitions>
@@ -55,9 +56,18 @@
 
         </Grid>
 
+        <ProgressBar
+            Grid.Row="1"
+            Margin="10,0,10,4"
+            HorizontalAlignment="Stretch"
+            IsIndeterminate="True"
+            ShowError="False"
+            ShowPaused="False"
+            Visibility="{x:Bind RefreshProgressVisibility, Mode=OneWay}" />
+
         <ScrollViewer
             x:Name="VideoScrollViewer"
-            Grid.Row="1"
+            Grid.Row="2"
             MinHeight="500"
             MaxHeight="560"
             Padding="10,0,10,0"
@@ -75,6 +85,7 @@
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         Text="正在直播" />
                     <ScrollViewer
+                        Height="88"
                         HorizontalScrollBarVisibility="Auto"
                         HorizontalScrollMode="Enabled"
                         VerticalScrollBarVisibility="Disabled"
@@ -83,9 +94,15 @@
                         <StackPanel
                             x:Name="LiveCreatorCardsPanel"
                             Orientation="Horizontal"
-                            Spacing="10" />
+                            Spacing="6" />
                     </ScrollViewer>
                 </StackPanel>
+                <TextBlock
+                    Margin="0,0,0,6"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Text="最新视频" />
                 <StackPanel
                     x:Name="VideoCardsPanel"
                     Spacing="10" />
@@ -94,7 +111,7 @@
 
         <Grid
             x:Name="HistoryPagePanel"
-            Grid.Row="1"
+            Grid.Row="2"
             MinHeight="500"
             Visibility="Collapsed">
             <ScrollViewer
@@ -136,7 +153,7 @@
 
         <Grid
             x:Name="ViewLaterPagePanel"
-            Grid.Row="1"
+            Grid.Row="2"
             MinHeight="500"
             Visibility="Collapsed">
             <ScrollViewer
@@ -178,7 +195,7 @@
 
         <InfoBar
             x:Name="StatusInfoBar"
-            Grid.Row="1"
+            Grid.Row="2"
             Margin="12,8,12,12"
             VerticalAlignment="Bottom"
             IsClosable="True"

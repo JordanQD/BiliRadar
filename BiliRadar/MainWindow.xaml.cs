@@ -169,6 +169,10 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
 
     public Visibility LoadingVisibility => IsLoading ? Visibility.Visible : Visibility.Collapsed;
 
+    public Visibility RefreshProgressVisibility => IsLoading || _isLoadingHistory || _isLoadingViewLater
+        ? Visibility.Visible
+        : Visibility.Collapsed;
+
     public bool IsVisible => _isVisible;
 
     public void InitializeHidden()
@@ -501,6 +505,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         }
 
         _isLoadingHistory = true;
+        NotifyRefreshProgressVisibilityChanged();
         try
         {
             IsStatusInfoOpen = false;
@@ -556,6 +561,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         finally
         {
             _isLoadingHistory = false;
+            NotifyRefreshProgressVisibilityChanged();
         }
     }
 
@@ -619,6 +625,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         }
 
         _isLoadingViewLater = true;
+        NotifyRefreshProgressVisibilityChanged();
         try
         {
             IsStatusInfoOpen = false;
@@ -663,6 +670,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         finally
         {
             _isLoadingViewLater = false;
+            NotifyRefreshProgressVisibilityChanged();
         }
     }
 
@@ -869,7 +877,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     {
         var button = new Button
         {
-            Width = 68,
+            Width = 60,
             MinWidth = 0,
             Padding = new Thickness(4, 4, 4, 2),
             HorizontalAlignment = HorizontalAlignment.Left,
@@ -898,7 +906,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         panel.Children.Add(new TextBlock
         {
             Text = item.Name,
-            Width = 60,
+            Width = 54,
             FontSize = 11,
             HorizontalAlignment = HorizontalAlignment.Center,
             TextAlignment = TextAlignment.Center,
@@ -1934,7 +1942,13 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         if (propertyName == nameof(IsLoading))
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(LoadingVisibility)));
+            NotifyRefreshProgressVisibilityChanged();
         }
+    }
+
+    private void NotifyRefreshProgressVisibilityChanged()
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RefreshProgressVisibility)));
     }
 
     private void ConfigureTitleBar()
