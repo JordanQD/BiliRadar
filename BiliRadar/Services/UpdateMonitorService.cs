@@ -34,6 +34,26 @@ public sealed class UpdateMonitorService
         return _dataProvider.GetMoreVideoUpdatesAsync(cancellationToken);
     }
 
+    public Task<BiliVideoHistoryPage> RefreshHistoryAsync(CancellationToken cancellationToken = default)
+    {
+        return _dataProvider.GetRecentVideoHistoryAsync(cancellationToken);
+    }
+
+    public Task<BiliVideoHistoryPage> LoadMoreHistoryAsync(CancellationToken cancellationToken = default)
+    {
+        return _dataProvider.GetMoreVideoHistoryAsync(cancellationToken);
+    }
+
+    public Task<BiliViewLaterPage> RefreshViewLaterAsync(CancellationToken cancellationToken = default)
+    {
+        return _dataProvider.GetRecentViewLaterAsync(cancellationToken);
+    }
+
+    public Task<BiliViewLaterPage> LoadMoreViewLaterAsync(CancellationToken cancellationToken = default)
+    {
+        return _dataProvider.GetMoreViewLaterAsync(cancellationToken);
+    }
+
     public Task AddToViewLaterAsync(long aid, CancellationToken cancellationToken = default)
     {
         return _dataProvider.AddToViewLaterAsync(aid, cancellationToken);

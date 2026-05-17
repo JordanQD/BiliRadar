@@ -24,3 +24,15 @@ public sealed record BiliVideoUpdatePage(
     IReadOnlyList<BiliVideoUpdate> Items,
     string NextOffset,
     bool HasMore);
+
+public sealed record BiliVideoHistoryPage(
+    IReadOnlyList<BiliVideoUpdate> Items,
+    long NextMax,
+    long NextViewAt,
+    bool HasMore);
+
+public sealed record BiliViewLaterPage(
+    IReadOnlyList<BiliVideoUpdate> Items,
+    int TotalCount,
+    int NextPageNumber,
+    bool HasMore);

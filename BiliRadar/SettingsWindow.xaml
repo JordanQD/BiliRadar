@@ -17,11 +17,14 @@
 
         <TitleBar
             x:Name="titleBar"
-            BackRequested="TitleBar_BackRequested"
-            IsBackButtonVisible="{x:Bind navFrame.CanGoBack, Mode=OneWay}"
+            IsBackButtonVisible="False"
             IsPaneToggleButtonVisible="True"
             PaneToggleRequested="TitleBar_PaneToggleRequested"
-            Title="BiliRadar 设置" />
+            Title="BiliRadar">
+            <TitleBar.IconSource>
+                <ImageIconSource ImageSource="/Assets/Square44x44Logo.targetsize-24_altform-unplated.png" />
+            </TitleBar.IconSource>
+        </TitleBar>
 
         <NavigationView
             x:Name="navView"
@@ -29,6 +32,8 @@
             IsBackButtonVisible="Collapsed"
             IsPaneToggleButtonVisible="False"
             IsSettingsVisible="False"
+            CompactPaneLength="48"
+            OpenPaneLength="220"
             PaneDisplayMode="Left"
             SelectionChanged="NavView_SelectionChanged">
             <NavigationView.MenuItems>
@@ -48,8 +53,7 @@
             </NavigationView.MenuItems>
 
             <Frame
-                x:Name="navFrame"
-                Navigated="NavFrame_Navigated" />
+                x:Name="navFrame" />
         </NavigationView>
     </Grid>
 </Window>
