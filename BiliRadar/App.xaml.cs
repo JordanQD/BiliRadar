@@ -38,8 +38,8 @@ public partial class App : Application
             _trayIconService = new TrayIconService(
                 "BiliRadar",
                 ToggleMainWindow,
+                ShowMainWindow,
                 ShowSettingsWindow,
-                RefreshUpdates,
                 ExitApplication);
             _trayIconService.SetupTrayIcon();
 
@@ -91,17 +91,6 @@ public partial class App : Application
         }
 
         _settingsWindow.ShowWindow();
-    }
-
-    private async void RefreshUpdates()
-    {
-        if (_mainWindow is null)
-        {
-            return;
-        }
-
-        ShowMainWindow();
-        await _mainWindow.RefreshAsync();
     }
 
     private void ExitApplication()
