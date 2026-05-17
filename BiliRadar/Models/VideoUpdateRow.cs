@@ -9,6 +9,7 @@ public sealed class VideoUpdateRow
     {
         Id = update.Id;
         Aid = update.Aid;
+        CreatorMid = update.CreatorMid;
         CreatorName = update.CreatorName;
         Title = update.Title;
         PublishedAt = update.PublishedAt;
@@ -29,6 +30,8 @@ public sealed class VideoUpdateRow
     public string Id { get; }
 
     public long Aid { get; }
+
+    public long CreatorMid { get; }
 
     public string CreatorName { get; }
 

@@ -22,6 +22,11 @@ public sealed class UpdateMonitorService
         return _dataProvider.GetFollowingAsync(cancellationToken);
     }
 
+    public Task<IReadOnlyList<BiliLiveCreator>> GetFollowingLiveCreatorsAsync(CancellationToken cancellationToken = default)
+    {
+        return _dataProvider.GetFollowingLiveCreatorsAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<BiliVideoUpdate>> RefreshAsync(CancellationToken cancellationToken = default)
     {
         var updates = await _dataProvider.GetRecentVideoUpdatesAsync(cancellationToken);
@@ -57,5 +62,25 @@ public sealed class UpdateMonitorService
     public Task AddToViewLaterAsync(long aid, CancellationToken cancellationToken = default)
     {
         return _dataProvider.AddToViewLaterAsync(aid, cancellationToken);
+    }
+
+    public Task RemoveFromViewLaterAsync(long aid, CancellationToken cancellationToken = default)
+    {
+        return _dataProvider.RemoveFromViewLaterAsync(aid, cancellationToken);
+    }
+
+    public Task FollowCreatorAsync(long mid, CancellationToken cancellationToken = default)
+    {
+        return _dataProvider.FollowCreatorAsync(mid, cancellationToken);
+    }
+
+    public Task UnfollowCreatorAsync(long mid, CancellationToken cancellationToken = default)
+    {
+        return _dataProvider.UnfollowCreatorAsync(mid, cancellationToken);
+    }
+
+    public Task<bool> IsCreatorFollowedAsync(long mid, CancellationToken cancellationToken = default)
+    {
+        return _dataProvider.IsCreatorFollowedAsync(mid, cancellationToken);
     }
 }

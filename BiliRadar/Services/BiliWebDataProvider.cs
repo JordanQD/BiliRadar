@@ -12,10 +12,14 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
 {
     private const string NavUrl = "https://api.bilibili.com/x/web-interface/nav";
     private const string FollowingsUrl = "https://api.bilibili.com/x/relation/followings";
+    private const string FollowingLiveUrl = "https://api.live.bilibili.com/xlive/web-ucenter/v1/xfetter/GetWebList";
+    private const string RelationUrl = "https://api.bilibili.com/x/relation";
+    private const string ModifyRelationUrl = "https://api.bilibili.com/x/relation/modify";
     private const string AllMomentsUrl = "https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/all";
     private const string HistoryCursorUrl = "https://api.bilibili.com/x/web-interface/history/cursor";
     private const string ViewLaterListUrl = "https://api.bilibili.com/x/v2/history/toview";
     private const string AddToViewLaterUrl = "https://api.bilibili.com/x/v2/history/toview/add";
+    private const string RemoveFromViewLaterUrl = "https://api.bilibili.com/x/v2/history/toview/del";
     internal const string BrowserUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
     private const int RequestMaxAttemptCount = 3;
     private static readonly TimeSpan RequestRetryDelay = TimeSpan.FromMilliseconds(500);
@@ -66,6 +70,37 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
             if (mid > 0 && !string.IsNullOrWhiteSpace(name))
             {
                 creators.Add(new BiliCreator(mid, name, face));
+            }
+        }
+
+        return creators;
+    }
+
+    public async Task<IReadOnlyList<BiliLiveCreator>> GetFollowingLiveCreatorsAsync(CancellationToken cancellationToken = default)
+    {
+        var cookie = _cookieStore.GetCookieString();
+        if (string.IsNullOrWhiteSpace(cookie))
+        {
+            return Array.Empty<BiliLiveCreator>();
+        }
+
+        var url = $"{FollowingLiveUrl}?page=1&page_size=50";
+        using var document = await SendJsonAsync(url, cookie, cancellationToken).ConfigureAwait(false);
+        EnsureBiliSuccess(document.RootElement);
+
+        if (!document.RootElement.TryGetProperty("data", out var data)
+            || !TryGetLiveList(data, out var list))
+        {
+            return Array.Empty<BiliLiveCreator>();
+        }
+
+        var creators = new List<BiliLiveCreator>();
+        foreach (var item in list.EnumerateArray())
+        {
+            var creator = TryCreateLiveCreator(item);
+            if (creator is not null)
+            {
+                creators.Add(creator);
             }
         }
 
@@ -185,6 +220,119 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
         request.Content = new FormUrlEncodedContent(new Dictionary<string, string>
         {
             ["aid"] = aid.ToString(),
+            ["csrf"] = csrf,
+        });
+
+        using var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode)
+        {
+            var message = TryGetBiliErrorMessage(body);
+            throw new InvalidOperationException($"HTTP {(int)response.StatusCode} {response.ReasonPhrase}: {message}");
+        }
+
+        using var document = JsonDocument.Parse(body);
+        EnsureBiliSuccess(document.RootElement);
+    }
+
+    public async Task RemoveFromViewLaterAsync(long aid, CancellationToken cancellationToken = default)
+    {
+        if (aid <= 0)
+        {
+            throw new InvalidOperationException("当前视频缺少 avid，暂时无法移出稍后再看。");
+        }
+
+        var cookie = _cookieStore.GetCookieString();
+        if (string.IsNullOrWhiteSpace(cookie))
+        {
+            throw new InvalidOperationException("请先保存 B 站 Cookie。");
+        }
+
+        var csrf = GetCookieValue(cookie, "bili_jct");
+        if (string.IsNullOrWhiteSpace(csrf))
+        {
+            throw new InvalidOperationException("Cookie 中缺少 bili_jct，无法移出稍后再看。");
+        }
+
+        using var request = CreateWebRequest(HttpMethod.Post, RemoveFromViewLaterUrl, cookie);
+        request.Content = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["aid"] = aid.ToString(),
+            ["csrf"] = csrf,
+        });
+
+        using var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode)
+        {
+            var message = TryGetBiliErrorMessage(body);
+            throw new InvalidOperationException($"HTTP {(int)response.StatusCode} {response.ReasonPhrase}: {message}");
+        }
+
+        using var document = JsonDocument.Parse(body);
+        EnsureBiliSuccess(document.RootElement);
+    }
+
+    public Task FollowCreatorAsync(long mid, CancellationToken cancellationToken = default)
+    {
+        return ModifyCreatorRelationAsync(mid, isFollow: true, cancellationToken);
+    }
+
+    public Task UnfollowCreatorAsync(long mid, CancellationToken cancellationToken = default)
+    {
+        return ModifyCreatorRelationAsync(mid, isFollow: false, cancellationToken);
+    }
+
+    public async Task<bool> IsCreatorFollowedAsync(long mid, CancellationToken cancellationToken = default)
+    {
+        if (mid <= 0)
+        {
+            return false;
+        }
+
+        var cookie = _cookieStore.GetCookieString();
+        if (string.IsNullOrWhiteSpace(cookie))
+        {
+            return false;
+        }
+
+        using var document = await SendJsonAsync($"{RelationUrl}?fid={mid}", cookie, cancellationToken).ConfigureAwait(false);
+        EnsureBiliSuccess(document.RootElement);
+
+        if (!document.RootElement.TryGetProperty("data", out var data))
+        {
+            return false;
+        }
+
+        var attribute = GetInt32(data, "attribute");
+        var special = GetInt32(data, "special");
+        return special == 1 || attribute is 2 or 6;
+    }
+
+    private async Task ModifyCreatorRelationAsync(long mid, bool isFollow, CancellationToken cancellationToken)
+    {
+        if (mid <= 0)
+        {
+            throw new InvalidOperationException(isFollow ? "当前 UP 主缺少 mid，暂时无法关注。" : "当前 UP 主缺少 mid，暂时无法取消关注。");
+        }
+
+        var cookie = _cookieStore.GetCookieString();
+        if (string.IsNullOrWhiteSpace(cookie))
+        {
+            throw new InvalidOperationException("请先保存 B 站 Cookie。");
+        }
+
+        var csrf = GetCookieValue(cookie, "bili_jct");
+        if (string.IsNullOrWhiteSpace(csrf))
+        {
+            throw new InvalidOperationException(isFollow ? "Cookie 中缺少 bili_jct，无法关注。" : "Cookie 中缺少 bili_jct，无法取消关注。");
+        }
+
+        using var request = CreateWebRequest(HttpMethod.Post, ModifyRelationUrl, cookie);
+        request.Content = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["fid"] = mid.ToString(),
+            ["act"] = isFollow ? "1" : "2",
             ["csrf"] = csrf,
         });
 
@@ -652,6 +800,150 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
             JsonValueKind.String when int.TryParse(value.GetString(), out var number) => number != 0,
             _ => false,
         };
+    }
+
+    private static bool TryGetLiveList(JsonElement data, out JsonElement list)
+    {
+        list = default;
+        if (data.ValueKind != JsonValueKind.Object)
+        {
+            return false;
+        }
+
+        foreach (var propertyName in new[] { "rooms", "list", "items" })
+        {
+            if (data.TryGetProperty(propertyName, out list) && list.ValueKind == JsonValueKind.Array)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static BiliLiveCreator? TryCreateLiveCreator(JsonElement item)
+    {
+        var room = GetObject(item, "room_info");
+        var user = GetObject(item, "uinfo");
+        if (user.ValueKind == JsonValueKind.Undefined)
+        {
+            user = GetObject(item, "user");
+        }
+
+        var liveStatus = GetFirstInt32(item, room, "live_status", "status");
+        if (liveStatus == 0
+            && (HasProperty(item, "live_status") || HasProperty(room, "live_status") || HasProperty(item, "status") || HasProperty(room, "status")))
+        {
+            return null;
+        }
+
+        var isLiving = GetFirstBool(item, room, "is_live", "is_living");
+        if (isLiving == false)
+        {
+            return null;
+        }
+
+        var roomId = GetFirstInt64(item, room, "room_id", "roomid", "id");
+        var mid = GetFirstInt64(item, user, "uid", "mid", "uname_mid");
+        var name = GetFirstString(item, user, "uname", "name", "username");
+        var avatar = NormalizeUrl(GetFirstString(item, user, "face", "uface", "avatar"));
+        var title = GetFirstString(item, room, "title", "room_title");
+
+        if (roomId <= 0 || string.IsNullOrWhiteSpace(name))
+        {
+            return null;
+        }
+
+        var url = $"https://live.bilibili.com/{roomId}";
+        return new BiliLiveCreator(mid, roomId, name, avatar, title, url);
+    }
+
+    private static JsonElement GetObject(JsonElement element, string propertyName)
+        => element.ValueKind == JsonValueKind.Object
+            && element.TryGetProperty(propertyName, out var value)
+            && value.ValueKind == JsonValueKind.Object
+                ? value
+                : default;
+
+    private static bool HasProperty(JsonElement element, string propertyName)
+        => element.ValueKind == JsonValueKind.Object && element.TryGetProperty(propertyName, out _);
+
+    private static int GetFirstInt32(JsonElement first, JsonElement second, params string[] propertyNames)
+    {
+        foreach (var propertyName in propertyNames)
+        {
+            var value = GetInt32(first, propertyName);
+            if (value != 0)
+            {
+                return value;
+            }
+
+            value = GetInt32(second, propertyName);
+            if (value != 0)
+            {
+                return value;
+            }
+        }
+
+        return 0;
+    }
+
+    private static long GetFirstInt64(JsonElement first, JsonElement second, params string[] propertyNames)
+    {
+        foreach (var propertyName in propertyNames)
+        {
+            var value = GetInt64(first, propertyName);
+            if (value != 0)
+            {
+                return value;
+            }
+
+            value = GetInt64(second, propertyName);
+            if (value != 0)
+            {
+                return value;
+            }
+        }
+
+        return 0;
+    }
+
+    private static bool? GetFirstBool(JsonElement first, JsonElement second, params string[] propertyNames)
+    {
+        foreach (var propertyName in propertyNames)
+        {
+            if (HasProperty(first, propertyName))
+            {
+                return GetBool(first, propertyName);
+            }
+
+            if (HasProperty(second, propertyName))
+            {
+                return GetBool(second, propertyName);
+            }
+        }
+
+        return null;
+    }
+
+    private static string GetFirstString(JsonElement first, JsonElement second, params string[] propertyNames)
+    {
+        foreach (var propertyName in propertyNames)
+        {
+            var value = GetString(first, propertyName);
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                return value;
+            }
+
+            value = GetString(second, propertyName);
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                return value;
+            }
+        }
+
+        return string.Empty;
     }
 
     private static string GetCookieValue(string cookie, string key)

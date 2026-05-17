@@ -9,6 +9,8 @@ public interface IBiliDataProvider
 {
     Task<IReadOnlyList<BiliCreator>> GetFollowingAsync(CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<BiliLiveCreator>> GetFollowingLiveCreatorsAsync(CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<BiliVideoUpdate>> GetRecentVideoUpdatesAsync(CancellationToken cancellationToken = default);
 
     Task<BiliVideoUpdatePage> GetMoreVideoUpdatesAsync(CancellationToken cancellationToken = default);
@@ -22,4 +24,12 @@ public interface IBiliDataProvider
     Task<BiliViewLaterPage> GetMoreViewLaterAsync(CancellationToken cancellationToken = default);
 
     Task AddToViewLaterAsync(long aid, CancellationToken cancellationToken = default);
+
+    Task RemoveFromViewLaterAsync(long aid, CancellationToken cancellationToken = default);
+
+    Task FollowCreatorAsync(long mid, CancellationToken cancellationToken = default);
+
+    Task UnfollowCreatorAsync(long mid, CancellationToken cancellationToken = default);
+
+    Task<bool> IsCreatorFollowedAsync(long mid, CancellationToken cancellationToken = default);
 }
