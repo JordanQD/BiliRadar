@@ -48,9 +48,9 @@
                 Width="34"
                 Height="34"
                 Padding="0"
-                Click="RefreshButton_Click"
+                Click="OpenBrowserButton_Click"
                 Style="{StaticResource SubtleButtonStyle}">
-                <FontIcon FontSize="15" Glyph="&#xE72C;" />
+                <FontIcon FontSize="15" Glyph="&#xE774;" />
             </Button>
 
         </Grid>
@@ -74,12 +74,26 @@
             x:Name="HistoryPagePanel"
             Grid.Row="1"
             MinHeight="500"
-            Padding="18,24"
             Visibility="Collapsed">
+            <ScrollViewer
+                x:Name="HistoryScrollViewer"
+                MinHeight="500"
+                MaxHeight="560"
+                Padding="10,0,10,0"
+                ViewChanged="HistoryScrollViewer_ViewChanged"
+                VerticalScrollBarVisibility="Auto">
+                <StackPanel
+                    x:Name="HistoryCardsPanel"
+                    Spacing="10" />
+            </ScrollViewer>
+
             <StackPanel
+                x:Name="HistoryEmptyPanel"
+                Padding="18,24"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
-                Spacing="8">
+                Spacing="8"
+                Visibility="Collapsed">
                 <FontIcon
                     HorizontalAlignment="Center"
                     FontSize="28"
@@ -89,12 +103,12 @@
                     HorizontalAlignment="Center"
                     FontSize="14"
                     FontWeight="SemiBold"
-                    Text="历史记录" />
+                    Text="暂无历史记录" />
                 <TextBlock
                     HorizontalAlignment="Center"
                     FontSize="12"
                     Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                    Text="这里先留空，后面接入历史数据。" />
+                    Text="登录后会显示最近看过的视频。" />
             </StackPanel>
         </Grid>
 
@@ -102,12 +116,26 @@
             x:Name="ViewLaterPagePanel"
             Grid.Row="1"
             MinHeight="500"
-            Padding="18,24"
             Visibility="Collapsed">
+            <ScrollViewer
+                x:Name="ViewLaterScrollViewer"
+                MinHeight="500"
+                MaxHeight="560"
+                Padding="10,0,10,0"
+                ViewChanged="ViewLaterScrollViewer_ViewChanged"
+                VerticalScrollBarVisibility="Auto">
+                <StackPanel
+                    x:Name="ViewLaterCardsPanel"
+                    Spacing="10" />
+            </ScrollViewer>
+
             <StackPanel
+                x:Name="ViewLaterEmptyPanel"
+                Padding="18,24"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
-                Spacing="8">
+                Spacing="8"
+                Visibility="Collapsed">
                 <FontIcon
                     HorizontalAlignment="Center"
                     FontSize="28"
@@ -117,12 +145,12 @@
                     HorizontalAlignment="Center"
                     FontSize="14"
                     FontWeight="SemiBold"
-                    Text="稍后再看" />
+                    Text="暂无稍后再看" />
                 <TextBlock
                     HorizontalAlignment="Center"
                     FontSize="12"
                     Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                    Text="这里先留空，后面接入稍后再看列表。" />
+                    Text="添加视频后会出现在这里。" />
             </StackPanel>
         </Grid>
 

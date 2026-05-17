@@ -42,4 +42,38 @@ public sealed class MockBiliDataProvider : IBiliDataProvider
     {
         return Task.FromResult(new BiliVideoUpdatePage([], string.Empty, false));
     }
+
+    public Task<BiliVideoHistoryPage> GetRecentVideoHistoryAsync(CancellationToken cancellationToken = default)
+    {
+        var now = DateTimeOffset.Now;
+        IReadOnlyList<BiliVideoUpdate> items =
+        [
+            new("BV1HISTORY01", 2001, 123456, "影视飓风", "历史记录会复用关注页的紧凑卡片", now.AddMinutes(-12), "https://www.bilibili.com", false, string.Empty, string.Empty, "12 分钟前观看", "12:34", "看到 03:21", 0, 0),
+            new("BV1HISTORY02", 2002, 345678, "巫师财经", "滚动到底部会继续加载更早记录", now.AddHours(-3), "https://www.bilibili.com", false, string.Empty, string.Empty, "3 小时前观看", "08:08", "已看完", 0, 0),
+        ];
+
+        return Task.FromResult(new BiliVideoHistoryPage(items, 0, 0, false));
+    }
+
+    public Task<BiliVideoHistoryPage> GetMoreVideoHistoryAsync(CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(new BiliVideoHistoryPage([], 0, 0, false));
+    }
+
+    public Task<BiliViewLaterPage> GetRecentViewLaterAsync(CancellationToken cancellationToken = default)
+    {
+        var now = DateTimeOffset.Now;
+        IReadOnlyList<BiliVideoUpdate> items =
+        [
+            new("BV1VIEWLATER01", 3001, 123456, "影视飓风", "稍后再看也使用同一套卡片", now.AddHours(-5), "https://www.bilibili.com", false, string.Empty, string.Empty, "5 小时前添加", "15:20", "看到 02:10", 0, 0),
+            new("BV1VIEWLATER02", 3002, 567890, "老师好我叫何同学", "这里会展示待看的视频列表", now.AddDays(-2), "https://www.bilibili.com", false, string.Empty, string.Empty, "2 天前添加", "06:30", string.Empty, 0, 0),
+        ];
+
+        return Task.FromResult(new BiliViewLaterPage(items, items.Count, 2, false));
+    }
+
+    public Task<BiliViewLaterPage> GetMoreViewLaterAsync(CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(new BiliViewLaterPage([], 0, 2, false));
+    }
 }

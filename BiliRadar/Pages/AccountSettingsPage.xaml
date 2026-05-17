@@ -4,10 +4,14 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <ScrollViewer>
+    <ScrollViewer
+        x:Name="SettingsScrollViewer"
+        HorizontalScrollBarVisibility="Disabled"
+        VerticalScrollBarVisibility="Auto">
         <StackPanel
-            MaxWidth="720"
-            Padding="32,28"
+            Width="560"
+            Padding="40,32"
+            HorizontalAlignment="Left"
             Spacing="20">
             <TextBlock
                 Style="{ThemeResource TitleTextBlockStyle}"
@@ -18,11 +22,59 @@
                     Style="{ThemeResource SubtitleTextBlockStyle}"
                     Text="Bilibili 登录状态" />
                 <InfoBar
+                    x:Name="AccountInfoBar"
                     IsClosable="False"
                     IsOpen="True"
-                    Message="这里预留 Cookie 登录、重新验证和退出登录的位置。"
+                    MaxWidth="480"
+                    Message="正在检查登录状态..."
                     Severity="Informational" />
-                <Button Content="管理 Cookie" />
+
+                <Grid
+                    MaxWidth="480"
+                    ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <PersonPicture
+                        x:Name="AvatarPicture"
+                        Width="48"
+                        Height="48"
+                        Initials="BR" />
+
+                    <StackPanel
+                        Grid.Column="1"
+                        VerticalAlignment="Center"
+                        Spacing="2">
+                        <TextBlock
+                            x:Name="AccountNameText"
+                            FontWeight="SemiBold"
+                            Text="未登录" />
+                        <TextBlock
+                            x:Name="AccountDetailText"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Text="网页登录后会自动换取更稳定的登录凭据，用于刷新关注动态。"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+                </Grid>
+
+                <StackPanel
+                    Orientation="Horizontal"
+                    Spacing="8">
+                    <Button
+                        x:Name="SignInButton"
+                        Click="SignInButton_Click"
+                        Content="网页登录" />
+                    <Button
+                        x:Name="RefreshStatusButton"
+                        Click="RefreshStatusButton_Click"
+                        Content="刷新状态" />
+                    <Button
+                        x:Name="SignOutButton"
+                        Click="SignOutButton_Click"
+                        Content="清除登录" />
+                </StackPanel>
             </StackPanel>
         </StackPanel>
     </ScrollViewer>

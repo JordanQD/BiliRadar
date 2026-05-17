@@ -13,5 +13,13 @@ public interface IBiliDataProvider
 
     Task<BiliVideoUpdatePage> GetMoreVideoUpdatesAsync(CancellationToken cancellationToken = default);
 
+    Task<BiliVideoHistoryPage> GetRecentVideoHistoryAsync(CancellationToken cancellationToken = default);
+
+    Task<BiliVideoHistoryPage> GetMoreVideoHistoryAsync(CancellationToken cancellationToken = default);
+
+    Task<BiliViewLaterPage> GetRecentViewLaterAsync(CancellationToken cancellationToken = default);
+
+    Task<BiliViewLaterPage> GetMoreViewLaterAsync(CancellationToken cancellationToken = default);
+
     Task AddToViewLaterAsync(long aid, CancellationToken cancellationToken = default);
 }

@@ -13,6 +13,8 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
     private const string NavUrl = "https://api.bilibili.com/x/web-interface/nav";
     private const string FollowingsUrl = "https://api.bilibili.com/x/relation/followings";
     private const string AllMomentsUrl = "https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/all";
+    private const string HistoryCursorUrl = "https://api.bilibili.com/x/web-interface/history/cursor";
+    private const string ViewLaterListUrl = "https://api.bilibili.com/x/v2/history/toview";
     private const string AddToViewLaterUrl = "https://api.bilibili.com/x/v2/history/toview/add";
     internal const string BrowserUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
     private const int RequestMaxAttemptCount = 3;
@@ -21,6 +23,13 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
     private readonly HttpClient _httpClient;
     private string _nextOffset = string.Empty;
     private bool _hasMoreUpdates;
+    private long _historyNextMax;
+    private long _historyNextViewAt;
+    private bool _hasMoreHistory;
+    private int _viewLaterNextPageNumber = 1;
+    private int _viewLaterLoadedCount;
+    private int _viewLaterTotalCount;
+    private bool _hasMoreViewLater;
 
     public BiliWebDataProvider(CookieStore cookieStore)
     {
@@ -88,6 +97,68 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
         var page = await TryGetVideoUpdatesAsync(CreateAllMomentsUrl(_nextOffset), cookie, cancellationToken).ConfigureAwait(false);
         _nextOffset = page.NextOffset;
         _hasMoreUpdates = page.HasMore;
+        return page;
+    }
+
+    public async Task<BiliVideoHistoryPage> GetRecentVideoHistoryAsync(CancellationToken cancellationToken = default)
+    {
+        var cookie = _cookieStore.GetCookieString();
+        if (string.IsNullOrWhiteSpace(cookie))
+        {
+            return new BiliVideoHistoryPage(Array.Empty<BiliVideoUpdate>(), 0, 0, false);
+        }
+
+        var page = await TryGetVideoHistoryAsync(CreateHistoryCursorUrl(), cookie, cancellationToken).ConfigureAwait(false);
+        _historyNextMax = page.NextMax;
+        _historyNextViewAt = page.NextViewAt;
+        _hasMoreHistory = page.HasMore;
+        return page;
+    }
+
+    public async Task<BiliVideoHistoryPage> GetMoreVideoHistoryAsync(CancellationToken cancellationToken = default)
+    {
+        var cookie = _cookieStore.GetCookieString();
+        if (string.IsNullOrWhiteSpace(cookie) || !_hasMoreHistory || _historyNextMax <= 0)
+        {
+            return new BiliVideoHistoryPage(Array.Empty<BiliVideoUpdate>(), _historyNextMax, _historyNextViewAt, false);
+        }
+
+        var page = await TryGetVideoHistoryAsync(CreateHistoryCursorUrl(_historyNextMax, _historyNextViewAt), cookie, cancellationToken).ConfigureAwait(false);
+        _historyNextMax = page.NextMax;
+        _historyNextViewAt = page.NextViewAt;
+        _hasMoreHistory = page.HasMore;
+        return page;
+    }
+
+    public async Task<BiliViewLaterPage> GetRecentViewLaterAsync(CancellationToken cancellationToken = default)
+    {
+        var cookie = _cookieStore.GetCookieString();
+        if (string.IsNullOrWhiteSpace(cookie))
+        {
+            return new BiliViewLaterPage(Array.Empty<BiliVideoUpdate>(), 0, 1, false);
+        }
+
+        var page = await TryGetViewLaterAsync(CreateViewLaterListUrl(1), cookie, 0, cancellationToken).ConfigureAwait(false);
+        _viewLaterNextPageNumber = page.NextPageNumber;
+        _viewLaterLoadedCount = page.Items.Count;
+        _viewLaterTotalCount = page.TotalCount;
+        _hasMoreViewLater = page.HasMore;
+        return page;
+    }
+
+    public async Task<BiliViewLaterPage> GetMoreViewLaterAsync(CancellationToken cancellationToken = default)
+    {
+        var cookie = _cookieStore.GetCookieString();
+        if (string.IsNullOrWhiteSpace(cookie) || !_hasMoreViewLater)
+        {
+            return new BiliViewLaterPage(Array.Empty<BiliVideoUpdate>(), _viewLaterTotalCount, _viewLaterNextPageNumber, false);
+        }
+
+        var page = await TryGetViewLaterAsync(CreateViewLaterListUrl(_viewLaterNextPageNumber), cookie, _viewLaterLoadedCount, cancellationToken).ConfigureAwait(false);
+        _viewLaterNextPageNumber = page.NextPageNumber;
+        _viewLaterLoadedCount += page.Items.Count;
+        _viewLaterTotalCount = page.TotalCount;
+        _hasMoreViewLater = page.HasMore;
         return page;
     }
 
@@ -186,6 +257,16 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
             : $"{url}&offset={Uri.EscapeDataString(offset)}";
     }
 
+    private static string CreateHistoryCursorUrl(long max = 0, long viewAt = 0)
+    {
+        return $"{HistoryCursorUrl}?max={max}&view_at={viewAt}&business=archive";
+    }
+
+    private static string CreateViewLaterListUrl(int pageNumber)
+    {
+        return $"{ViewLaterListUrl}?pn={pageNumber}&ps=40";
+    }
+
     private static BiliVideoUpdate? TryCreateVideoUpdate(JsonElement item)
     {
         if (!item.TryGetProperty("modules", out var modules)
@@ -266,6 +347,178 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
             description,
             likeCount,
             commentCount);
+    }
+
+    private async Task<BiliVideoHistoryPage> TryGetVideoHistoryAsync(string url, string cookie, CancellationToken cancellationToken)
+    {
+        using var document = await SendJsonAsync(url, cookie, cancellationToken).ConfigureAwait(false);
+        EnsureBiliSuccess(document.RootElement);
+
+        if (!document.RootElement.TryGetProperty("data", out var data)
+            || !data.TryGetProperty("list", out var list)
+            || list.ValueKind != JsonValueKind.Array)
+        {
+            return new BiliVideoHistoryPage(Array.Empty<BiliVideoUpdate>(), 0, 0, false);
+        }
+
+        var items = new List<BiliVideoUpdate>();
+        foreach (var item in list.EnumerateArray())
+        {
+            var historyItem = TryCreateVideoHistoryItem(item);
+            if (historyItem is not null)
+            {
+                items.Add(historyItem);
+            }
+        }
+
+        var cursor = data.TryGetProperty("cursor", out var cursorElement) ? cursorElement : default;
+        var nextMax = GetInt64(cursor, "max");
+        var nextViewAt = GetInt64(cursor, "view_at");
+        var hasMore = GetBool(data, "has_more")
+            || GetBool(cursor, "has_more")
+            || (items.Count > 0 && nextMax > 0 && nextMax != _historyNextMax);
+
+        return new BiliVideoHistoryPage(items, nextMax, nextViewAt, hasMore);
+    }
+
+    private static BiliVideoUpdate? TryCreateVideoHistoryItem(JsonElement item)
+    {
+        if (!item.TryGetProperty("history", out var history))
+        {
+            return null;
+        }
+
+        var business = GetString(history, "business");
+        if (!string.IsNullOrWhiteSpace(business) && !string.Equals(business, "archive", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var title = GetString(item, "title");
+        var bvid = GetString(history, "bvid");
+        var aid = GetInt64(history, "oid");
+        if (aid <= 0)
+        {
+            aid = GetInt64(item, "aid");
+        }
+
+        var id = !string.IsNullOrWhiteSpace(bvid) ? bvid : aid.ToString();
+        if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(title))
+        {
+            return null;
+        }
+
+        var creatorName = GetString(item, "author_name");
+        var creatorMid = GetInt64(item, "author_mid");
+        var avatar = NormalizeUrl(GetString(item, "author_face"));
+        var cover = NormalizeUrl(GetString(item, "cover"));
+        var durationSeconds = GetInt32(item, "duration");
+        var progressSeconds = GetInt32(item, "progress");
+        var viewAtTimestamp = GetInt64(item, "view_at");
+        var viewedAt = viewAtTimestamp > 0
+            ? DateTimeOffset.FromUnixTimeSeconds(viewAtTimestamp).ToLocalTime()
+            : DateTimeOffset.Now;
+        var url = NormalizeUrl(GetString(item, "uri"));
+        if (string.IsNullOrWhiteSpace(url) || !url.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+        {
+            url = !string.IsNullOrWhiteSpace(bvid)
+                ? $"https://www.bilibili.com/video/{bvid}"
+                : $"https://www.bilibili.com/av{aid}";
+        }
+
+        return new BiliVideoUpdate(
+            id,
+            aid,
+            creatorMid,
+            creatorName,
+            title,
+            viewedAt,
+            url,
+            false,
+            cover,
+            avatar,
+            $"{FormatRelativeTime(viewedAt)}观看",
+            FormatDuration(durationSeconds),
+            FormatProgress(progressSeconds, durationSeconds),
+            0,
+            0);
+    }
+
+    private async Task<BiliViewLaterPage> TryGetViewLaterAsync(string url, string cookie, int loadedCount, CancellationToken cancellationToken)
+    {
+        using var document = await SendJsonAsync(url, cookie, cancellationToken).ConfigureAwait(false);
+        EnsureBiliSuccess(document.RootElement);
+
+        if (!document.RootElement.TryGetProperty("data", out var data)
+            || !data.TryGetProperty("list", out var list)
+            || list.ValueKind != JsonValueKind.Array)
+        {
+            return new BiliViewLaterPage(Array.Empty<BiliVideoUpdate>(), 0, _viewLaterNextPageNumber, false);
+        }
+
+        var items = new List<BiliVideoUpdate>();
+        foreach (var item in list.EnumerateArray())
+        {
+            var video = TryCreateViewLaterItem(item);
+            if (video is not null)
+            {
+                items.Add(video);
+            }
+        }
+
+        var totalCount = GetInt32(data, "count");
+        var nextPageNumber = _viewLaterNextPageNumber + 1;
+        var hasMore = items.Count > 0 && loadedCount + items.Count < totalCount;
+        return new BiliViewLaterPage(items, totalCount, nextPageNumber, hasMore);
+    }
+
+    private static BiliVideoUpdate? TryCreateViewLaterItem(JsonElement item)
+    {
+        var title = GetString(item, "title");
+        var bvid = GetString(item, "bvid");
+        var aid = GetInt64(item, "aid");
+        var id = !string.IsNullOrWhiteSpace(bvid) ? bvid : aid.ToString();
+        if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(title))
+        {
+            return null;
+        }
+
+        var owner = item.TryGetProperty("owner", out var ownerElement) ? ownerElement : default;
+        var creatorName = GetString(owner, "name");
+        var creatorMid = GetInt64(owner, "mid");
+        var avatar = NormalizeUrl(GetString(owner, "face"));
+        var cover = NormalizeUrl(GetString(item, "pic"));
+        var durationSeconds = GetInt32(item, "duration");
+        var progressSeconds = GetInt32(item, "progress");
+        var addAtTimestamp = GetInt64(item, "add_at");
+        var addedAt = addAtTimestamp > 0
+            ? DateTimeOffset.FromUnixTimeSeconds(addAtTimestamp).ToLocalTime()
+            : DateTimeOffset.Now;
+        var url = NormalizeUrl(GetString(item, "redirect_url"));
+        if (string.IsNullOrWhiteSpace(url) || !url.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+        {
+            url = !string.IsNullOrWhiteSpace(bvid)
+                ? $"https://www.bilibili.com/video/{bvid}"
+                : $"https://www.bilibili.com/av{aid}";
+        }
+
+        var stat = item.TryGetProperty("stat", out var statElement) ? statElement : default;
+        return new BiliVideoUpdate(
+            id,
+            aid,
+            creatorMid,
+            creatorName,
+            title,
+            addedAt,
+            url,
+            false,
+            cover,
+            avatar,
+            $"{FormatRelativeTime(addedAt)}添加",
+            FormatDuration(durationSeconds),
+            FormatProgress(progressSeconds, durationSeconds),
+            GetInt32(stat, "like"),
+            GetInt32(stat, "reply"));
     }
 
     private static HttpRequestMessage CreateWebRequest(HttpMethod method, string url, string cookie)
@@ -352,7 +605,7 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
 
     private static int GetInt32(JsonElement element, string propertyName)
     {
-        if (!element.TryGetProperty(propertyName, out var value))
+        if (element.ValueKind != JsonValueKind.Object || !element.TryGetProperty(propertyName, out var value))
         {
             return 0;
         }
@@ -367,7 +620,7 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
 
     private static long GetInt64(JsonElement element, string propertyName)
     {
-        if (!element.TryGetProperty(propertyName, out var value))
+        if (element.ValueKind != JsonValueKind.Object || !element.TryGetProperty(propertyName, out var value))
         {
             return 0;
         }
@@ -381,11 +634,11 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
     }
 
     private static string GetString(JsonElement element, string propertyName)
-        => element.TryGetProperty(propertyName, out var value) ? value.GetString() ?? string.Empty : string.Empty;
+        => element.ValueKind == JsonValueKind.Object && element.TryGetProperty(propertyName, out var value) ? value.GetString() ?? string.Empty : string.Empty;
 
     private static bool GetBool(JsonElement element, string propertyName)
     {
-        if (!element.TryGetProperty(propertyName, out var value))
+        if (element.ValueKind != JsonValueKind.Object || !element.TryGetProperty(propertyName, out var value))
         {
             return false;
         }
@@ -439,13 +692,76 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
     private static bool TryGetPublishedAt(JsonElement author, out DateTimeOffset publishedAt)
     {
         publishedAt = default;
-        if (!author.TryGetProperty("pub_ts", out var value) || !value.TryGetInt64(out var timestamp) || timestamp <= 0)
+        if (author.ValueKind != JsonValueKind.Object
+            || !author.TryGetProperty("pub_ts", out var value)
+            || !value.TryGetInt64(out var timestamp)
+            || timestamp <= 0)
         {
             return false;
         }
 
         publishedAt = DateTimeOffset.FromUnixTimeSeconds(timestamp).ToLocalTime();
         return true;
+    }
+
+    private static string FormatRelativeTime(DateTimeOffset time)
+    {
+        var now = DateTimeOffset.Now;
+        var delta = now - time;
+        if (delta.TotalMinutes < 1)
+        {
+            return "刚刚";
+        }
+
+        if (delta.TotalHours < 1)
+        {
+            return $"{Math.Max(1, (int)delta.TotalMinutes)} 分钟前";
+        }
+
+        if (delta.TotalDays < 1)
+        {
+            return $"{Math.Max(1, (int)delta.TotalHours)} 小时前";
+        }
+
+        if (time.Date == now.AddDays(-1).Date)
+        {
+            return $"昨天 {time:HH:mm}";
+        }
+
+        return time.Year == now.Year ? time.ToString("M-d HH:mm") : time.ToString("yyyy-M-d HH:mm");
+    }
+
+    private static string FormatDuration(int seconds)
+    {
+        if (seconds <= 0)
+        {
+            return string.Empty;
+        }
+
+        var duration = TimeSpan.FromSeconds(seconds);
+        return duration.TotalHours >= 1
+            ? $"{(int)duration.TotalHours}:{duration.Minutes:00}:{duration.Seconds:00}"
+            : $"{duration.Minutes}:{duration.Seconds:00}";
+    }
+
+    private static string FormatProgress(int progressSeconds, int durationSeconds)
+    {
+        if (progressSeconds < 0)
+        {
+            return "已看完";
+        }
+
+        if (progressSeconds <= 0)
+        {
+            return string.Empty;
+        }
+
+        if (durationSeconds > 0 && progressSeconds >= durationSeconds)
+        {
+            return "已看完";
+        }
+
+        return $"看到 {FormatDuration(progressSeconds)}";
     }
 
     private static string NormalizeUrl(string url)

@@ -42,16 +42,25 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     private readonly CookieStore _cookieStore = new();
     private readonly UpdateMonitorService _updateMonitorService;
     private readonly HashSet<string> _loadedUpdateIds = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _loadedHistoryIds = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _loadedViewLaterIds = new(StringComparer.OrdinalIgnoreCase);
     private readonly AppWindow _appWindow;
     private readonly nint _hwnd;
     private bool _allowClose;
     private bool _isLoading;
     private bool _refreshQueuedOnShow;
     private bool _isLoadingMore;
+    private bool _isLoadingHistory;
+    private bool _isLoadingMoreHistory;
+    private bool _isLoadingViewLater;
+    private bool _isLoadingMoreViewLater;
+    private bool _isResettingScrollPosition;
     private bool _isShowingWindow;
     private bool _isVisible;
     private bool _isStatusInfoOpen;
     private bool _hasMoreUpdates = true;
+    private bool _hasMoreHistory = true;
+    private bool _hasMoreViewLater = true;
     private int _unreadCount;
     private int _followingCount;
     private string _lastCheckedText = "尚未检查";
@@ -65,6 +74,8 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         Title = "BiliRadar";
 
         Updates = [];
+        HistoryItems = [];
+        ViewLaterItems = [];
         Following = [];
         _updateMonitorService = new(new BiliWebDataProvider(_cookieStore));
         _hwnd = WindowNative.GetWindowHandle(this);
@@ -94,6 +105,10 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     public event Action? HideRequested;
 
     public ObservableCollection<VideoUpdateRow> Updates { get; }
+
+    public ObservableCollection<VideoUpdateRow> HistoryItems { get; }
+
+    public ObservableCollection<VideoUpdateRow> ViewLaterItems { get; }
 
     public ObservableCollection<CreatorRow> Following { get; }
 
@@ -162,11 +177,12 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         {
             AdjustWindowSizeToContent();
             Activate();
+            ResetCurrentPageScrollPosition();
             ShowWindowNative(_hwnd, SwShow);
             SetWindowPos(_hwnd, HwndTopmost, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate | SwpShowWindow);
             SetForegroundWindow(_hwnd);
             _isVisible = true;
-            _ = RefreshOnShowAsync();
+            _ = RefreshSelectedPageOnShowAsync();
         }
         finally
         {
@@ -287,9 +303,46 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         }
     }
 
+    private async Task RefreshSelectedPageOnShowAsync()
+    {
+        if (ContentSelectorBar.SelectedItem == HistorySelectorItem)
+        {
+            await RefreshHistoryAsync();
+            return;
+        }
+
+        if (ContentSelectorBar.SelectedItem == ViewLaterSelectorItem)
+        {
+            await RefreshViewLaterAsync();
+            return;
+        }
+
+        await RefreshOnShowAsync();
+    }
+
     private async void RefreshButton_Click(object sender, RoutedEventArgs e)
     {
         await RefreshAsync();
+    }
+
+    private async void OpenBrowserButton_Click(object sender, RoutedEventArgs e)
+    {
+        await Launcher.LaunchUriAsync(GetSelectedBrowserUri());
+    }
+
+    private Uri GetSelectedBrowserUri()
+    {
+        if (ContentSelectorBar.SelectedItem == HistorySelectorItem)
+        {
+            return new Uri("https://www.bilibili.com/history");
+        }
+
+        if (ContentSelectorBar.SelectedItem == ViewLaterSelectorItem)
+        {
+            return new Uri("https://www.bilibili.com/watchlater/list");
+        }
+
+        return new Uri("https://www.bilibili.com/");
     }
 
     private void HideButton_Click(object sender, RoutedEventArgs e)
@@ -297,9 +350,17 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         HideRequested?.Invoke();
     }
 
-    private void ContentSelectorBar_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
+    private async void ContentSelectorBar_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
     {
         ShowSelectedPage(sender.SelectedItem);
+        if (sender.SelectedItem == HistorySelectorItem && HistoryItems.Count == 0)
+        {
+            await RefreshHistoryAsync();
+        }
+        else if (sender.SelectedItem == ViewLaterSelectorItem && ViewLaterItems.Count == 0)
+        {
+            await RefreshViewLaterAsync();
+        }
     }
 
     private void ShowSelectedPage(SelectorBarItem? selectedItem)
@@ -307,11 +368,38 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         FollowingPagePanel.Visibility = selectedItem == FollowingSelectorItem ? Visibility.Visible : Visibility.Collapsed;
         HistoryPagePanel.Visibility = selectedItem == HistorySelectorItem ? Visibility.Visible : Visibility.Collapsed;
         ViewLaterPagePanel.Visibility = selectedItem == ViewLaterSelectorItem ? Visibility.Visible : Visibility.Collapsed;
+        ResetCurrentPageScrollPosition();
+    }
+
+    private void ResetCurrentPageScrollPosition()
+    {
+        if (ContentSelectorBar.SelectedItem == FollowingSelectorItem)
+        {
+            _isResettingScrollPosition = true;
+            VideoScrollViewer.ChangeView(null, 0, null, true);
+            VideoScrollViewer.DispatcherQueue.TryEnqueue(() => _isResettingScrollPosition = false);
+            return;
+        }
+
+        if (ContentSelectorBar.SelectedItem == HistorySelectorItem)
+        {
+            _isResettingScrollPosition = true;
+            HistoryScrollViewer.ChangeView(null, 0, null, true);
+            HistoryScrollViewer.DispatcherQueue.TryEnqueue(() => _isResettingScrollPosition = false);
+            return;
+        }
+
+        if (ContentSelectorBar.SelectedItem == ViewLaterSelectorItem)
+        {
+            _isResettingScrollPosition = true;
+            ViewLaterScrollViewer.ChangeView(null, 0, null, true);
+            ViewLaterScrollViewer.DispatcherQueue.TryEnqueue(() => _isResettingScrollPosition = false);
+        }
     }
 
     private async void VideoScrollViewer_ViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
     {
-        if (e.IsIntermediate || ContentSelectorBar.SelectedItem != FollowingSelectorItem)
+        if (e.IsIntermediate || _isResettingScrollPosition || ContentSelectorBar.SelectedItem != FollowingSelectorItem)
         {
             return;
         }
@@ -356,6 +444,200 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         }
     }
 
+    private async Task RefreshHistoryAsync()
+    {
+        if (_isLoadingHistory)
+        {
+            return;
+        }
+
+        _isLoadingHistory = true;
+        try
+        {
+            IsStatusInfoOpen = false;
+            HistoryItems.Clear();
+            _loadedHistoryIds.Clear();
+            HistoryCardsPanel.Children.Clear();
+            HistoryEmptyPanel.Visibility = Visibility.Collapsed;
+
+            if (!_cookieStore.HasCookie)
+            {
+                _hasMoreHistory = false;
+                ShowStatus("还没有保存 Cookie。", InfoBarSeverity.Warning);
+                RenderHistoryCards();
+                return;
+            }
+
+            var page = await _updateMonitorService.RefreshHistoryAsync();
+            _hasMoreHistory = page.HasMore;
+            foreach (var item in page.Items)
+            {
+                AddHistoryIfNew(item);
+            }
+
+            RenderHistoryCards();
+            if (HistoryItems.Count == 0 && !IsStatusInfoOpen)
+            {
+                ShowStatus("暂无历史记录。", InfoBarSeverity.Informational);
+            }
+
+            AdjustWindowSizeToContent();
+        }
+        catch (Exception ex)
+        {
+            ShowStatus($"历史记录加载失败：{ex.Message}", InfoBarSeverity.Error);
+            RenderHistoryCards();
+        }
+        finally
+        {
+            _isLoadingHistory = false;
+        }
+    }
+
+    private async void HistoryScrollViewer_ViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
+    {
+        if (e.IsIntermediate || _isResettingScrollPosition || ContentSelectorBar.SelectedItem != HistorySelectorItem)
+        {
+            return;
+        }
+
+        var distanceToBottom = HistoryScrollViewer.ScrollableHeight - HistoryScrollViewer.VerticalOffset;
+        if (distanceToBottom <= 40)
+        {
+            await LoadMoreHistoryAsync();
+        }
+    }
+
+    private async Task LoadMoreHistoryAsync()
+    {
+        if (_isLoadingHistory || _isLoadingMoreHistory || !_hasMoreHistory)
+        {
+            return;
+        }
+
+        _isLoadingMoreHistory = true;
+        try
+        {
+            var page = await _updateMonitorService.LoadMoreHistoryAsync();
+            _hasMoreHistory = page.HasMore;
+            foreach (var item in page.Items)
+            {
+                if (AddHistoryIfNew(item))
+                {
+                    HistoryCardsPanel.Children.Add(CreateVideoCard(HistoryItems[^1]));
+                }
+            }
+
+            HistoryEmptyPanel.Visibility = HistoryItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            AdjustWindowSizeToContent();
+        }
+        catch (Exception ex)
+        {
+            ShowStatus($"加载更早历史失败：{ex.Message}", InfoBarSeverity.Error);
+        }
+        finally
+        {
+            _isLoadingMoreHistory = false;
+        }
+    }
+
+    private async Task RefreshViewLaterAsync()
+    {
+        if (_isLoadingViewLater)
+        {
+            return;
+        }
+
+        _isLoadingViewLater = true;
+        try
+        {
+            IsStatusInfoOpen = false;
+            ViewLaterItems.Clear();
+            _loadedViewLaterIds.Clear();
+            ViewLaterCardsPanel.Children.Clear();
+            ViewLaterEmptyPanel.Visibility = Visibility.Collapsed;
+
+            if (!_cookieStore.HasCookie)
+            {
+                _hasMoreViewLater = false;
+                ShowStatus("还没有保存 Cookie。", InfoBarSeverity.Warning);
+                RenderViewLaterCards();
+                return;
+            }
+
+            var page = await _updateMonitorService.RefreshViewLaterAsync();
+            _hasMoreViewLater = page.HasMore;
+            foreach (var item in page.Items)
+            {
+                AddViewLaterIfNew(item);
+            }
+
+            RenderViewLaterCards();
+            if (ViewLaterItems.Count == 0 && !IsStatusInfoOpen)
+            {
+                ShowStatus("暂无稍后再看。", InfoBarSeverity.Informational);
+            }
+
+            AdjustWindowSizeToContent();
+        }
+        catch (Exception ex)
+        {
+            ShowStatus($"稍后再看加载失败：{ex.Message}", InfoBarSeverity.Error);
+            RenderViewLaterCards();
+        }
+        finally
+        {
+            _isLoadingViewLater = false;
+        }
+    }
+
+    private async void ViewLaterScrollViewer_ViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
+    {
+        if (e.IsIntermediate || _isResettingScrollPosition || ContentSelectorBar.SelectedItem != ViewLaterSelectorItem)
+        {
+            return;
+        }
+
+        var distanceToBottom = ViewLaterScrollViewer.ScrollableHeight - ViewLaterScrollViewer.VerticalOffset;
+        if (distanceToBottom <= 40)
+        {
+            await LoadMoreViewLaterAsync();
+        }
+    }
+
+    private async Task LoadMoreViewLaterAsync()
+    {
+        if (_isLoadingViewLater || _isLoadingMoreViewLater || !_hasMoreViewLater)
+        {
+            return;
+        }
+
+        _isLoadingMoreViewLater = true;
+        try
+        {
+            var page = await _updateMonitorService.LoadMoreViewLaterAsync();
+            _hasMoreViewLater = page.HasMore;
+            foreach (var item in page.Items)
+            {
+                if (AddViewLaterIfNew(item))
+                {
+                    ViewLaterCardsPanel.Children.Add(CreateVideoCard(ViewLaterItems[^1], showViewLaterButton: false));
+                }
+            }
+
+            ViewLaterEmptyPanel.Visibility = ViewLaterItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            AdjustWindowSizeToContent();
+        }
+        catch (Exception ex)
+        {
+            ShowStatus($"加载更多稍后再看失败：{ex.Message}", InfoBarSeverity.Error);
+        }
+        finally
+        {
+            _isLoadingMoreViewLater = false;
+        }
+    }
+
     private bool AddUpdateIfNew(BiliVideoUpdate update)
     {
         if (!_loadedUpdateIds.Add(update.Id))
@@ -367,16 +649,49 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         return true;
     }
 
+    private bool AddHistoryIfNew(BiliVideoUpdate item)
+    {
+        var uniqueId = $"{item.Id}:{item.PublishedAt.ToUnixTimeSeconds()}";
+        if (!_loadedHistoryIds.Add(uniqueId))
+        {
+            return false;
+        }
+
+        HistoryItems.Add(new VideoUpdateRow(item));
+        return true;
+    }
+
+    private bool AddViewLaterIfNew(BiliVideoUpdate item)
+    {
+        if (!_loadedViewLaterIds.Add(item.Id))
+        {
+            return false;
+        }
+
+        ViewLaterItems.Add(new VideoUpdateRow(item));
+        return true;
+    }
+
     private void ClearCookieButton_Click(object sender, RoutedEventArgs e)
     {
         _cookieStore.Clear();
         Following.Clear();
         Updates.Clear();
+        HistoryItems.Clear();
+        ViewLaterItems.Clear();
         _loadedUpdateIds.Clear();
+        _loadedHistoryIds.Clear();
+        _loadedViewLaterIds.Clear();
         _hasMoreUpdates = false;
+        _hasMoreHistory = false;
+        _hasMoreViewLater = false;
         FollowingCount = 0;
         UnreadCount = 0;
         VideoCardsPanel.Children.Clear();
+        HistoryCardsPanel.Children.Clear();
+        ViewLaterCardsPanel.Children.Clear();
+        HistoryEmptyPanel.Visibility = Visibility.Visible;
+        ViewLaterEmptyPanel.Visibility = Visibility.Visible;
         FollowingListText = "暂无关注数据";
         LastCheckedText = "尚未检查";
         ShowStatus("Cookie 已清除。", InfoBarSeverity.Informational);
@@ -411,7 +726,27 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         }
     }
 
-    private FrameworkElement CreateVideoCard(VideoUpdateRow item)
+    private void RenderHistoryCards()
+    {
+        HistoryCardsPanel.Children.Clear();
+        HistoryEmptyPanel.Visibility = HistoryItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        foreach (var item in HistoryItems)
+        {
+            HistoryCardsPanel.Children.Add(CreateVideoCard(item));
+        }
+    }
+
+    private void RenderViewLaterCards()
+    {
+        ViewLaterCardsPanel.Children.Clear();
+        ViewLaterEmptyPanel.Visibility = ViewLaterItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        foreach (var item in ViewLaterItems)
+        {
+            ViewLaterCardsPanel.Children.Add(CreateVideoCard(item, showViewLaterButton: false));
+        }
+    }
+
+    private FrameworkElement CreateVideoCard(VideoUpdateRow item, bool showViewLaterButton = true)
     {
         var card = new Border
         {
@@ -436,7 +771,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         Grid.SetColumn(textPanel, 1);
         root.Children.Add(textPanel);
 
-        var cover = CreateCompactCover(item);
+        var cover = CreateCompactCover(item, showViewLaterButton);
         Grid.SetColumn(cover, 2);
         root.Children.Add(cover);
 
@@ -527,7 +862,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         return panel;
     }
 
-    private FrameworkElement CreateCompactCover(VideoUpdateRow item)
+    private FrameworkElement CreateCompactCover(VideoUpdateRow item, bool showViewLaterButton = true)
     {
         var root = new Grid
         {
@@ -563,12 +898,15 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         coverHost.Content = coverFrame;
         root.Children.Add(coverHost);
 
-        var viewLaterButton = CreateViewLaterButton(item);
-        viewLaterButton.Width = 28;
-        viewLaterButton.Height = 28;
-        viewLaterButton.Margin = new Thickness(5);
-        viewLaterButton.Content = CreatePathIcon(CollectionsAddIconData, 15, "White");
-        root.Children.Add(viewLaterButton);
+        if (showViewLaterButton)
+        {
+            var viewLaterButton = CreateViewLaterButton(item);
+            viewLaterButton.Width = 28;
+            viewLaterButton.Height = 28;
+            viewLaterButton.Margin = new Thickness(5);
+            viewLaterButton.Content = CreatePathIcon(CollectionsAddIconData, 15, "White");
+            root.Children.Add(viewLaterButton);
+        }
 
         if (!string.IsNullOrWhiteSpace(item.DurationText))
         {
