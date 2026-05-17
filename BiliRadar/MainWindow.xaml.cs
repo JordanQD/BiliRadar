@@ -173,6 +173,10 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         ? Visibility.Visible
         : Visibility.Collapsed;
 
+    public bool RefreshProgressIsActive => IsLoading || _isLoadingHistory || _isLoadingViewLater;
+
+    public double RefreshProgressOpacity => RefreshProgressIsActive ? 1.0 : 0.0;
+
     public bool IsVisible => _isVisible;
 
     public void InitializeHidden()
@@ -1949,6 +1953,8 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     private void NotifyRefreshProgressVisibilityChanged()
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RefreshProgressVisibility)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RefreshProgressIsActive)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RefreshProgressOpacity)));
     }
 
     private void ConfigureTitleBar()
