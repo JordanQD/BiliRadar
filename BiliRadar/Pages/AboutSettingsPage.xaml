@@ -20,13 +20,13 @@
         HorizontalScrollBarVisibility="Disabled"
         VerticalScrollBarVisibility="Auto">
         <StackPanel
-            MaxWidth="920"
+            Width="1064"
+            MaxWidth="1064"
             Padding="40,32"
-            HorizontalAlignment="Stretch"
+            HorizontalAlignment="Center"
             Spacing="{StaticResource SettingsCardSpacing}">
             <StackPanel.ChildrenTransitions>
-                <EntranceThemeTransition FromVerticalOffset="36" />
-                <RepositionThemeTransition IsStaggeringEnabled="False" />
+                <RepositionThemeTransition />
             </StackPanel.ChildrenTransitions>
 
             <TextBlock
@@ -34,74 +34,83 @@
                 Style="{ThemeResource TitleTextBlockStyle}"
                 Text="关于" />
 
-            <controls:SettingsCard HorizontalContentAlignment="Stretch">
-                <Grid ColumnSpacing="20">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Border
-                        Width="72"
-                        Height="72"
-                        Background="{ThemeResource ControlFillColorDefaultBrush}"
-                        CornerRadius="{ThemeResource OverlayCornerRadius}">
-                        <Image
-                            Width="44"
-                            Height="44"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            Source="/Assets/Square44x44Logo.targetsize-44_altform-unplated.png" />
-                    </Border>
-                    <StackPanel
-                        Grid.Column="1"
-                        VerticalAlignment="Center"
-                        Spacing="4">
+            <controls:SettingsExpander
+                x:Name="AboutExpander"
+                Margin="0,0,0,36"
+                Description="一个放在任务栏托盘里的 B 站动态雷达。"
+                Header="BiliRadar"
+                IsExpanded="True">
+                <controls:SettingsExpander.HeaderIcon>
+                    <BitmapIcon
+                        ShowAsMonochrome="False"
+                        UriSource="/Assets/Square44x44Logo.targetsize-24_altform-unplated.png" />
+                </controls:SettingsExpander.HeaderIcon>
+                <TextBlock
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    IsTextSelectionEnabled="True"
+                    Text="{x:Bind Version}" />
+                <controls:SettingsExpander.Items>
+                    <controls:SettingsCard
+                        x:Name="CloneRepositoryCard"
+                        Click="CloneRepositoryCard_Click"
+                        Header="克隆此仓库"
+                        IsClickEnabled="True">
                         <TextBlock
-                            Style="{ThemeResource TitleTextBlockStyle}"
-                            Text="BiliRadar" />
+                            x:Name="GitCloneTextBlock"
+                            FontFamily="Consolas"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            IsTextSelectionEnabled="True"
+                            Text="git clone https://github.com/JordanQD/BiliRadar.git" />
+                        <controls:SettingsCard.ActionIcon>
+                            <FontIcon Glyph="&#xE8C8;" />
+                        </controls:SettingsCard.ActionIcon>
+                    </controls:SettingsCard>
+                    <controls:SettingsCard
+                        x:Name="IssueRequestCard"
+                        Click="IssueRequestCard_Click"
+                        Header="提交问题或功能建议"
+                        IsClickEnabled="True">
                         <TextBlock
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Text="一个放在任务栏托盘里的 B 站动态雷达。"
-                            TextWrapping="Wrap" />
-                    </StackPanel>
-                </Grid>
-            </controls:SettingsCard>
-
+                            Text="JordanQD/BiliRadar" />
+                        <controls:SettingsCard.ActionIcon>
+                            <FontIcon Glyph="&#xE8A7;" />
+                        </controls:SettingsCard.ActionIcon>
+                    </controls:SettingsCard>
+                    <controls:SettingsCard
+                        HorizontalContentAlignment="Left"
+                        ContentAlignment="Vertical"
+                        Header="依赖与参考">
+                        <StackPanel
+                            Margin="-12,0,0,0"
+                            Orientation="Vertical">
+                            <HyperlinkButton
+                                Content="Richasy/Bili.Copilot"
+                                NavigateUri="https://github.com/Richasy/Bili.Copilot" />
+                            <HyperlinkButton
+                                Content="Richasy/bili-kernel"
+                                NavigateUri="https://github.com/Richasy/bili-kernel" />
+                            <HyperlinkButton
+                                Content="microsoft/WindowsAppSDK"
+                                NavigateUri="https://github.com/microsoft/WindowsAppSDK" />
+                            <HyperlinkButton
+                                Content="microsoft/WinUI-Gallery"
+                                NavigateUri="https://github.com/microsoft/WinUI-Gallery" />
+                            <HyperlinkButton
+                                Content="microsoft/microsoft-ui-xaml"
+                                NavigateUri="https://github.com/microsoft/microsoft-ui-xaml" />
+                            <HyperlinkButton
+                                Content="CommunityToolkit/Windows"
+                                NavigateUri="https://github.com/CommunityToolkit/Windows" />
+                        </StackPanel>
+                    </controls:SettingsCard>
+                </controls:SettingsExpander.Items>
+            </controls:SettingsExpander>
             <TextBlock
-                Style="{StaticResource SettingsSectionHeaderTextBlockStyle}"
-                Text="应用信息" />
-            <controls:SettingsCard
-                Description="当前安装的 BiliRadar 版本。"
-                Header="版本">
-                <controls:SettingsCard.HeaderIcon>
-                    <FontIcon Glyph="&#xE946;" />
-                </controls:SettingsCard.HeaderIcon>
-                <TextBlock
-                    x:Name="VersionText"
-                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-            </controls:SettingsCard>
-            <controls:SettingsCard
-                Description="应用包清单中的发布者名称。"
-                Header="发布者">
-                <controls:SettingsCard.HeaderIcon>
-                    <FontIcon Glyph="&#xE77B;" />
-                </controls:SettingsCard.HeaderIcon>
-                <TextBlock
-                    x:Name="PublisherText"
-                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-            </controls:SettingsCard>
-            <controls:SettingsCard
-                Description="本机设置和登录状态保存在应用本地数据中。"
-                Header="数据位置">
-                <controls:SettingsCard.HeaderIcon>
-                    <FontIcon Glyph="&#xE838;" />
-                </controls:SettingsCard.HeaderIcon>
-                <TextBlock
-                    x:Name="DataLocationText"
-                    MaxWidth="420"
-                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    TextTrimming="CharacterEllipsis" />
-            </controls:SettingsCard>
+                x:Name="AboutStatusText"
+                Margin="1,8,0,0"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                TextWrapping="Wrap" />
         </StackPanel>
     </ScrollViewer>
 </Page>
