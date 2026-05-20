@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using BiliRadar.Models;
@@ -29,6 +30,24 @@ public sealed class MockBiliDataProvider : IBiliDataProvider
         ];
 
         return Task.FromResult(creators);
+    }
+
+    public Task<BiliCreator?> GetCreatorAsync(long mid, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(Creators.FirstOrDefault(item => item.Mid == mid));
+    }
+
+    public async Task<IReadOnlyList<BiliVideoUpdate>> GetCreatorVideoUpdatesAsync(long mid, CancellationToken cancellationToken = default)
+    {
+        var updates = await GetRecentVideoUpdatesAsync(cancellationToken);
+        return updates.Where(item => item.CreatorMid == mid).ToList();
+    }
+
+    public Task<BiliLiveCreator?> GetCreatorLiveAsync(long mid, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<BiliLiveCreator?>(mid == 123456
+            ? new BiliLiveCreator(123456, 101, "影视飓风", string.Empty, "模拟直播间：今天聊聊影像", "https://live.bilibili.com/101")
+            : null);
     }
 
     public Task AddToViewLaterAsync(long aid, CancellationToken cancellationToken = default)

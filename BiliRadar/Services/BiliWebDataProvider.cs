@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
@@ -13,6 +14,9 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
     private const string NavUrl = "https://api.bilibili.com/x/web-interface/nav";
     private const string FollowingsUrl = "https://api.bilibili.com/x/relation/followings";
     private const string FollowingLiveUrl = "https://api.live.bilibili.com/xlive/web-ucenter/v1/xfetter/GetWebList";
+    private const string CreatorCardUrl = "https://api.bilibili.com/x/web-interface/card";
+    private const string CreatorSpaceMomentsUrl = "https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/space";
+    private const string CreatorLiveUrl = "https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByUser";
     private const string RelationUrl = "https://api.bilibili.com/x/relation";
     private const string ModifyRelationUrl = "https://api.bilibili.com/x/relation/modify";
     private const string AllMomentsUrl = "https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/all";
@@ -119,6 +123,104 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
         _nextOffset = page.NextOffset;
         _hasMoreUpdates = page.HasMore;
         return page.Items;
+    }
+
+    public async Task<BiliCreator?> GetCreatorAsync(long mid, CancellationToken cancellationToken = default)
+    {
+        if (mid <= 0)
+        {
+            return null;
+        }
+
+        var cookie = _cookieStore.GetCookieString();
+        using var document = await SendJsonAsync($"{CreatorCardUrl}?mid={mid}", cookie, cancellationToken).ConfigureAwait(false);
+        EnsureBiliSuccess(document.RootElement);
+
+        if (!document.RootElement.TryGetProperty("data", out var data))
+        {
+            return null;
+        }
+
+        var card = GetObject(data, "card");
+        var name = GetFirstString(card, data, "name", "uname");
+        var avatar = NormalizeUrl(GetFirstString(card, data, "face"));
+        var resolvedMid = GetFirstInt64(card, data, "mid");
+        if (resolvedMid <= 0)
+        {
+            resolvedMid = mid;
+        }
+
+        return string.IsNullOrWhiteSpace(name)
+            ? null
+            : new BiliCreator(resolvedMid, name, avatar);
+    }
+
+    public async Task<IReadOnlyList<BiliVideoUpdate>> GetCreatorVideoUpdatesAsync(long mid, CancellationToken cancellationToken = default)
+    {
+        if (mid <= 0)
+        {
+            return Array.Empty<BiliVideoUpdate>();
+        }
+
+        var cookie = _cookieStore.GetCookieString();
+        var url = $"{CreatorSpaceMomentsUrl}?host_mid={mid}&timezone_offset=-480&features=itemOpusStyle";
+        using var document = await SendJsonAsync(url, cookie, cancellationToken).ConfigureAwait(false);
+        EnsureBiliSuccess(document.RootElement);
+
+        if (!document.RootElement.TryGetProperty("data", out var data)
+            || !data.TryGetProperty("items", out var items)
+            || items.ValueKind != JsonValueKind.Array)
+        {
+            return Array.Empty<BiliVideoUpdate>();
+        }
+
+        var updates = new List<BiliVideoUpdate>();
+        foreach (var item in items.EnumerateArray())
+        {
+            var update = TryCreateVideoUpdate(item);
+            if (update is not null && (update.CreatorMid == mid || update.CreatorMid <= 0))
+            {
+                updates.Add(update);
+            }
+        }
+
+        return updates;
+    }
+
+    public async Task<BiliLiveCreator?> GetCreatorLiveAsync(long mid, CancellationToken cancellationToken = default)
+    {
+        if (mid <= 0)
+        {
+            return null;
+        }
+
+        var cookie = _cookieStore.GetCookieString();
+        using var document = await SendJsonAsync($"{CreatorLiveUrl}?mid={mid}", cookie, cancellationToken).ConfigureAwait(false);
+        EnsureBiliSuccess(document.RootElement);
+
+        if (!document.RootElement.TryGetProperty("data", out var data))
+        {
+            return null;
+        }
+
+        var room = GetObject(data, "room_info");
+        var user = GetObject(data, "info");
+        var liveStatus = GetFirstInt32(data, room, "live_status", "status");
+        if (liveStatus != 1)
+        {
+            return null;
+        }
+
+        var roomId = GetFirstInt64(room, data, "room_id", "roomid", "id");
+        var name = GetFirstString(user, data, "uname", "name");
+        var avatar = NormalizeUrl(GetFirstString(user, data, "face", "avatar"));
+        var title = GetFirstString(room, data, "title", "room_title");
+        if (roomId <= 0 || string.IsNullOrWhiteSpace(name))
+        {
+            return null;
+        }
+
+        return new BiliLiveCreator(mid, roomId, name, avatar, title, $"https://live.bilibili.com/{roomId}");
     }
 
     public async Task<BiliVideoUpdatePage> GetMoreVideoUpdatesAsync(CancellationToken cancellationToken = default)
