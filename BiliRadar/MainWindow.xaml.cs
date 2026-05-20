@@ -476,6 +476,11 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
 
     private async void OpenBrowserButton_Click(object sender, RoutedEventArgs e)
     {
+        await LaunchSelectedBrowserUriAsync();
+    }
+
+    public async Task LaunchSelectedBrowserUriAsync()
+    {
         await Launcher.LaunchUriAsync(GetSelectedBrowserUri());
     }
 

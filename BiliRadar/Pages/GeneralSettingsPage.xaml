@@ -22,6 +22,15 @@
                     Style="{ThemeResource SubtitleTextBlockStyle}"
                     Text="启动与刷新" />
                 <ToggleSwitch Header="开机后自动运行" />
+                <ComboBox
+                    x:Name="RunningLaunchActionBox"
+                    Width="280"
+                    Header="BiliRadar 已运行时，从开始菜单再次打开"
+                    HorizontalAlignment="Left"
+                    SelectionChanged="RunningLaunchActionBox_SelectionChanged">
+                    <ComboBoxItem Content="打开设置" />
+                    <ComboBoxItem Content="打开哔哩哔哩网页" />
+                </ComboBox>
                 <NumberBox
                     x:Name="NotificationCheckIntervalBox"
                     Width="280"

@@ -1,16 +1,21 @@
 using System;
 using System.IO;
+using System.Threading.Tasks;
 using BiliRadar.Services;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
-using Microsoft.Windows.AppLifecycle;
 using Microsoft.Windows.AppNotifications;
 using Windows.ApplicationModel;
+using AppActivationArguments = Microsoft.Windows.AppLifecycle.AppActivationArguments;
+using AppInstance = Microsoft.Windows.AppLifecycle.AppInstance;
+using ExtendedActivationKind = Microsoft.Windows.AppLifecycle.ExtendedActivationKind;
 
 namespace BiliRadar;
 
 public partial class App : Application
 {
+    private const string MainInstanceKey = "BiliRadar.Main";
+
     private MainWindow? _mainWindow;
     private SettingsWindow? _settingsWindow;
     private TrayIconService? _trayIconService;
@@ -24,15 +29,46 @@ public partial class App : Application
         InitializeNotifications();
     }
 
-    protected override void OnLaunched(LaunchActivatedEventArgs args)
+    protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
+        var activatedArgs = AppInstance.GetCurrent().GetActivatedEventArgs();
+        if (await RedirectToMainInstanceIfNeededAsync(activatedArgs))
+        {
+            Exit();
+            return;
+        }
+
+        AppInstance.GetCurrent().Activated += AppInstance_Activated;
+
         _mainWindow = new MainWindow();
         _mainWindow.HideRequested += HideMainWindow;
 
         _mainWindow.InitializeHidden();
-        HandleLaunchActivation();
+        HandleActivation(activatedArgs, isRedirectedActivation: false);
         HandlePendingNotificationRequest();
         _mainWindow.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, InitializeTrayAndData);
+    }
+
+    private static async Task<bool> RedirectToMainInstanceIfNeededAsync(AppActivationArguments activatedArgs)
+    {
+        var mainInstance = AppInstance.FindOrRegisterForKey(MainInstanceKey);
+        if (mainInstance.IsCurrent)
+        {
+            return false;
+        }
+
+        await mainInstance.RedirectActivationToAsync(activatedArgs);
+        return true;
+    }
+
+    private void AppInstance_Activated(object? sender, AppActivationArguments args)
+    {
+        if (_mainWindow is null)
+        {
+            return;
+        }
+
+        _mainWindow.DispatcherQueue.TryEnqueue(() => HandleActivation(args, isRedirectedActivation: true));
     }
 
     private void InitializeTrayAndData()
@@ -102,6 +138,21 @@ public partial class App : Application
         _settingsWindow.ShowWindow();
     }
 
+    private async void HandleRunningLaunchAction()
+    {
+        if (AppSettings.RunningLaunchAction == RunningLaunchAction.OpenBilibiliWebPage)
+        {
+            if (_mainWindow is not null)
+            {
+                await _mainWindow.LaunchSelectedBrowserUriAsync();
+            }
+
+            return;
+        }
+
+        ShowSettingsWindow();
+    }
+
     private void ExitApplication()
     {
         _isExiting = true;
@@ -142,15 +193,20 @@ public partial class App : Application
         HandleNotificationActivation(args);
     }
 
-    private void HandleLaunchActivation()
+    private void HandleActivation(AppActivationArguments activatedArgs, bool isRedirectedActivation)
     {
         try
         {
-            var activatedArgs = Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().GetActivatedEventArgs();
             if (activatedArgs.Kind == ExtendedActivationKind.AppNotification
                 && activatedArgs.Data is AppNotificationActivatedEventArgs notificationArgs)
             {
                 HandleNotificationActivation(notificationArgs);
+                return;
+            }
+
+            if (isRedirectedActivation)
+            {
+                HandleRunningLaunchAction();
             }
         }
         catch
