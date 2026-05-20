@@ -19,6 +19,7 @@ public static class AppSettings
     private const string VideoNotificationBaselineInitializedKey = "VideoNotificationBaselineInitialized";
     private const string LiveNotificationBaselineInitializedKey = "LiveNotificationBaselineInitialized";
     private const string NotificationTargetModeKey = "NotificationTargetMode";
+    private const string RunningLaunchActionKey = "RunningLaunchAction";
     private const string CustomNotificationCreatorsKey = "CustomNotificationCreators";
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -94,6 +95,26 @@ public static class AppSettings
 
             LocalSettings.Values[NotificationTargetModeKey] = (int)value;
             NotificationSettingsChanged?.Invoke(null, EventArgs.Empty);
+        }
+    }
+
+    public static RunningLaunchAction RunningLaunchAction
+    {
+        get
+        {
+            var value = ReadRawInt(RunningLaunchActionKey, (int)RunningLaunchAction.OpenSettings);
+            return Enum.IsDefined(typeof(RunningLaunchAction), value)
+                ? (RunningLaunchAction)value
+                : RunningLaunchAction.OpenSettings;
+        }
+        set
+        {
+            if (RunningLaunchAction == value)
+            {
+                return;
+            }
+
+            LocalSettings.Values[RunningLaunchActionKey] = (int)value;
         }
     }
 
@@ -221,4 +242,10 @@ public enum NotificationTargetMode
 {
     AllFollowing = 0,
     CustomCreators = 1,
+}
+
+public enum RunningLaunchAction
+{
+    OpenSettings = 0,
+    OpenBilibiliWebPage = 1,
 }

@@ -31,6 +31,7 @@ public sealed partial class GeneralSettingsPage : Page
     {
         _isLoadingSettings = true;
         NotificationCheckIntervalBox.Value = AppSettings.NotificationCheckIntervalMinutes;
+        RunningLaunchActionBox.SelectedIndex = AppSettings.RunningLaunchAction == RunningLaunchAction.OpenBilibiliWebPage ? 1 : 0;
         NotificationTargetModeBox.SelectedIndex = AppSettings.NotificationTargetMode == NotificationTargetMode.CustomCreators ? 1 : 0;
         VideoNotificationSwitch.IsOn = AppSettings.VideoNotificationsEnabled;
         LiveNotificationSwitch.IsOn = AppSettings.LiveNotificationsEnabled;
@@ -68,6 +69,18 @@ public sealed partial class GeneralSettingsPage : Page
         }
 
         AppSettings.NotificationCheckIntervalMinutes = Math.Max(1, (int)Math.Round(args.NewValue));
+    }
+
+    private void RunningLaunchActionBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_isLoadingSettings)
+        {
+            return;
+        }
+
+        AppSettings.RunningLaunchAction = RunningLaunchActionBox.SelectedIndex == 1
+            ? RunningLaunchAction.OpenBilibiliWebPage
+            : RunningLaunchAction.OpenSettings;
     }
 
     private void LiveNotificationSwitch_Toggled(object sender, RoutedEventArgs e)
