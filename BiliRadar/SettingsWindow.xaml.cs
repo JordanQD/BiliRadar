@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.InteropServices;
 using BiliRadar.Pages;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
@@ -11,8 +12,8 @@ namespace BiliRadar;
 
 public sealed partial class SettingsWindow : Window
 {
-    private const int WindowWidth = 1280;
-    private const int WindowHeight = 820;
+    private const int WindowWidth = 1360;
+    private const int WindowHeight = 900;
 
     private readonly AppWindow _appWindow;
 
@@ -23,7 +24,7 @@ public sealed partial class SettingsWindow : Window
         var hwnd = WindowNative.GetWindowHandle(this);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(hwnd));
         _appWindow.Title = "BiliRadar 设置";
-        _appWindow.Resize(new SizeInt32(WindowWidth, WindowHeight));
+        ResizeForCurrentDpi(hwnd);
         ConfigureTitleBar();
 
         if (_appWindow.Presenter is OverlappedPresenter presenter)
@@ -51,7 +52,7 @@ public sealed partial class SettingsWindow : Window
         var pageType = tag switch
         {
             "general" => typeof(GeneralSettingsPage),
-            "account" => typeof(AccountSettingsPage),
+            "notification" => typeof(NotificationSettingsPage),
             "about" => typeof(AboutSettingsPage),
             _ => typeof(GeneralSettingsPage),
         };
@@ -83,4 +84,15 @@ public sealed partial class SettingsWindow : Window
 
         titleBar.Height = appTitleBar.Height;
     }
+
+    private void ResizeForCurrentDpi(IntPtr hwnd)
+    {
+        var scale = GetDpiForWindow(hwnd) / 96.0;
+        _appWindow.Resize(new SizeInt32(
+            (int)Math.Round(WindowWidth * scale),
+            (int)Math.Round(WindowHeight * scale)));
+    }
+
+    [DllImport("user32.dll")]
+    private static extern uint GetDpiForWindow(IntPtr hwnd);
 }

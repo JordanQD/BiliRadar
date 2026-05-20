@@ -39,13 +39,13 @@
             <NavigationView.MenuItems>
                 <NavigationViewItem
                     x:Name="GeneralNavItem"
-                    Content="常规"
+                    Content="通用"
                     Icon="Home"
                     Tag="general" />
                 <NavigationViewItem
-                    Content="账号"
-                    Icon="Contact"
-                    Tag="account" />
+                    Content="通知"
+                    Icon="Comment"
+                    Tag="notification" />
                 <NavigationViewItem
                     Content="关于"
                     Icon="Help"

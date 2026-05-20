@@ -1,74 +1,153 @@
 using System;
-using System.Collections.ObjectModel;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using BiliRadar.Models;
 using BiliRadar.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media.Imaging;
+using Microsoft.Win32;
+using Microsoft.Windows.Storage.Pickers;
+using Windows.ApplicationModel;
+using Windows.ApplicationModel.Core;
 
 namespace BiliRadar.Pages;
 
 public sealed partial class GeneralSettingsPage : Page
 {
-    private readonly BiliWebDataProvider _dataProvider = new(new CookieStore());
-    private readonly UpdateMonitorService _updateMonitorService;
-    private bool _isLoadingSettings;
+    private const string StartupTaskId = "BiliRadarStartupTask";
+    private const string StartupRegistryName = "BiliRadar";
 
-    public ObservableCollection<NotificationCreatorSubscription> CustomNotificationCreators { get; } = [];
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        WriteIndented = true,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+    };
+
+    private readonly CookieStore _cookieStore = new();
+    private readonly BiliAccountService _accountService;
+    private WebSignInWindow? _signInWindow;
+    private bool _isLoadingSettings;
+    private bool _useRegistryStartup;
+    private StartupTask? _startupTask;
 
     public GeneralSettingsPage()
     {
-        _updateMonitorService = new UpdateMonitorService(_dataProvider);
+        _accountService = new BiliAccountService(_cookieStore);
         InitializeComponent();
-        CustomNotificationCreatorsList.ItemsSource = CustomNotificationCreators;
         Loaded += GeneralSettingsPage_Loaded;
         Unloaded += GeneralSettingsPage_Unloaded;
     }
 
-    private void GeneralSettingsPage_Loaded(object sender, RoutedEventArgs e)
+    private async void GeneralSettingsPage_Loaded(object sender, RoutedEventArgs e)
     {
         _isLoadingSettings = true;
-        NotificationCheckIntervalBox.Value = AppSettings.NotificationCheckIntervalMinutes;
         RunningLaunchActionBox.SelectedIndex = AppSettings.RunningLaunchAction == RunningLaunchAction.OpenBilibiliWebPage ? 1 : 0;
-        NotificationTargetModeBox.SelectedIndex = AppSettings.NotificationTargetMode == NotificationTargetMode.CustomCreators ? 1 : 0;
-        VideoNotificationSwitch.IsOn = AppSettings.VideoNotificationsEnabled;
-        LiveNotificationSwitch.IsOn = AppSettings.LiveNotificationsEnabled;
-        CustomNotificationCreators.Clear();
-        foreach (var creator in AppSettings.CustomNotificationCreators)
-        {
-            CustomNotificationCreators.Add(creator);
-        }
-
-        UpdateCustomNotificationPanelVisibility();
+        await LoadStartupStateAsync();
         _isLoadingSettings = false;
+
         SettingsScrollViewer.ChangeView(null, 0, null, true);
+        await RefreshAccountStatusAsync();
     }
 
     private void GeneralSettingsPage_Unloaded(object sender, RoutedEventArgs e)
     {
-        _dataProvider.Dispose();
+        Loaded -= GeneralSettingsPage_Loaded;
+        Unloaded -= GeneralSettingsPage_Unloaded;
+        _accountService.Dispose();
+        if (_signInWindow is not null)
+        {
+            _signInWindow.SignInSucceeded -= SignInWindow_SignInSucceeded;
+            _signInWindow.Closed -= SignInWindow_Closed;
+            _signInWindow = null;
+        }
     }
 
-    private void VideoNotificationSwitch_Toggled(object sender, RoutedEventArgs e)
+    private async System.Threading.Tasks.Task LoadStartupStateAsync()
+    {
+        try
+        {
+            _startupTask = await StartupTask.GetAsync(StartupTaskId);
+            _useRegistryStartup = false;
+            AutoStartSwitch.IsOn = _startupTask.State is StartupTaskState.Enabled;
+            AutoStartSwitch.IsEnabled = _startupTask.State is StartupTaskState.Disabled or StartupTaskState.Enabled;
+            StartupInfoBar.IsOpen = _startupTask.State is StartupTaskState.DisabledByUser or StartupTaskState.DisabledByPolicy;
+            StartupInfoBar.Severity = InfoBarSeverity.Informational;
+            StartupInfoBar.Message = _startupTask.State switch
+            {
+                StartupTaskState.DisabledByUser => "自启已被系统设置关闭，请在 Windows 启动应用设置中重新允许。",
+                StartupTaskState.DisabledByPolicy => "自启已被系统策略禁用。",
+                _ => string.Empty,
+            };
+            return;
+        }
+        catch
+        {
+        }
+
+        _startupTask = null;
+        _useRegistryStartup = true;
+        AutoStartSwitch.IsEnabled = true;
+        AutoStartSwitch.IsOn = IsRegistryStartupEnabled();
+        StartupInfoBar.IsOpen = true;
+        StartupInfoBar.Severity = InfoBarSeverity.Informational;
+        StartupInfoBar.Message = "当前运行方式不支持应用启动任务，已改用当前用户启动项。";
+    }
+
+    private async void AutoStartSwitch_Toggled(object sender, RoutedEventArgs e)
     {
         if (_isLoadingSettings)
         {
             return;
         }
 
-        AppSettings.VideoNotificationsEnabled = VideoNotificationSwitch.IsOn;
+        await SetAutoStartEnabledAsync(AutoStartSwitch.IsOn);
     }
 
-    private void NotificationCheckIntervalBox_ValueChanged(NumberBox sender, NumberBoxValueChangedEventArgs args)
+    private async System.Threading.Tasks.Task SetAutoStartEnabledAsync(bool isEnabled)
     {
-        if (_isLoadingSettings || double.IsNaN(args.NewValue))
+        if (_useRegistryStartup)
         {
+            SetRegistryStartupEnabled(isEnabled);
             return;
         }
 
-        AppSettings.NotificationCheckIntervalMinutes = Math.Max(1, (int)Math.Round(args.NewValue));
+        if (_startupTask is null)
+        {
+            _isLoadingSettings = true;
+            AutoStartSwitch.IsOn = false;
+            _isLoadingSettings = false;
+            return;
+        }
+
+        try
+        {
+            if (isEnabled)
+            {
+                var state = await _startupTask.RequestEnableAsync();
+                if (state is not StartupTaskState.Enabled)
+                {
+                    _isLoadingSettings = true;
+                    AutoStartSwitch.IsOn = false;
+                    _isLoadingSettings = false;
+                }
+            }
+            else if (_startupTask.State is StartupTaskState.Enabled)
+            {
+                _startupTask.Disable();
+            }
+        }
+        catch
+        {
+            _isLoadingSettings = true;
+            AutoStartSwitch.IsOn = _startupTask.State is StartupTaskState.Enabled;
+            _isLoadingSettings = false;
+        }
     }
 
     private void RunningLaunchActionBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -83,179 +162,290 @@ public sealed partial class GeneralSettingsPage : Page
             : RunningLaunchAction.OpenSettings;
     }
 
-    private void LiveNotificationSwitch_Toggled(object sender, RoutedEventArgs e)
+    private void SignInButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_isLoadingSettings)
+        if (_signInWindow is null)
         {
-            return;
+            _signInWindow = new WebSignInWindow(_cookieStore);
+            _signInWindow.SignInSucceeded += SignInWindow_SignInSucceeded;
+            _signInWindow.Closed += SignInWindow_Closed;
         }
 
-        AppSettings.LiveNotificationsEnabled = LiveNotificationSwitch.IsOn;
+        _signInWindow.Activate();
     }
 
-    private void NotificationTargetModeBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private async void RefreshStatusButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_isLoadingSettings)
-        {
-            return;
-        }
-
-        AppSettings.NotificationTargetMode = NotificationTargetModeBox.SelectedIndex == 1
-            ? NotificationTargetMode.CustomCreators
-            : NotificationTargetMode.AllFollowing;
-        UpdateCustomNotificationPanelVisibility();
+        await RefreshAccountStatusAsync();
     }
 
-    private async void AddCreatorButton_Click(object sender, RoutedEventArgs e)
+    private async void SignOutButton_Click(object sender, RoutedEventArgs e)
     {
-        var mid = TryParseCreatorMid(CreatorInputBox.Text);
-        if (mid <= 0)
+        using var authService = new BiliKernelAuthService(_cookieStore);
+        await authService.SignOutAsync();
+        await RefreshAccountStatusAsync();
+    }
+
+    private async void SignInWindow_SignInSucceeded(object? sender, EventArgs e)
+    {
+        await RefreshAccountStatusAsync();
+    }
+
+    private void SignInWindow_Closed(object sender, WindowEventArgs args)
+    {
+        if (_signInWindow is not null)
         {
-            CustomNotificationStatusText.Text = "请输入有效的 UP 主页链接或 UID。";
+            _signInWindow.SignInSucceeded -= SignInWindow_SignInSucceeded;
+            _signInWindow.Closed -= SignInWindow_Closed;
+            _signInWindow = null;
+        }
+    }
+
+    private async System.Threading.Tasks.Task RefreshAccountStatusAsync()
+    {
+        SignOutButton.IsEnabled = _cookieStore.HasCookie;
+
+        if (!_cookieStore.HasCookie)
+        {
+            AccountInfoBar.Severity = InfoBarSeverity.Informational;
+            AccountInfoBar.Message = "尚未登录。";
+            AccountNameText.Text = "未登录";
+            AccountDetailText.Text = "网页登录后会保存登录状态，用于刷新关注动态。";
+            AvatarPicture.ProfilePicture = null;
+            AvatarPicture.Initials = "BR";
             return;
         }
 
-        if (CustomNotificationCreators.Any(item => item.Mid == mid))
-        {
-            CustomNotificationStatusText.Text = "这个 UP 已经在通知列表里。";
-            return;
-        }
-
-        AddCreatorButton.IsEnabled = false;
-        CustomNotificationStatusText.Text = "正在读取 UP 信息...";
         try
         {
-            var creator = await TryResolveCreatorAsync(mid);
-            var subscription = new NotificationCreatorSubscription
-            {
-                Mid = creator.Mid,
-                Name = creator.Name,
-                AvatarUrl = creator.AvatarUrl,
-                VideoNotificationsEnabled = true,
-                LiveNotificationsEnabled = true,
-            };
+            AccountInfoBar.Severity = InfoBarSeverity.Informational;
+            AccountInfoBar.Message = "正在检查登录状态...";
 
-            CustomNotificationCreators.Add(subscription);
-            SaveCustomNotificationCreators();
-            await SeedNotificationBaselineAsync(subscription);
-            CreatorInputBox.Text = string.Empty;
-            CustomNotificationStatusText.Text = $"已添加：{subscription.Name}";
+            var profile = await _accountService.GetCurrentProfileAsync();
+            if (profile is null)
+            {
+                AccountInfoBar.Severity = InfoBarSeverity.Warning;
+                AccountInfoBar.Message = "已保存 Cookie，但登录状态无效或已过期。";
+                AccountNameText.Text = "登录状态失效";
+                AccountDetailText.Text = "请重新登录。";
+                AvatarPicture.ProfilePicture = null;
+                AvatarPicture.Initials = "BR";
+                return;
+            }
+
+            AccountInfoBar.Severity = InfoBarSeverity.Success;
+            AccountInfoBar.Message = "已登录。";
+            AccountNameText.Text = profile.Name;
+            AccountDetailText.Text = $"UID {profile.Mid}";
+            AvatarPicture.Initials = string.IsNullOrWhiteSpace(profile.Name) ? "BR" : profile.Name[..1];
+            AvatarPicture.ProfilePicture = string.IsNullOrWhiteSpace(profile.AvatarUrl)
+                ? null
+                : new BitmapImage(new Uri(profile.AvatarUrl));
         }
         catch (Exception ex)
         {
-            CustomNotificationStatusText.Text = $"添加失败：{ex.Message}";
-        }
-        finally
-        {
-            AddCreatorButton.IsEnabled = true;
-        }
-    }
-
-    private async Task<BiliCreator> TryResolveCreatorAsync(long mid)
-    {
-        try
-        {
-            return await _updateMonitorService.GetCreatorAsync(mid)
-                ?? new BiliCreator(mid, $"UID {mid}", string.Empty);
-        }
-        catch
-        {
-            return new BiliCreator(mid, $"UID {mid}", string.Empty);
+            AccountInfoBar.Severity = InfoBarSeverity.Warning;
+            AccountInfoBar.Message = $"登录状态检查失败：{ex.Message}";
+            AccountNameText.Text = "状态未知";
+            AccountDetailText.Text = "Cookie 已保存，但暂时无法验证。";
+            AvatarPicture.ProfilePicture = null;
+            AvatarPicture.Initials = "BR";
         }
     }
 
-    private void CustomVideoNotificationSwitch_Toggled(object sender, RoutedEventArgs e)
+    private async void ExportConfigButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_isLoadingSettings || sender is not ToggleSwitch { Tag: NotificationCreatorSubscription subscription })
+        var picker = new FileSavePicker(((FrameworkElement)sender).XamlRoot.ContentIslandEnvironment.AppWindowId)
+        {
+            SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
+            SuggestedFileName = $"BiliRadar-config-{DateTime.Now:yyyyMMdd-HHmmss}",
+        };
+        picker.FileTypeChoices.Add("JSON 配置", [".json"]);
+
+        var result = await picker.PickSaveFileAsync();
+        if (result is null)
         {
             return;
         }
 
-        subscription.VideoNotificationsEnabled = ((ToggleSwitch)sender).IsOn;
-        SaveCustomNotificationCreators();
+        try
+        {
+            var export = CreateSettingsExport();
+            var json = JsonSerializer.Serialize(export, JsonOptions);
+            await File.WriteAllTextAsync(result.Path, json);
+            ConfigStatusText.Text = $"已导出到：{result.Path}";
+        }
+        catch (Exception ex)
+        {
+            ConfigStatusText.Text = $"导出失败：{ex.Message}";
+        }
     }
 
-    private void CustomLiveNotificationSwitch_Toggled(object sender, RoutedEventArgs e)
+    private async void ImportConfigButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_isLoadingSettings || sender is not ToggleSwitch { Tag: NotificationCreatorSubscription subscription })
+        var picker = new FileOpenPicker(((FrameworkElement)sender).XamlRoot.ContentIslandEnvironment.AppWindowId)
+        {
+            SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
+        };
+        picker.FileTypeFilter.Add(".json");
+
+        var result = await picker.PickSingleFileAsync();
+        if (result is null)
         {
             return;
         }
 
-        subscription.LiveNotificationsEnabled = ((ToggleSwitch)sender).IsOn;
-        SaveCustomNotificationCreators();
-    }
-
-    private void RemoveCreatorButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is not FrameworkElement { Tag: NotificationCreatorSubscription subscription })
-        {
-            return;
-        }
-
-        CustomNotificationCreators.Remove(subscription);
-        SaveCustomNotificationCreators();
-        CustomNotificationStatusText.Text = $"已删除：{subscription.Name}";
-    }
-
-    private void UpdateCustomNotificationPanelVisibility()
-    {
-        CustomNotificationPanel.Visibility = AppSettings.NotificationTargetMode == NotificationTargetMode.CustomCreators
-            ? Visibility.Visible
-            : Visibility.Collapsed;
-    }
-
-    private void SaveCustomNotificationCreators()
-    {
-        AppSettings.CustomNotificationCreators = CustomNotificationCreators.ToList();
-    }
-
-    private async Task SeedNotificationBaselineAsync(NotificationCreatorSubscription subscription)
-    {
         try
         {
-            var updates = await _updateMonitorService.GetCreatorVideoUpdatesAsync(subscription.Mid);
-            AppSettings.KnownVideoUpdateIds = updates
-                .Select(item => item.Id)
-                .Concat(AppSettings.KnownVideoUpdateIds)
-                .Where(item => !string.IsNullOrWhiteSpace(item))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-        }
-        catch
-        {
-        }
+            var json = await File.ReadAllTextAsync(result.Path);
+            var import = JsonSerializer.Deserialize<SettingsExport>(json, JsonOptions)
+                ?? throw new InvalidOperationException("配置文件为空或格式不正确。");
 
-        try
+            await ApplySettingsExportAsync(import);
+            ConfigStatusText.Text = $"已导入：{result.Path}";
+        }
+        catch (Exception ex)
         {
-            var liveCreator = await _updateMonitorService.GetCreatorLiveAsync(subscription.Mid);
-            if (liveCreator is not null)
+            ConfigStatusText.Text = $"导入失败：{ex.Message}";
+        }
+    }
+
+    private SettingsExport CreateSettingsExport()
+    {
+        return new SettingsExport
+        {
+            ExportedAt = DateTimeOffset.Now,
+            IsPackaged = IsPackaged(),
+            AutoStartEnabled = AutoStartSwitch.IsOn,
+            RunningLaunchActionValue = AppSettings.RunningLaunchAction.ToString(),
+            NotificationCheckIntervalMinutes = AppSettings.NotificationCheckIntervalMinutes,
+            NotificationTargetMode = AppSettings.NotificationTargetMode.ToString(),
+            VideoNotificationsEnabled = AppSettings.VideoNotificationsEnabled,
+            LiveNotificationsEnabled = AppSettings.LiveNotificationsEnabled,
+            CustomNotificationCreators = AppSettings.CustomNotificationCreators.ToList(),
+            KnownVideoUpdateIds = AppSettings.KnownVideoUpdateIds.ToList(),
+            KnownLiveRoomIds = AppSettings.KnownLiveRoomIds.ToList(),
+            Login = new LoginExport
             {
-                AppSettings.KnownLiveRoomIds = new[] { liveCreator.RoomId.ToString() }
-                    .Concat(AppSettings.KnownLiveRoomIds)
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToList();
-            }
-        }
-        catch
+                HasCookie = _cookieStore.HasCookie,
+                Cookie = _cookieStore.GetCookieString(),
+            },
+        };
+    }
+
+    private async System.Threading.Tasks.Task ApplySettingsExportAsync(SettingsExport import)
+    {
+        AppSettings.RunningLaunchAction = ParseEnum(import.RunningLaunchActionValue, RunningLaunchAction.OpenSettings);
+        AppSettings.NotificationCheckIntervalMinutes = Math.Max(1, import.NotificationCheckIntervalMinutes);
+        AppSettings.NotificationTargetMode = ParseEnum(import.NotificationTargetMode, NotificationTargetMode.AllFollowing);
+        AppSettings.VideoNotificationsEnabled = import.VideoNotificationsEnabled;
+        AppSettings.LiveNotificationsEnabled = import.LiveNotificationsEnabled;
+        AppSettings.CustomNotificationCreators = import.CustomNotificationCreators ?? [];
+        AppSettings.KnownVideoUpdateIds = import.KnownVideoUpdateIds ?? [];
+        AppSettings.KnownLiveRoomIds = import.KnownLiveRoomIds ?? [];
+
+        if (import.Login?.HasCookie == true && !string.IsNullOrWhiteSpace(import.Login.Cookie))
         {
+            _cookieStore.SaveCookieString(import.Login.Cookie);
+        }
+        else
+        {
+            _cookieStore.Clear();
+        }
+
+        _isLoadingSettings = true;
+        RunningLaunchActionBox.SelectedIndex = AppSettings.RunningLaunchAction == RunningLaunchAction.OpenBilibiliWebPage ? 1 : 0;
+        AutoStartSwitch.IsOn = import.AutoStartEnabled;
+        _isLoadingSettings = false;
+
+        await SetAutoStartEnabledAsync(import.AutoStartEnabled);
+        await RefreshAccountStatusAsync();
+    }
+
+    private static bool IsRegistryStartupEnabled()
+    {
+        using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", writable: false);
+        return key?.GetValue(StartupRegistryName) is string value
+            && string.Equals(value, GetRegistryStartupCommand(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static void SetRegistryStartupEnabled(bool isEnabled)
+    {
+        using var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run");
+        if (isEnabled)
+        {
+            key?.SetValue(StartupRegistryName, GetRegistryStartupCommand());
+        }
+        else
+        {
+            key?.DeleteValue(StartupRegistryName, throwOnMissingValue: false);
         }
     }
 
-    private static long TryParseCreatorMid(string text)
+    private static string GetRegistryStartupCommand()
     {
-        if (string.IsNullOrWhiteSpace(text))
+        var path = Environment.ProcessPath;
+        if (string.IsNullOrWhiteSpace(path))
         {
-            return 0;
+            path = Process.GetCurrentProcess().MainModule?.FileName ?? string.Empty;
         }
 
-        var match = Regex.Match(text, @"space\.bilibili\.com/(\d+)", RegexOptions.IgnoreCase);
-        if (match.Success && long.TryParse(match.Groups[1].Value, out var urlMid))
-        {
-            return urlMid;
-        }
+        return $"\"{path}\"";
+    }
 
-        match = Regex.Match(text, @"\d+");
-        return match.Success && long.TryParse(match.Value, out var mid) ? mid : 0;
+    private static TEnum ParseEnum<TEnum>(string? value, TEnum fallback)
+        where TEnum : struct, Enum
+    {
+        return Enum.TryParse<TEnum>(value, ignoreCase: true, out var parsed)
+            ? parsed
+            : fallback;
+    }
+
+    private static bool IsPackaged()
+    {
+        try
+        {
+            _ = Package.Current.Id.Name;
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private sealed class LoginExport
+    {
+        public bool HasCookie { get; set; }
+
+        public string Cookie { get; set; } = string.Empty;
+    }
+
+    private sealed class SettingsExport
+    {
+        public DateTimeOffset ExportedAt { get; set; }
+
+        public bool IsPackaged { get; set; }
+
+        public bool AutoStartEnabled { get; set; }
+
+        [JsonPropertyName("RunningLaunchAction")]
+        public string RunningLaunchActionValue { get; set; } = nameof(Services.RunningLaunchAction.OpenSettings);
+
+        public int NotificationCheckIntervalMinutes { get; set; } = 15;
+
+        public string NotificationTargetMode { get; set; } = nameof(Services.NotificationTargetMode.AllFollowing);
+
+        public bool VideoNotificationsEnabled { get; set; } = true;
+
+        public bool LiveNotificationsEnabled { get; set; } = true;
+
+        public List<NotificationCreatorSubscription> CustomNotificationCreators { get; set; } = [];
+
+        public List<string> KnownVideoUpdateIds { get; set; } = [];
+
+        public List<string> KnownLiveRoomIds { get; set; } = [];
+
+        public LoginExport? Login { get; set; }
     }
 }
