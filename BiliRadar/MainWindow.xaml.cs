@@ -45,6 +45,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     private static readonly ConcurrentDictionary<string, ImageSource> RoundedImageCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly CookieStore _cookieStore = new();
     private readonly UpdateMonitorService _updateMonitorService;
+    private readonly NotificationService _notificationService = new();
     private readonly HashSet<string> _loadedUpdateIds = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _loadedHistoryIds = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _loadedViewLaterIds = new(StringComparer.OrdinalIgnoreCase);
@@ -215,7 +216,27 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     public void CloseForExit()
     {
         _allowClose = true;
+        _notificationService.Stop();
         Close();
+    }
+
+    public Task StartNotificationMonitorAsync()
+    {
+        return _notificationService.TryStartAsync(RefreshNotificationDataAsync);
+    }
+
+    public async Task HandleNotificationActivationAsync(NotificationService.NotificationActivationRequest request)
+    {
+        if (string.Equals(request.Action, NotificationService.WatchLaterAction, StringComparison.OrdinalIgnoreCase))
+        {
+            await AddToViewLaterFromNotificationAsync(request.Aid);
+            return;
+        }
+
+        if (request.Uri is not null)
+        {
+            await NotificationService.LaunchUriAsync(request.Uri);
+        }
     }
 
     public async Task RefreshAsync()
@@ -280,6 +301,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
                 ShowStatus("暂无视频动态。", InfoBarSeverity.Informational);
             }
 
+            _ = _notificationService.NotifyVideoUpdatesAsync(updates, showNotifications: false);
             AdjustWindowSizeToContent();
         }
         catch (Exception ex)
@@ -328,6 +350,8 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             {
                 LiveCreators.Add(new LiveCreatorRow(creator));
             }
+
+            _ = _notificationService.NotifyLiveStartsAsync(liveCreators, showNotifications: false);
         }
         catch
         {
@@ -339,6 +363,96 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             ? "暂无关注数据"
             : string.Join(Environment.NewLine, Following.Select(item => $"{item.Name}  UID:{item.Mid}"));
         RenderLiveCreators();
+    }
+
+    private async Task RefreshNotificationDataAsync()
+    {
+        if (!_cookieStore.HasCookie)
+        {
+            return;
+        }
+
+        if (AppSettings.NotificationTargetMode == NotificationTargetMode.CustomCreators)
+        {
+            await RefreshCustomNotificationDataAsync();
+            return;
+        }
+
+        IReadOnlyList<BiliVideoUpdate> updates = [];
+        try
+        {
+            updates = await _updateMonitorService.RefreshAsync();
+        }
+        catch
+        {
+        }
+
+        await _notificationService.NotifyVideoUpdatesAsync(updates);
+
+        IReadOnlyList<BiliLiveCreator> liveCreators = [];
+        try
+        {
+            liveCreators = await _updateMonitorService.GetFollowingLiveCreatorsAsync();
+        }
+        catch
+        {
+        }
+
+        await _notificationService.NotifyLiveStartsAsync(liveCreators);
+    }
+
+    private async Task RefreshCustomNotificationDataAsync()
+    {
+        var subscriptions = AppSettings.CustomNotificationCreators;
+        var videoUpdates = new List<BiliVideoUpdate>();
+        foreach (var subscription in subscriptions.Where(item => item.VideoNotificationsEnabled))
+        {
+            try
+            {
+                videoUpdates.AddRange(await _updateMonitorService.GetCreatorVideoUpdatesAsync(subscription.Mid));
+            }
+            catch
+            {
+            }
+        }
+
+        await _notificationService.NotifyVideoUpdatesAsync(videoUpdates);
+
+        var liveCreators = new List<BiliLiveCreator>();
+        foreach (var subscription in subscriptions.Where(item => item.LiveNotificationsEnabled))
+        {
+            try
+            {
+                var liveCreator = await _updateMonitorService.GetCreatorLiveAsync(subscription.Mid);
+                if (liveCreator is not null)
+                {
+                    liveCreators.Add(liveCreator);
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        await _notificationService.NotifyLiveStartsAsync(liveCreators);
+    }
+
+    private async Task AddToViewLaterFromNotificationAsync(long aid)
+    {
+        if (aid <= 0)
+        {
+            return;
+        }
+
+        try
+        {
+            await _updateMonitorService.AddToViewLaterAsync(aid);
+            NotificationService.ShowStatusNotification("已添加到稍后再看", "可以稍后在 B 站继续观看。");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.ShowStatusNotification("添加到稍后再看失败", ex.Message);
+        }
     }
 
     private void ClearSignedOutData()

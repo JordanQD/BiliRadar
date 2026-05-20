@@ -69,4 +69,18 @@
     <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
     <PublishTrimmed>False</PublishTrimmed>
   </PropertyGroup>
+
+  <Target Name="FixToastActivatorExeServerManifest" AfterTargets="_GenerateAppxPackageRecipeFile">
+    <PropertyGroup>
+      <_GeneratedAppxManifest>$(OutDir)AppX\AppxManifest.xml</_GeneratedAppxManifest>
+    </PropertyGroup>
+    <ItemGroup Condition="Exists('$(_GeneratedAppxManifest)')">
+      <_GeneratedAppxManifestLine Include="$(_GeneratedAppxManifest)" />
+    </ItemGroup>
+    <WriteLinesToFile
+      Condition="Exists('$(_GeneratedAppxManifest)')"
+      File="$(_GeneratedAppxManifest)"
+      Lines="$([System.IO.File]::ReadAllText('$(_GeneratedAppxManifest)').Replace('$targetnametoken$.exe', 'BiliRadar.exe'))"
+      Overwrite="true" />
+  </Target>
 </Project>

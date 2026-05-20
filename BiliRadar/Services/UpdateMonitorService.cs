@@ -27,6 +27,21 @@ public sealed class UpdateMonitorService
         return _dataProvider.GetFollowingLiveCreatorsAsync(cancellationToken);
     }
 
+    public Task<BiliCreator?> GetCreatorAsync(long mid, CancellationToken cancellationToken = default)
+    {
+        return _dataProvider.GetCreatorAsync(mid, cancellationToken);
+    }
+
+    public Task<IReadOnlyList<BiliVideoUpdate>> GetCreatorVideoUpdatesAsync(long mid, CancellationToken cancellationToken = default)
+    {
+        return _dataProvider.GetCreatorVideoUpdatesAsync(mid, cancellationToken);
+    }
+
+    public Task<BiliLiveCreator?> GetCreatorLiveAsync(long mid, CancellationToken cancellationToken = default)
+    {
+        return _dataProvider.GetCreatorLiveAsync(mid, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<BiliVideoUpdate>> RefreshAsync(CancellationToken cancellationToken = default)
     {
         var updates = await _dataProvider.GetRecentVideoUpdatesAsync(cancellationToken);

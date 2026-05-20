@@ -22,22 +22,116 @@
                     Style="{ThemeResource SubtitleTextBlockStyle}"
                     Text="启动与刷新" />
                 <ToggleSwitch Header="开机后自动运行" />
-                <ToggleSwitch Header="启动时自动刷新" IsOn="True" />
                 <NumberBox
+                    x:Name="NotificationCheckIntervalBox"
                     Width="280"
-                    Header="自动刷新间隔（分钟）"
+                    Header="通知检查间隔（分钟）"
                     HorizontalAlignment="Left"
                     Minimum="1"
                     SpinButtonPlacementMode="Inline"
-                    Value="15" />
+                    ValueChanged="NotificationCheckIntervalBox_ValueChanged" />
             </StackPanel>
 
             <StackPanel Spacing="12">
                 <TextBlock
                     Style="{ThemeResource SubtitleTextBlockStyle}"
                     Text="通知" />
-                <ToggleSwitch Header="发现新动态时显示系统通知" IsOn="True" />
-                <ToggleSwitch Header="仅提醒关注列表更新" />
+                <ComboBox
+                    x:Name="NotificationTargetModeBox"
+                    Width="280"
+                    Header="通知对象"
+                    HorizontalAlignment="Left"
+                    SelectionChanged="NotificationTargetModeBox_SelectionChanged">
+                    <ComboBoxItem Content="所有 UP 更新" />
+                    <ComboBoxItem Content="自定义 UP 通知" />
+                </ComboBox>
+                <ToggleSwitch
+                    x:Name="VideoNotificationSwitch"
+                    Header="视频更新通知"
+                    Toggled="VideoNotificationSwitch_Toggled" />
+                <ToggleSwitch
+                    x:Name="LiveNotificationSwitch"
+                    Header="开播通知"
+                    Toggled="LiveNotificationSwitch_Toggled" />
+            </StackPanel>
+
+            <StackPanel
+                x:Name="CustomNotificationPanel"
+                Spacing="12">
+                <TextBlock
+                    Style="{ThemeResource SubtitleTextBlockStyle}"
+                    Text="自定义 UP" />
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox
+                        x:Name="CreatorInputBox"
+                        Header="UP 主页链接或 UID"
+                        PlaceholderText="https://space.bilibili.com/123456" />
+                    <Button
+                        x:Name="AddCreatorButton"
+                        Grid.Column="1"
+                        MinWidth="88"
+                        Margin="0,28,0,0"
+                        Content="添加"
+                        Click="AddCreatorButton_Click" />
+                </Grid>
+                <TextBlock
+                    x:Name="CustomNotificationStatusText"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    TextWrapping="Wrap" />
+                <ListView
+                    x:Name="CustomNotificationCreatorsList"
+                    MaxHeight="360"
+                    SelectionMode="None">
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <Grid
+                                Padding="0,8"
+                                ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Spacing="2">
+                                    <TextBlock
+                                        FontWeight="SemiBold"
+                                        Text="{Binding Name}"
+                                        TextTrimming="CharacterEllipsis" />
+                                    <TextBlock
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Text="{Binding Mid}" />
+                                    <StackPanel
+                                        Margin="0,6,0,0"
+                                        Orientation="Horizontal"
+                                        Spacing="16">
+                                        <ToggleSwitch
+                                            Header="视频更新"
+                                            IsOn="{Binding VideoNotificationsEnabled, Mode=TwoWay}"
+                                            Tag="{Binding}"
+                                            Toggled="CustomVideoNotificationSwitch_Toggled" />
+                                        <ToggleSwitch
+                                            Header="开播"
+                                            IsOn="{Binding LiveNotificationsEnabled, Mode=TwoWay}"
+                                            Tag="{Binding}"
+                                            Toggled="CustomLiveNotificationSwitch_Toggled" />
+                                    </StackPanel>
+                                </StackPanel>
+                                <Button
+                                    Grid.Column="1"
+                                    Width="36"
+                                    Height="36"
+                                    Padding="0"
+                                    Tag="{Binding}"
+                                    Click="RemoveCreatorButton_Click">
+                                    <SymbolIcon Symbol="Delete" />
+                                </Button>
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
             </StackPanel>
         </StackPanel>
     </ScrollViewer>
