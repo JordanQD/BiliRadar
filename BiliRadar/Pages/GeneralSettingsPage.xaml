@@ -20,9 +20,10 @@
         HorizontalScrollBarVisibility="Disabled"
         VerticalScrollBarVisibility="Auto">
         <StackPanel
+            Width="920"
             MaxWidth="920"
             Padding="40,32"
-            HorizontalAlignment="Stretch"
+            HorizontalAlignment="Center"
             Spacing="{StaticResource SettingsCardSpacing}">
             <StackPanel.ChildrenTransitions>
                 <EntranceThemeTransition FromVerticalOffset="36" />
