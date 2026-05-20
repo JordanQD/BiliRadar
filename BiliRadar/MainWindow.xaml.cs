@@ -39,6 +39,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     private const double WindowMaxWorkAreaHeightRatio = 0.75;
     private const int DefaultDpi = 96;
     private const int ImageLoadMaxAttemptCount = 3;
+    private static readonly TimeSpan TransientStatusDuration = TimeSpan.FromSeconds(3);
     private const uint MdtEffectiveDpi = 0;
     private static readonly TimeSpan ImageLoadRetryDelay = TimeSpan.FromMilliseconds(450);
     private static readonly HttpClient ImageHttpClient = CreateImageHttpClient();
@@ -62,16 +63,13 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     private bool _isResettingScrollPosition;
     private bool _isShowingWindow;
     private bool _isVisible;
-    private bool _isStatusInfoOpen;
     private bool _hasMoreUpdates = true;
     private bool _hasMoreHistory = true;
     private bool _hasMoreViewLater = true;
     private int _unreadCount;
     private int _followingCount;
     private string _lastCheckedText = "尚未检查";
-    private string _statusText = string.Empty;
     private string _followingListText = "暂无关注数据";
-    private InfoBarSeverity _statusSeverity = InfoBarSeverity.Informational;
 
     public MainWindow()
     {
@@ -120,6 +118,8 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
 
     public ObservableCollection<LiveCreatorRow> LiveCreators { get; }
 
+    public ObservableCollection<StatusNotification> StatusNotifications { get; } = [];
+
     public bool IsLoading
     {
         get => _isLoading;
@@ -142,24 +142,6 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     {
         get => _lastCheckedText;
         private set => SetProperty(ref _lastCheckedText, value);
-    }
-
-    public string StatusText
-    {
-        get => _statusText;
-        private set => SetProperty(ref _statusText, value);
-    }
-
-    public InfoBarSeverity StatusSeverity
-    {
-        get => _statusSeverity;
-        private set => SetProperty(ref _statusSeverity, value);
-    }
-
-    public bool IsStatusInfoOpen
-    {
-        get => _isStatusInfoOpen;
-        private set => SetProperty(ref _isStatusInfoOpen, value);
     }
 
     public string FollowingListText
@@ -249,7 +231,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         IsLoading = true;
         try
         {
-            IsStatusInfoOpen = false;
+            ClearStatusNotifications();
             if (!_cookieStore.HasCookie)
             {
                 ClearSignedOutData();
@@ -296,7 +278,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             _hasMoreUpdates = Updates.Count > 0;
             UnreadCount = Updates.Count(item => item.IsUnread);
             LastCheckedText = _updateMonitorService.LastCheckedAt.ToString("HH:mm:ss");
-            if (_cookieStore.HasCookie && Updates.Count == 0 && !IsStatusInfoOpen)
+            if (_cookieStore.HasCookie && Updates.Count == 0 && StatusNotifications.Count == 0)
             {
                 ShowStatus("暂无视频动态。", InfoBarSeverity.Informational);
             }
@@ -626,7 +608,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         NotifyRefreshProgressVisibilityChanged();
         try
         {
-            IsStatusInfoOpen = false;
+            ClearStatusNotifications();
             HistoryEmptyPanel.Visibility = Visibility.Collapsed;
 
             if (!_cookieStore.HasCookie)
@@ -665,7 +647,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             }
 
             HistoryEmptyPanel.Visibility = HistoryItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-            if (HistoryItems.Count == 0 && !IsStatusInfoOpen)
+            if (HistoryItems.Count == 0 && StatusNotifications.Count == 0)
             {
                 ShowStatus("暂无历史记录。", InfoBarSeverity.Informational);
             }
@@ -746,7 +728,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         NotifyRefreshProgressVisibilityChanged();
         try
         {
-            IsStatusInfoOpen = false;
+            ClearStatusNotifications();
             ViewLaterEmptyPanel.Visibility = Visibility.Collapsed;
 
             if (!_cookieStore.HasCookie)
@@ -774,7 +756,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             }
 
             ViewLaterEmptyPanel.Visibility = ViewLaterItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-            if (ViewLaterItems.Count == 0 && !IsStatusInfoOpen)
+            if (ViewLaterItems.Count == 0 && StatusNotifications.Count == 0)
             {
                 ShowStatus("暂无稍后再看。", InfoBarSeverity.Informational);
             }
@@ -1996,9 +1978,70 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
 
     private void ShowStatus(string message, InfoBarSeverity severity)
     {
-        StatusText = message;
-        StatusSeverity = severity;
-        IsStatusInfoOpen = !string.IsNullOrWhiteSpace(message);
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            ClearStatusNotifications();
+            return;
+        }
+
+        var notification = new StatusNotification(message, severity);
+        StatusNotifications.Add(notification);
+
+        if (IsTransientStatus(severity))
+        {
+            var timer = DispatcherQueue.CreateTimer();
+            timer.Interval = TransientStatusDuration;
+            timer.IsRepeating = false;
+            timer.Tick += (_, _) => RemoveStatusNotification(notification);
+            notification.AutoDismissTimer = timer;
+            timer.Start();
+        }
+    }
+
+    private void StatusNotificationInfoBar_CloseButtonClick(InfoBar sender, object args)
+    {
+        if (sender.DataContext is StatusNotification notification)
+        {
+            RemoveStatusNotification(notification);
+        }
+    }
+
+    private void RemoveStatusNotification(StatusNotification notification)
+    {
+        notification.AutoDismissTimer?.Stop();
+        notification.AutoDismissTimer = null;
+        StatusNotifications.Remove(notification);
+    }
+
+    private void ClearStatusNotifications()
+    {
+        foreach (var notification in StatusNotifications)
+        {
+            notification.AutoDismissTimer?.Stop();
+            notification.AutoDismissTimer = null;
+        }
+
+        StatusNotifications.Clear();
+    }
+
+    private static bool IsTransientStatus(InfoBarSeverity severity)
+    {
+        return severity is InfoBarSeverity.Informational or InfoBarSeverity.Success;
+    }
+
+    public sealed class StatusNotification
+    {
+        public StatusNotification(string message, InfoBarSeverity severity)
+        {
+            Message = message;
+            Severity = severity;
+        }
+
+        public string Message { get; }
+
+        public InfoBarSeverity Severity { get; }
+
+        internal Microsoft.UI.Dispatching.DispatcherQueueTimer? AutoDismissTimer { get; set; }
     }
 
     private static FrameworkElement CreateStats(VideoUpdateRow item)

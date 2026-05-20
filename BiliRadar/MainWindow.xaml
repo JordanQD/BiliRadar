@@ -199,15 +199,27 @@
             </StackPanel>
         </Grid>
 
-        <InfoBar
-            x:Name="StatusInfoBar"
+        <ItemsControl
             Grid.Row="2"
             Margin="12,8,12,12"
             VerticalAlignment="Bottom"
-            IsClosable="True"
-            IsOpen="{x:Bind IsStatusInfoOpen, Mode=OneWay}"
-            Message="{x:Bind StatusText, Mode=OneWay}"
-            Severity="{x:Bind StatusSeverity, Mode=OneWay}" />
+            ItemsSource="{x:Bind StatusNotifications, Mode=OneWay}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Spacing="8" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <InfoBar
+                        IsClosable="True"
+                        IsOpen="True"
+                        CloseButtonClick="StatusNotificationInfoBar_CloseButtonClick"
+                        Message="{Binding Message}"
+                        Severity="{Binding Severity}" />
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
         </Grid>
     </Grid>
 </Window>
