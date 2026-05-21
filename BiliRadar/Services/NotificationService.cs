@@ -79,7 +79,7 @@ public sealed class NotificationService
             .ToList();
 
         SaveKnownVideoUpdates(orderedUpdates.Select(item => item.Id).Concat(knownIds));
-        if (!showNotifications || !AppSettings.VideoNotificationsEnabled || newUpdates.Count == 0)
+        if (!showNotifications || !IsVideoNotificationEnabled() || newUpdates.Count == 0)
         {
             return;
         }
@@ -113,7 +113,7 @@ public sealed class NotificationService
             .ToList();
 
         SaveKnownLiveRooms(currentLiveCreators.Select(item => item.RoomId.ToString()));
-        if (!showNotifications || !AppSettings.LiveNotificationsEnabled || newLiveCreators.Count == 0)
+        if (!showNotifications || !IsLiveNotificationEnabled() || newLiveCreators.Count == 0)
         {
             return;
         }
@@ -194,7 +194,7 @@ public sealed class NotificationService
         }
 
         _timer.Interval = TimeSpan.FromMinutes(AppSettings.NotificationCheckIntervalMinutes);
-        if (AppSettings.VideoNotificationsEnabled || AppSettings.LiveNotificationsEnabled)
+        if (IsAnyNotificationEnabled())
         {
             if (!_timer.IsEnabled)
             {
@@ -285,6 +285,37 @@ public sealed class NotificationService
         catch
         {
         }
+    }
+
+    private static bool IsAnyNotificationEnabled()
+    {
+        if (AppSettings.NotificationTargetMode == NotificationTargetMode.CustomCreators)
+        {
+            return AppSettings.CustomNotificationCreators.Any(item =>
+                item.VideoNotificationsEnabled || item.LiveNotificationsEnabled);
+        }
+
+        return AppSettings.VideoNotificationsEnabled || AppSettings.LiveNotificationsEnabled;
+    }
+
+    private static bool IsVideoNotificationEnabled()
+    {
+        if (AppSettings.NotificationTargetMode == NotificationTargetMode.CustomCreators)
+        {
+            return AppSettings.CustomNotificationCreators.Any(item => item.VideoNotificationsEnabled);
+        }
+
+        return AppSettings.VideoNotificationsEnabled;
+    }
+
+    private static bool IsLiveNotificationEnabled()
+    {
+        if (AppSettings.NotificationTargetMode == NotificationTargetMode.CustomCreators)
+        {
+            return AppSettings.CustomNotificationCreators.Any(item => item.LiveNotificationsEnabled);
+        }
+
+        return AppSettings.LiveNotificationsEnabled;
     }
 
     private static void SaveKnownVideoUpdates(IEnumerable<string> ids)
