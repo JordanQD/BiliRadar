@@ -71,7 +71,37 @@
                     AutomationProperties.AutomationId="RunningLaunchActionBox"
                     SelectionChanged="RunningLaunchActionBox_SelectionChanged">
                     <ComboBoxItem Content="打开设置" />
-                    <ComboBoxItem Content="打开哔哩哔哩网页" />
+                    <ComboBoxItem Content="打开自定义网页" />
+                </ComboBox>
+            </controls:SettingsCard>
+            <controls:SettingsCard
+                Description="重复打开应用并选择打开网页时使用。"
+                Header="自定义网页">
+                <controls:SettingsCard.HeaderIcon>
+                    <FontIcon Glyph="&#xE774;" />
+                </controls:SettingsCard.HeaderIcon>
+                <TextBox
+                    x:Name="CustomLaunchWebPageUrlBox"
+                    Width="360"
+                    AutomationProperties.AutomationId="CustomLaunchWebPageUrlBox"
+                    LostFocus="CustomLaunchWebPageUrlBox_LostFocus"
+                    PlaceholderText="https://www.bilibili.com/"
+                    TextChanged="CustomLaunchWebPageUrlBox_TextChanged" />
+            </controls:SettingsCard>
+            <controls:SettingsCard
+                Description="点击任务栏托盘图标打开 BiliRadar 时默认显示的页面。"
+                Header="默认打开页面">
+                <controls:SettingsCard.HeaderIcon>
+                    <FontIcon Glyph="&#xE71B;" />
+                </controls:SettingsCard.HeaderIcon>
+                <ComboBox
+                    x:Name="DefaultOpenPageBox"
+                    Width="220"
+                    AutomationProperties.AutomationId="DefaultOpenPageBox"
+                    SelectionChanged="DefaultOpenPageBox_SelectionChanged">
+                    <ComboBoxItem Content="关注" />
+                    <ComboBoxItem Content="历史" />
+                    <ComboBoxItem Content="稍后再看" />
                 </ComboBox>
             </controls:SettingsCard>
             <controls:SettingsCard

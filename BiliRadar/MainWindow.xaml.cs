@@ -484,6 +484,31 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         await Launcher.LaunchUriAsync(GetSelectedBrowserUri());
     }
 
+    public async Task LaunchCustomWebPageUriAsync()
+    {
+        await Launcher.LaunchUriAsync(GetCustomWebPageUri());
+    }
+
+    public void ShowDefaultOpenPage()
+    {
+        var selectedItem = GetDefaultOpenPageSelectorItem();
+        if (ContentSelectorBar.SelectedItem == selectedItem)
+        {
+            ShowSelectedPage(selectedItem);
+            return;
+        }
+
+        ContentSelectorBar.SelectedItem = selectedItem;
+    }
+
+    private Uri GetCustomWebPageUri()
+    {
+        return Uri.TryCreate(AppSettings.CustomLaunchWebPageUrl, UriKind.Absolute, out var uri)
+            && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+                ? uri
+                : new Uri("https://www.bilibili.com/");
+    }
+
     private Uri GetSelectedBrowserUri()
     {
         if (ContentSelectorBar.SelectedItem == HistorySelectorItem)
@@ -497,6 +522,16 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         }
 
         return new Uri("https://www.bilibili.com/");
+    }
+
+    private SelectorBarItem GetDefaultOpenPageSelectorItem()
+    {
+        return AppSettings.DefaultOpenPage switch
+        {
+            DefaultOpenPage.History => HistorySelectorItem,
+            DefaultOpenPage.ViewLater => ViewLaterSelectorItem,
+            _ => FollowingSelectorItem,
+        };
     }
 
     private void HideButton_Click(object sender, RoutedEventArgs e)

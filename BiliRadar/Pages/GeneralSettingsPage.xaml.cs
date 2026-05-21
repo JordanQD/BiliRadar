@@ -47,7 +47,10 @@ public sealed partial class GeneralSettingsPage : Page
     private async void GeneralSettingsPage_Loaded(object sender, RoutedEventArgs e)
     {
         _isLoadingSettings = true;
-        RunningLaunchActionBox.SelectedIndex = AppSettings.RunningLaunchAction == RunningLaunchAction.OpenBilibiliWebPage ? 1 : 0;
+        RunningLaunchActionBox.SelectedIndex = AppSettings.RunningLaunchAction == RunningLaunchAction.OpenCustomWebPage ? 1 : 0;
+        CustomLaunchWebPageUrlBox.Text = AppSettings.CustomLaunchWebPageUrl;
+        DefaultOpenPageBox.SelectedIndex = (int)AppSettings.DefaultOpenPage;
+        UpdateCustomLaunchWebPageUrlBoxState();
         await LoadStartupStateAsync();
         _isLoadingSettings = false;
 
@@ -158,8 +161,46 @@ public sealed partial class GeneralSettingsPage : Page
         }
 
         AppSettings.RunningLaunchAction = RunningLaunchActionBox.SelectedIndex == 1
-            ? RunningLaunchAction.OpenBilibiliWebPage
+            ? RunningLaunchAction.OpenCustomWebPage
             : RunningLaunchAction.OpenSettings;
+        UpdateCustomLaunchWebPageUrlBoxState();
+    }
+
+    private void CustomLaunchWebPageUrlBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_isLoadingSettings)
+        {
+            return;
+        }
+
+        AppSettings.CustomLaunchWebPageUrl = CustomLaunchWebPageUrlBox.Text;
+    }
+
+    private void CustomLaunchWebPageUrlBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        _isLoadingSettings = true;
+        CustomLaunchWebPageUrlBox.Text = AppSettings.CustomLaunchWebPageUrl;
+        _isLoadingSettings = false;
+    }
+
+    private void DefaultOpenPageBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_isLoadingSettings)
+        {
+            return;
+        }
+
+        AppSettings.DefaultOpenPage = DefaultOpenPageBox.SelectedIndex switch
+        {
+            1 => DefaultOpenPage.History,
+            2 => DefaultOpenPage.ViewLater,
+            _ => DefaultOpenPage.Following,
+        };
+    }
+
+    private void UpdateCustomLaunchWebPageUrlBoxState()
+    {
+        CustomLaunchWebPageUrlBox.IsEnabled = RunningLaunchActionBox.SelectedIndex == 1;
     }
 
     private void SignInButton_Click(object sender, RoutedEventArgs e)
@@ -318,6 +359,8 @@ public sealed partial class GeneralSettingsPage : Page
             IsPackaged = IsPackaged(),
             AutoStartEnabled = AutoStartSwitch.IsOn,
             RunningLaunchActionValue = AppSettings.RunningLaunchAction.ToString(),
+            CustomLaunchWebPageUrl = AppSettings.CustomLaunchWebPageUrl,
+            DefaultOpenPageValue = AppSettings.DefaultOpenPage.ToString(),
             NotificationCheckIntervalMinutes = AppSettings.NotificationCheckIntervalMinutes,
             NotificationTargetMode = AppSettings.NotificationTargetMode.ToString(),
             VideoNotificationsEnabled = AppSettings.VideoNotificationsEnabled,
@@ -335,7 +378,9 @@ public sealed partial class GeneralSettingsPage : Page
 
     private async System.Threading.Tasks.Task ApplySettingsExportAsync(SettingsExport import)
     {
-        AppSettings.RunningLaunchAction = ParseEnum(import.RunningLaunchActionValue, RunningLaunchAction.OpenSettings);
+        AppSettings.RunningLaunchAction = ParseRunningLaunchAction(import.RunningLaunchActionValue);
+        AppSettings.CustomLaunchWebPageUrl = import.CustomLaunchWebPageUrl;
+        AppSettings.DefaultOpenPage = ParseEnum(import.DefaultOpenPageValue, DefaultOpenPage.Following);
         AppSettings.NotificationCheckIntervalMinutes = Math.Max(1, import.NotificationCheckIntervalMinutes);
         AppSettings.NotificationTargetMode = ParseEnum(import.NotificationTargetMode, NotificationTargetMode.AllFollowing);
         AppSettings.VideoNotificationsEnabled = import.VideoNotificationsEnabled;
@@ -354,7 +399,10 @@ public sealed partial class GeneralSettingsPage : Page
         }
 
         _isLoadingSettings = true;
-        RunningLaunchActionBox.SelectedIndex = AppSettings.RunningLaunchAction == RunningLaunchAction.OpenBilibiliWebPage ? 1 : 0;
+        RunningLaunchActionBox.SelectedIndex = AppSettings.RunningLaunchAction == RunningLaunchAction.OpenCustomWebPage ? 1 : 0;
+        CustomLaunchWebPageUrlBox.Text = AppSettings.CustomLaunchWebPageUrl;
+        DefaultOpenPageBox.SelectedIndex = (int)AppSettings.DefaultOpenPage;
+        UpdateCustomLaunchWebPageUrlBoxState();
         AutoStartSwitch.IsOn = import.AutoStartEnabled;
         _isLoadingSettings = false;
 
@@ -401,6 +449,16 @@ public sealed partial class GeneralSettingsPage : Page
             : fallback;
     }
 
+    private static RunningLaunchAction ParseRunningLaunchAction(string? value)
+    {
+        if (string.Equals(value, "OpenBilibiliWebPage", StringComparison.OrdinalIgnoreCase))
+        {
+            return RunningLaunchAction.OpenCustomWebPage;
+        }
+
+        return ParseEnum(value, RunningLaunchAction.OpenSettings);
+    }
+
     private static bool IsPackaged()
     {
         try
@@ -431,6 +489,11 @@ public sealed partial class GeneralSettingsPage : Page
 
         [JsonPropertyName("RunningLaunchAction")]
         public string RunningLaunchActionValue { get; set; } = nameof(Services.RunningLaunchAction.OpenSettings);
+
+        public string CustomLaunchWebPageUrl { get; set; } = "https://www.bilibili.com/";
+
+        [JsonPropertyName("DefaultOpenPage")]
+        public string DefaultOpenPageValue { get; set; } = nameof(Services.DefaultOpenPage.Following);
 
         public int NotificationCheckIntervalMinutes { get; set; } = 15;
 
