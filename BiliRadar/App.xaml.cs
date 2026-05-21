@@ -97,6 +97,7 @@ public partial class App : Application
 
     private void ShowMainWindow()
     {
+        _mainWindow?.ShowDefaultOpenPage();
         _mainWindow?.ShowWindow();
     }
 
@@ -140,11 +141,11 @@ public partial class App : Application
 
     private async void HandleRunningLaunchAction()
     {
-        if (AppSettings.RunningLaunchAction == RunningLaunchAction.OpenBilibiliWebPage)
+        if (AppSettings.RunningLaunchAction == RunningLaunchAction.OpenCustomWebPage)
         {
             if (_mainWindow is not null)
             {
-                await _mainWindow.LaunchSelectedBrowserUriAsync();
+                await _mainWindow.LaunchCustomWebPageUriAsync();
             }
 
             return;
