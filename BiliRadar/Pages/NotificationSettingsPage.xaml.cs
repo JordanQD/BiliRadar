@@ -477,6 +477,7 @@ public sealed partial class NotificationSettingsPage : Page
                 .Where(item => !string.IsNullOrWhiteSpace(item))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
+            AppSettings.VideoNotificationBaselineInitialized = true;
         }
         catch
         {
@@ -492,6 +493,8 @@ public sealed partial class NotificationSettingsPage : Page
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList();
             }
+
+            AppSettings.LiveNotificationBaselineInitialized = true;
         }
         catch
         {
