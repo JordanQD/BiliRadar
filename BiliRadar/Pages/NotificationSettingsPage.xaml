@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="BiliRadar.Pages.NotificationSettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:CommunityToolkit.WinUI.Controls">
+
+    <Page.Resources>
+        <x:Double x:Key="SettingsCardSpacing">4</x:Double>
+        <Style
+            x:Key="SettingsSectionHeaderTextBlockStyle"
+            BasedOn="{StaticResource BodyStrongTextBlockStyle}"
+            TargetType="TextBlock">
+            <Setter Property="Margin" Value="1,28,0,6" />
+        </Style>
+    </Page.Resources>
+
+    <ScrollViewer
+        x:Name="SettingsScrollViewer"
+        HorizontalScrollBarVisibility="Disabled"
+        VerticalScrollBarVisibility="Auto">
+        <StackPanel
+            Width="920"
+            MaxWidth="920"
+            Padding="40,32"
+            HorizontalAlignment="Center"
+            Spacing="{StaticResource SettingsCardSpacing}">
+            <StackPanel.ChildrenTransitions>
+                <EntranceThemeTransition FromVerticalOffset="36" />
+                <RepositionThemeTransition IsStaggeringEnabled="False" />
+            </StackPanel.ChildrenTransitions>
+
+            <TextBlock
+                Margin="0,0,0,12"
+                Style="{ThemeResource TitleTextBlockStyle}"
+                Text="通知" />
+
+            <TextBlock
+                Style="{StaticResource SettingsSectionHeaderTextBlockStyle}"
+                Text="检查频率" />
+            <controls:SettingsCard
+                Description="BiliRadar 在后台检查动态和直播状态的时间间隔。"
+                Header="通知检查间隔">
+                <controls:SettingsCard.HeaderIcon>
+                    <FontIcon Glyph="&#xE823;" />
+                </controls:SettingsCard.HeaderIcon>
+                <NumberBox
+                    x:Name="NotificationCheckIntervalBox"
+                    Width="160"
+                    AutomationProperties.AutomationId="NotificationCheckIntervalBox"
+                    Minimum="1"
+                    SpinButtonPlacementMode="Inline"
+                    ValueChanged="NotificationCheckIntervalBox_ValueChanged" />
+            </controls:SettingsCard>
+
+            <TextBlock
+                Style="{StaticResource SettingsSectionHeaderTextBlockStyle}"
+                Text="通知对象" />
+            <controls:SettingsCard
+                Description="选择监听全部关注列表，或只监听手动添加的 UP。"
+                Header="通知对象">
+                <controls:SettingsCard.HeaderIcon>
+                    <FontIcon Glyph="&#xE715;" />
+                </controls:SettingsCard.HeaderIcon>
+                <ComboBox
+                    x:Name="NotificationTargetModeBox"
+                    Width="220"
+                    AutomationProperties.AutomationId="NotificationTargetModeBox"
+                    SelectionChanged="NotificationTargetModeBox_SelectionChanged">
+                    <ComboBoxItem Content="所有 UP 更新" />
+                    <ComboBoxItem Content="自定义 UP 通知" />
+                </ComboBox>
+            </controls:SettingsCard>
+            <controls:SettingsCard
+                x:Name="GlobalVideoNotificationCard"
+                Description="关注 UP 发布新视频时提醒。"
+                Header="视频更新通知">
+                <controls:SettingsCard.HeaderIcon>
+                    <FontIcon Glyph="&#xE714;" />
+                </controls:SettingsCard.HeaderIcon>
+                <ToggleSwitch
+                    x:Name="VideoNotificationSwitch"
+                    AutomationProperties.AutomationId="VideoNotificationSwitch"
+                    Toggled="VideoNotificationSwitch_Toggled" />
+            </controls:SettingsCard>
+            <controls:SettingsCard
+                x:Name="GlobalLiveNotificationCard"
+                Description="关注 UP 开始直播时提醒。"
+                Header="开播通知">
+                <controls:SettingsCard.HeaderIcon>
+                    <FontIcon Glyph="&#xE789;" />
+                </controls:SettingsCard.HeaderIcon>
+                <ToggleSwitch
+                    x:Name="LiveNotificationSwitch"
+                    AutomationProperties.AutomationId="LiveNotificationSwitch"
+                    Toggled="LiveNotificationSwitch_Toggled" />
+            </controls:SettingsCard>
+
+            <StackPanel
+                x:Name="CustomNotificationPanel"
+                Spacing="{StaticResource SettingsCardSpacing}">
+                <TextBlock
+                    Style="{StaticResource SettingsSectionHeaderTextBlockStyle}"
+                    Text="自定义 UP" />
+                <controls:SettingsCard
+                    Description="UP 主页链接或 UID"
+                    Header="添加自定义 UP"
+                    HorizontalContentAlignment="Right">
+                    <controls:SettingsCard.HeaderIcon>
+                        <FontIcon Glyph="&#xE710;" />
+                    </controls:SettingsCard.HeaderIcon>
+                    <Button
+                        x:Name="AddCreatorButton"
+                        MinWidth="112"
+                        AutomationProperties.AutomationId="AddCreatorButton"
+                        Click="AddCreatorButton_Click">
+                        <StackPanel
+                            Orientation="Horizontal"
+                            Spacing="8">
+                            <FontIcon Glyph="&#xE710;" />
+                            <TextBlock Text="添加 UP" />
+                        </StackPanel>
+                    </Button>
+                </controls:SettingsCard>
+                <Border
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="{ThemeResource ControlCornerRadius}">
+                    <ListView
+                        x:Name="CustomNotificationCreatorsList"
+                        HorizontalContentAlignment="Stretch"
+                        SelectionMode="None">
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                                <Setter Property="Padding" Value="0" />
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <Grid
+                                    HorizontalAlignment="Stretch"
+                                    MinHeight="64"
+                                    Padding="24,10"
+                                    ColumnSpacing="16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel
+                                        VerticalAlignment="Center"
+                                        Orientation="Horizontal"
+                                        Spacing="12">
+                                        <PersonPicture
+                                            Width="40"
+                                            Height="40"
+                                            DisplayName="{Binding Name}"
+                                            ProfilePicture="{Binding AvatarImage}" />
+                                        <TextBlock
+                                            VerticalAlignment="Center"
+                                            FontWeight="SemiBold"
+                                            Text="{Binding Name}"
+                                            TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                    <StackPanel
+                                        Grid.Column="1"
+                                        VerticalAlignment="Center"
+                                        Orientation="Horizontal"
+                                        Spacing="20">
+                                        <StackPanel
+                                            VerticalAlignment="Center"
+                                            Orientation="Horizontal"
+                                            Spacing="8">
+                                            <TextBlock
+                                                VerticalAlignment="Center"
+                                                Text="视频" />
+                                            <ToggleSwitch
+                                                AutomationProperties.Name="视频更新通知"
+                                                OffContent=""
+                                                OnContent=""
+                                                IsOn="{Binding VideoNotificationsEnabled, Mode=TwoWay}"
+                                                Tag="{Binding}"
+                                                Toggled="CustomVideoNotificationSwitch_Toggled" />
+                                        </StackPanel>
+                                        <StackPanel
+                                            VerticalAlignment="Center"
+                                            Orientation="Horizontal"
+                                            Spacing="8">
+                                            <TextBlock
+                                                VerticalAlignment="Center"
+                                                Text="开播" />
+                                            <ToggleSwitch
+                                                AutomationProperties.Name="开播通知"
+                                                OffContent=""
+                                                OnContent=""
+                                                IsOn="{Binding LiveNotificationsEnabled, Mode=TwoWay}"
+                                                Tag="{Binding}"
+                                                Toggled="CustomLiveNotificationSwitch_Toggled" />
+                                        </StackPanel>
+                                        <Button
+                                            Width="36"
+                                            Height="36"
+                                            Padding="0"
+                                            AutomationProperties.Name="删除自定义 UP"
+                                            Tag="{Binding}"
+                                            Click="RemoveCreatorButton_Click">
+                                            <SymbolIcon Symbol="Delete" />
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Border>
+                <TextBlock
+                    x:Name="CustomNotificationStatusText"
+                    Margin="1,8,0,0"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    TextWrapping="Wrap" />
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

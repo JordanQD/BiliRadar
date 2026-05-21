@@ -20,7 +20,10 @@ public static class AppSettings
     private const string LiveNotificationBaselineInitializedKey = "LiveNotificationBaselineInitialized";
     private const string NotificationTargetModeKey = "NotificationTargetMode";
     private const string RunningLaunchActionKey = "RunningLaunchAction";
+    private const string CustomLaunchWebPageUrlKey = "CustomLaunchWebPageUrl";
+    private const string DefaultOpenPageKey = "DefaultOpenPage";
     private const string CustomNotificationCreatorsKey = "CustomNotificationCreators";
+    private const string DefaultCustomLaunchWebPageUrl = "https://www.bilibili.com/";
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -118,6 +121,24 @@ public static class AppSettings
         }
     }
 
+    public static string CustomLaunchWebPageUrl
+    {
+        get => ReadString(CustomLaunchWebPageUrlKey, DefaultCustomLaunchWebPageUrl);
+        set => LocalSettings.Values[CustomLaunchWebPageUrlKey] = NormalizeWebPageUrl(value);
+    }
+
+    public static DefaultOpenPage DefaultOpenPage
+    {
+        get
+        {
+            var value = ReadRawInt(DefaultOpenPageKey, (int)DefaultOpenPage.Following);
+            return Enum.IsDefined(typeof(DefaultOpenPage), value)
+                ? (DefaultOpenPage)value
+                : DefaultOpenPage.Following;
+        }
+        set => LocalSettings.Values[DefaultOpenPageKey] = (int)value;
+    }
+
     public static bool VideoNotificationBaselineInitialized
     {
         get => ReadBool(VideoNotificationBaselineInitializedKey, false);
@@ -197,6 +218,32 @@ public static class AppSettings
         };
     }
 
+    private static string ReadString(string key, string defaultValue)
+    {
+        return LocalSettings.Values.TryGetValue(key, out var value)
+            && value is string text
+            && !string.IsNullOrWhiteSpace(text)
+                ? text
+                : defaultValue;
+    }
+
+    private static string NormalizeWebPageUrl(string? value)
+    {
+        var text = string.IsNullOrWhiteSpace(value)
+            ? DefaultCustomLaunchWebPageUrl
+            : value.Trim();
+
+        if (!text.Contains("://", StringComparison.Ordinal))
+        {
+            text = $"https://{text}";
+        }
+
+        return Uri.TryCreate(text, UriKind.Absolute, out var uri)
+            && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+                ? uri.AbsoluteUri
+                : DefaultCustomLaunchWebPageUrl;
+    }
+
     private static IReadOnlyList<string> ReadStringList(string key)
     {
         if (!LocalSettings.Values.TryGetValue(key, out var value)
@@ -247,5 +294,12 @@ public enum NotificationTargetMode
 public enum RunningLaunchAction
 {
     OpenSettings = 0,
-    OpenBilibiliWebPage = 1,
+    OpenCustomWebPage = 1,
+}
+
+public enum DefaultOpenPage
+{
+    Following = 0,
+    History = 1,
+    ViewLater = 2,
 }
