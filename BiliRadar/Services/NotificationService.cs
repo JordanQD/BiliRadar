@@ -184,6 +184,10 @@ public sealed class NotificationService
         }
 
         UpdateTimerState();
+        if (_timer.IsEnabled)
+        {
+            _ = RefreshForNotificationsAsync();
+        }
     }
 
     private void UpdateTimerState()

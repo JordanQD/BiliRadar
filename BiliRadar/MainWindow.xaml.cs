@@ -283,7 +283,10 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
                 ShowStatus("暂无视频动态。", InfoBarSeverity.Informational);
             }
 
-            _ = _notificationService.NotifyVideoUpdatesAsync(updates, showNotifications: false);
+            if (AppSettings.NotificationTargetMode == NotificationTargetMode.AllFollowing)
+            {
+                _ = _notificationService.NotifyVideoUpdatesAsync(updates, showNotifications: false);
+            }
             AdjustWindowSizeToContent();
         }
         catch (Exception ex)
@@ -333,7 +336,10 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
                 LiveCreators.Add(new LiveCreatorRow(creator));
             }
 
-            _ = _notificationService.NotifyLiveStartsAsync(liveCreators, showNotifications: false);
+            if (AppSettings.NotificationTargetMode == NotificationTargetMode.AllFollowing)
+            {
+                _ = _notificationService.NotifyLiveStartsAsync(liveCreators, showNotifications: false);
+            }
         }
         catch
         {
