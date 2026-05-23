@@ -1064,15 +1064,36 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         }
     }
 
-    private void LiveSectionToggleButton_Click(object sender, RoutedEventArgs e)
+    private async void LiveSectionToggleButton_Click(object sender, RoutedEventArgs e)
     {
         _isLiveSectionExpanded = !_isLiveSectionExpanded;
-        ApplyLiveSectionExpandedState(_isLiveSectionExpanded);
+        await ApplyLiveSectionExpandedStateAsync(_isLiveSectionExpanded);
     }
 
     private void ApplyLiveSectionExpandedState(bool expanded)
     {
-        LiveCardsScrollViewer.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+        _ = ApplyLiveSectionExpandedStateAsync(expanded);
+    }
+
+    private async Task ApplyLiveSectionExpandedStateAsync(bool expanded)
+    {
+        if (expanded)
+        {
+            LiveCardsScrollViewer.Visibility = Visibility.Visible;
+            await AnimationBuilder.Create()
+                .Opacity(from: 0, to: 1, duration: TimeSpan.FromMilliseconds(200))
+                .Translation(Axis.Y, from: -10, to: 0, duration: TimeSpan.FromMilliseconds(200))
+                .StartAsync(LiveCardsScrollViewer);
+        }
+        else
+        {
+            await AnimationBuilder.Create()
+                .Opacity(from: 1, to: 0, duration: TimeSpan.FromMilliseconds(150))
+                .Translation(Axis.Y, from: 0, to: -10, duration: TimeSpan.FromMilliseconds(150))
+                .StartAsync(LiveCardsScrollViewer);
+            LiveCardsScrollViewer.Visibility = Visibility.Collapsed;
+        }
+
         LiveSectionChevronCollapsed.Visibility = expanded ? Visibility.Collapsed : Visibility.Visible;
         LiveSectionChevronExpanded.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
     }
