@@ -163,7 +163,7 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
         }
 
         var cookie = _cookieStore.GetCookieString();
-        var url = $"{CreatorSpaceMomentsUrl}?host_mid={mid}&timezone_offset=-480&features=itemOpusStyle";
+        var url = $"{CreatorSpaceMomentsUrl}?host_mid={mid}&type=video&timezone_offset=-480";
         using var document = await SendJsonAsync(url, cookie, cancellationToken).ConfigureAwait(false);
         EnsureBiliSuccess(document.RootElement);
 
@@ -534,6 +534,10 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
         else if (major.TryGetProperty("pgc", out var pgc))
         {
             video = pgc;
+        }
+        else if (major.TryGetProperty("opus", out var opus))
+        {
+            video = opus;
         }
         else
         {

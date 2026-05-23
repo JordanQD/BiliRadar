@@ -48,7 +48,7 @@ public sealed partial class NotificationSettingsPage : Page
 
         UpdateNotificationModeVisibility();
         _isLoadingSettings = false;
-        SettingsScrollViewer.ChangeView(null, 0, null, true);
+        SettingsScrollView.ScrollTo(0, 0);
     }
 
     private void NotificationSettingsPage_Unloaded(object sender, RoutedEventArgs e)

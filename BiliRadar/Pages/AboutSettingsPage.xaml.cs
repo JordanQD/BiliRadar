@@ -21,7 +21,7 @@ public sealed partial class AboutSettingsPage : Page
 
     private void AboutSettingsPage_Loaded(object sender, RoutedEventArgs e)
     {
-        SettingsScrollViewer.ChangeView(null, 0, null, true);
+        SettingsScrollView.ScrollTo(0, 0);
     }
 
     private void CloneRepositoryCard_Click(object sender, RoutedEventArgs e)

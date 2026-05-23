@@ -55,7 +55,7 @@ public sealed partial class GeneralSettingsPage : Page
         await LoadStartupStateAsync();
         _isLoadingSettings = false;
 
-        SettingsScrollViewer.ChangeView(null, 0, null, true);
+        SettingsScrollView.ScrollTo(0, 0);
         await RefreshAccountStatusAsync();
     }
 

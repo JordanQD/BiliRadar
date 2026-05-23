@@ -15,16 +15,15 @@
         </Style>
     </Page.Resources>
 
-    <ScrollViewer
-        x:Name="SettingsScrollViewer"
-        HorizontalScrollBarVisibility="Disabled"
-        VerticalScrollBarVisibility="Auto">
-        <StackPanel
-            Width="920"
-            MaxWidth="920"
-            Padding="40,32"
-            HorizontalAlignment="Center"
-            Spacing="{StaticResource SettingsCardSpacing}">
+    <ScrollView
+        x:Name="SettingsScrollView"
+        Padding="36,32,36,0"
+        VerticalScrollBarVisibility="Auto"
+        VerticalScrollMode="Auto">
+        <Border>
+            <StackPanel
+                MaxWidth="1064"
+                Spacing="{StaticResource SettingsCardSpacing}">
             <StackPanel.ChildrenTransitions>
                 <EntranceThemeTransition FromVerticalOffset="36" />
                 <RepositionThemeTransition IsStaggeringEnabled="False" />
@@ -98,6 +97,7 @@
 
             <StackPanel
                 x:Name="CustomNotificationPanel"
+                Margin="0,0,0,36"
                 Spacing="{StaticResource SettingsCardSpacing}">
                 <TextBlock
                     Style="{StaticResource SettingsSectionHeaderTextBlockStyle}"
@@ -221,5 +221,6 @@
                     TextWrapping="Wrap" />
             </StackPanel>
         </StackPanel>
-    </ScrollViewer>
+        </Border>
+    </ScrollView>
 </Page>

@@ -1,11 +1,14 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using BiliRadar.Pages;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Windows.Graphics;
+using Windows.UI;
 using WinRT.Interop;
 
 namespace BiliRadar;
@@ -14,6 +17,7 @@ public sealed partial class SettingsWindow : Window
 {
     private const int WindowWidth = 1360;
     private const int WindowHeight = 900;
+    private const double TallTitleBarHeight = 48;
 
     private readonly AppWindow _appWindow;
 
@@ -25,7 +29,11 @@ public sealed partial class SettingsWindow : Window
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(hwnd));
         _appWindow.Title = "BiliRadar 设置";
         ResizeForCurrentDpi(hwnd);
-        ConfigureTitleBar();
+        ConfigureTitleBar(hwnd);
+        titleBar.Loaded += TitleBar_Loaded;
+
+        ApplySystemThemeToCaptionButtons();
+        RootGrid.ActualThemeChanged += (_, _) => ApplySystemThemeToCaptionButtons();
 
         if (_appWindow.Presenter is OverlappedPresenter presenter)
         {
@@ -68,13 +76,65 @@ public sealed partial class SettingsWindow : Window
         navView.IsPaneOpen = !navView.IsPaneOpen;
     }
 
-    private void ConfigureTitleBar()
+    private void ConfigureTitleBar(IntPtr hwnd)
     {
+        this.ExtendsContentIntoTitleBar = true;
+
         var appTitleBar = _appWindow.TitleBar;
         appTitleBar.ExtendsContentIntoTitleBar = true;
-        appTitleBar.PreferredHeightOption = TitleBarHeightOption.Standard;
+        appTitleBar.PreferredHeightOption = TitleBarHeightOption.Tall;
 
-        titleBar.Height = appTitleBar.Height;
+        var scale = GetDpiForWindow(hwnd) / 96.0;
+        var titleBarHeight = appTitleBar.Height > 0
+            ? appTitleBar.Height / scale
+            : TallTitleBarHeight;
+
+        titleBar.Height = titleBarHeight;
+        titleBar.MinHeight = titleBarHeight;
+        this.SetTitleBar(titleBar);
+    }
+
+    private void TitleBar_Loaded(object sender, RoutedEventArgs e)
+    {
+        titleBar.Loaded -= TitleBar_Loaded;
+        RemovePaneToggleButtonInset();
+    }
+
+    private void RemovePaneToggleButtonInset()
+    {
+        foreach (var element in EnumerateDescendants(titleBar))
+        {
+            if (element is Button { Name: "PART_PaneToggleButton" } button)
+            {
+                button.Margin = new Thickness(0);
+                break;
+            }
+        }
+    }
+
+    private static IEnumerable<DependencyObject> EnumerateDescendants(DependencyObject parent)
+    {
+        var childCount = VisualTreeHelper.GetChildrenCount(parent);
+        for (var i = 0; i < childCount; i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            yield return child;
+
+            foreach (var descendant in EnumerateDescendants(child))
+            {
+                yield return descendant;
+            }
+        }
+    }
+
+    private void ApplySystemThemeToCaptionButtons()
+    {
+        var foregroundColor = RootGrid.ActualTheme == ElementTheme.Dark ? Colors.White : Colors.Black;
+        _appWindow.TitleBar.ButtonForegroundColor = foregroundColor;
+        _appWindow.TitleBar.ButtonHoverForegroundColor = foregroundColor;
+        _appWindow.TitleBar.ButtonHoverBackgroundColor = RootGrid.ActualTheme == ElementTheme.Dark
+            ? Color.FromArgb(24, 255, 255, 255)
+            : Color.FromArgb(24, 0, 0, 0);
     }
 
     private void ResizeForCurrentDpi(IntPtr hwnd)
