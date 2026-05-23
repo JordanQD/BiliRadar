@@ -1,0 +1,30 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ============================================================
+         Overlay button brushes — sit on top of cover images,
+         consistently dark-translucent regardless of app theme.
+         ============================================================ -->
+
+    <SolidColorBrush x:Key="OverlayButtonBackgroundBrush" Color="#D2222222" />
+    <SolidColorBrush x:Key="OverlayButtonBackgroundPointerOverBrush" Color="#EE5C5C5C" />
+    <SolidColorBrush x:Key="OverlayButtonBackgroundPressedBrush" Color="#FF484848" />
+    <SolidColorBrush x:Key="OverlayButtonBackgroundDisabledBrush" Color="#60000000" />
+
+    <SolidColorBrush x:Key="OverlayButtonForegroundBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="OverlayButtonForegroundPointerOverBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="OverlayButtonForegroundPressedBrush" Color="#FFFFFF" />
+
+    <SolidColorBrush x:Key="OverlayButtonBorderBrush" Color="#50FFFFFF" />
+    <SolidColorBrush x:Key="OverlayButtonBorderPointerOverBrush" Color="#87FFFFFF" />
+    <SolidColorBrush x:Key="OverlayButtonBorderPressedBrush" Color="#B4FFFFFF" />
+
+    <!-- ============================================================
+         Duration badge — always dark, on top of cover images.
+         ============================================================ -->
+
+    <SolidColorBrush x:Key="DurationBadgeBackgroundBrush" Color="#B4000000" />
+    <SolidColorBrush x:Key="DurationBadgeForegroundBrush" Color="#FFFFFF" />
+
+</ResourceDictionary>

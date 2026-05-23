@@ -125,14 +125,6 @@ public sealed partial class WebSignInWindow : Window
         var appTitleBar = _appWindow.TitleBar;
         appTitleBar.ExtendsContentIntoTitleBar = true;
         appTitleBar.PreferredHeightOption = TitleBarHeightOption.Standard;
-        appTitleBar.ButtonBackgroundColor = Colors.Transparent;
-        appTitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-        appTitleBar.ButtonHoverBackgroundColor = Windows.UI.Color.FromArgb(28, 255, 255, 255);
-        appTitleBar.ButtonPressedBackgroundColor = Windows.UI.Color.FromArgb(46, 255, 255, 255);
-        appTitleBar.ButtonForegroundColor = Colors.White;
-        appTitleBar.ButtonInactiveForegroundColor = Windows.UI.Color.FromArgb(160, 255, 255, 255);
-        appTitleBar.ButtonHoverForegroundColor = Colors.White;
-        appTitleBar.ButtonPressedForegroundColor = Colors.White;
 
         titleBar.Height = appTitleBar.Height;
     }

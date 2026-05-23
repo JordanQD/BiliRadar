@@ -665,6 +665,8 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
         var durationSeconds = GetInt32(item, "duration");
         var progressSeconds = GetInt32(item, "progress");
         var viewAtTimestamp = GetInt64(item, "view_at");
+        var page = GetInt32(history, "page");
+        var videos = GetInt32(item, "videos");
         var viewedAt = viewAtTimestamp > 0
             ? DateTimeOffset.FromUnixTimeSeconds(viewAtTimestamp).ToLocalTime()
             : DateTimeOffset.Now;
@@ -689,9 +691,11 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
             avatar,
             $"{FormatRelativeTime(viewedAt)}观看",
             FormatDuration(durationSeconds),
-            FormatProgress(progressSeconds, durationSeconds),
+            FormatHistoryDescription(progressSeconds, durationSeconds, page, videos),
             0,
-            0);
+            0,
+            page,
+            videos);
     }
 
     private async Task<BiliViewLaterPage> TryGetViewLaterAsync(string url, string cookie, int loadedCount, CancellationToken cancellationToken)
@@ -1156,6 +1160,12 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
         }
 
         return $"看到 {FormatDuration(progressSeconds)}";
+    }
+
+    private static string FormatHistoryDescription(int progressSeconds, int durationSeconds, int page, int videos)
+    {
+        var pagePart = videos > 1 ? $"P{page}/{videos} · " : string.Empty;
+        return pagePart + FormatProgress(progressSeconds, durationSeconds);
     }
 
     private static string NormalizeUrl(string url)

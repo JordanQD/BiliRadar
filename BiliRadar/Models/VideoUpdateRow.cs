@@ -25,6 +25,9 @@ public sealed class VideoUpdateRow
         CommentCountText = FormatCount(update.CommentCount);
         CoverImage = CreateImage(update.CoverUrl);
         AvatarImage = CreateImage(update.AvatarUrl);
+        Page = update.Page;
+        PageText = update.Page > 0 ? $"P{update.Page}" : string.Empty;
+        VideoCount = update.VideoCount;
     }
 
     public string Id { get; }
@@ -58,6 +61,12 @@ public sealed class VideoUpdateRow
     public string LikeCountText { get; }
 
     public string CommentCountText { get; }
+
+    public int Page { get; }
+
+    public string PageText { get; }
+
+    public int VideoCount { get; }
 
     public BitmapImage? CoverImage { get; }
 

@@ -1095,7 +1095,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         var card = new Border
         {
             Padding = new Thickness(10, 8, 10, 8),
-            Background = new SolidColorBrush(Windows.UI.Color.FromArgb(82, 0, 0, 0)),
+            Background = (Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"],
             CornerRadius = new CornerRadius(6),
             Tag = item,
         };
@@ -1259,13 +1259,13 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
                 Padding = new Thickness(4, 1, 4, 1),
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Bottom,
-                Background = new SolidColorBrush(Windows.UI.Color.FromArgb(180, 0, 0, 0)),
+                Background = (Brush)Application.Current.Resources["DurationBadgeBackgroundBrush"],
                 CornerRadius = new CornerRadius(4),
                 Child = new TextBlock
                 {
                     Text = item.DurationText,
                     FontSize = 11,
-                    Foreground = new SolidColorBrush(Microsoft.UI.Colors.White),
+                    Foreground = (Brush)Application.Current.Resources["DurationBadgeForegroundBrush"],
                 },
             };
             root.Children.Add(duration);
@@ -1286,7 +1286,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Top,
             IsEnabled = item.Aid > 0,
-            Foreground = new SolidColorBrush(Microsoft.UI.Colors.White),
+            Foreground = (Brush)Application.Current.Resources["OverlayButtonForegroundBrush"],
             Tag = item,
             Content = CreatePathIcon(GetViewLaterButtonIconData(mode), 18, "White"),
         };
@@ -1401,13 +1401,13 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
                 Padding = new Thickness(5, 2, 5, 2),
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Bottom,
-                Background = new SolidColorBrush(Windows.UI.Color.FromArgb(153, 0, 0, 0)),
+                Background = (Brush)Application.Current.Resources["DurationBadgeBackgroundBrush"],
                 CornerRadius = new CornerRadius(4),
                 Child = new TextBlock
                 {
                     Text = item.DurationText,
                     FontSize = 11,
-                    Foreground = new SolidColorBrush(Microsoft.UI.Colors.White),
+                    Foreground = (Brush)Application.Current.Resources["DurationBadgeForegroundBrush"],
                 },
             };
             root.Children.Add(duration);
@@ -1423,7 +1423,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Top,
             IsEnabled = item.Aid > 0,
-            Foreground = new SolidColorBrush(Microsoft.UI.Colors.White),
+            Foreground = (Brush)Application.Current.Resources["OverlayButtonForegroundBrush"],
             Tag = item,
             Content = CreatePathIcon(CollectionsAddIconData, 18, "White"),
         };
@@ -1473,31 +1473,26 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
 
     private static void SetOverlayButtonResources(Button button)
     {
-        button.Resources["ButtonBackground"] = CreateOverlayBrush(210, 34, 34, 34);
-        button.Resources["ButtonBackgroundPointerOver"] = CreateOverlayBrush(238, 92, 92, 92);
-        button.Resources["ButtonBackgroundPressed"] = CreateOverlayBrush(255, 72, 72, 72);
-        button.Resources["ButtonBackgroundDisabled"] = new SolidColorBrush(Windows.UI.Color.FromArgb(96, 0, 0, 0));
-        button.Resources["ButtonForeground"] = new SolidColorBrush(Microsoft.UI.Colors.White);
-        button.Resources["ButtonForegroundPointerOver"] = new SolidColorBrush(Microsoft.UI.Colors.White);
-        button.Resources["ButtonForegroundPressed"] = new SolidColorBrush(Microsoft.UI.Colors.White);
-        button.Resources["ButtonBorderBrush"] = new SolidColorBrush(Windows.UI.Color.FromArgb(80, 255, 255, 255));
-        button.Resources["ButtonBorderBrushPointerOver"] = new SolidColorBrush(Windows.UI.Color.FromArgb(135, 255, 255, 255));
-        button.Resources["ButtonBorderBrushPressed"] = new SolidColorBrush(Windows.UI.Color.FromArgb(180, 255, 255, 255));
+        button.Resources["ButtonBackground"] = (Brush)Application.Current.Resources["OverlayButtonBackgroundBrush"];
+        button.Resources["ButtonBackgroundPointerOver"] = (Brush)Application.Current.Resources["OverlayButtonBackgroundPointerOverBrush"];
+        button.Resources["ButtonBackgroundPressed"] = (Brush)Application.Current.Resources["OverlayButtonBackgroundPressedBrush"];
+        button.Resources["ButtonBackgroundDisabled"] = (Brush)Application.Current.Resources["OverlayButtonBackgroundDisabledBrush"];
+        button.Resources["ButtonForeground"] = (Brush)Application.Current.Resources["OverlayButtonForegroundBrush"];
+        button.Resources["ButtonForegroundPointerOver"] = (Brush)Application.Current.Resources["OverlayButtonForegroundPointerOverBrush"];
+        button.Resources["ButtonForegroundPressed"] = (Brush)Application.Current.Resources["OverlayButtonForegroundPressedBrush"];
+        button.Resources["ButtonBorderBrush"] = (Brush)Application.Current.Resources["OverlayButtonBorderBrush"];
+        button.Resources["ButtonBorderBrushPointerOver"] = (Brush)Application.Current.Resources["OverlayButtonBorderPointerOverBrush"];
+        button.Resources["ButtonBorderBrushPressed"] = (Brush)Application.Current.Resources["OverlayButtonBorderPressedBrush"];
     }
 
     private static void SetOverlayButtonState(Button button, OverlayButtonState state)
     {
         button.Background = state switch
         {
-            OverlayButtonState.Hover => CreateOverlayBrush(238, 92, 92, 92),
-            OverlayButtonState.Pressed => CreateOverlayBrush(255, 72, 72, 72),
-            _ => CreateOverlayBrush(210, 34, 34, 34),
+            OverlayButtonState.Hover => (Brush)Application.Current.Resources["OverlayButtonBackgroundPointerOverBrush"],
+            OverlayButtonState.Pressed => (Brush)Application.Current.Resources["OverlayButtonBackgroundPressedBrush"],
+            _ => (Brush)Application.Current.Resources["OverlayButtonBackgroundBrush"],
         };
-    }
-
-    private static SolidColorBrush CreateOverlayBrush(byte alpha, byte red, byte green, byte blue)
-    {
-        return new SolidColorBrush(Windows.UI.Color.FromArgb(alpha, red, green, blue));
     }
 
     private static Image CreateRemoteImage(string url, Stretch stretch)

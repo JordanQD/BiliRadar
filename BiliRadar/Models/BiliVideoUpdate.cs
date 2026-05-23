@@ -18,7 +18,9 @@ public sealed record BiliVideoUpdate(
     string DurationText,
     string Description,
     int LikeCount,
-    int CommentCount);
+    int CommentCount,
+    int Page = 0,
+    int VideoCount = 0);
 
 public sealed record BiliVideoUpdatePage(
     IReadOnlyList<BiliVideoUpdate> Items,

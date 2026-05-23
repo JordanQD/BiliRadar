@@ -40,11 +40,11 @@
                 <NavigationViewItem
                     x:Name="GeneralNavItem"
                     Content="通用"
-                    Icon="Home"
+                    Icon="Setting"
                     Tag="general" />
                 <NavigationViewItem
                     Content="通知"
-                    Icon="Comment"
+                    Icon="Message"
                     Tag="notification" />
                 <NavigationViewItem
                     Content="关于"
