@@ -85,12 +85,45 @@
                     Margin="0,4,0,10"
                     Spacing="6"
                     Visibility="Collapsed">
-                    <TextBlock
-                        FontSize="12"
-                        FontWeight="SemiBold"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Text="正在直播" />
+                    <Button
+                        x:Name="LiveSectionToggleButton"
+                        Padding="0"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Stretch"
+                        Click="LiveSectionToggleButton_Click"
+                        Style="{StaticResource SubtleButtonStyle}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock
+                                Grid.Column="0"
+                                FontSize="12"
+                                FontWeight="SemiBold"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Text="正在直播" />
+                            <Grid
+                                Grid.Column="1"
+                                Width="16"
+                                Height="16"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center">
+                                <FontIcon
+                                    x:Name="LiveSectionChevronCollapsed"
+                                    FontSize="10"
+                                    Glyph="&#xE76C;"
+                                    Visibility="Visible" />
+                                <FontIcon
+                                    x:Name="LiveSectionChevronExpanded"
+                                    FontSize="10"
+                                    Glyph="&#xE70D;"
+                                    Visibility="Collapsed" />
+                            </Grid>
+                        </Grid>
+                    </Button>
                     <ScrollViewer
+                        x:Name="LiveCardsScrollViewer"
                         Height="88"
                         HorizontalScrollBarVisibility="Auto"
                         HorizontalScrollMode="Enabled"
@@ -104,6 +137,7 @@
                     </ScrollViewer>
                 </StackPanel>
                 <TextBlock
+                    x:Name="LatestVideosHeader"
                     Margin="0,0,0,6"
                     FontSize="12"
                     FontWeight="SemiBold"
@@ -200,6 +234,7 @@
         </Grid>
 
         <ItemsControl
+            x:Name="StatusItemsControl"
             Grid.Row="2"
             Margin="12,8,12,12"
             VerticalAlignment="Bottom"
@@ -214,6 +249,7 @@
                     <InfoBar
                         IsClosable="True"
                         IsOpen="True"
+                        Loaded="StatusNotificationInfoBar_Loaded"
                         CloseButtonClick="StatusNotificationInfoBar_CloseButtonClick"
                         Message="{Binding Message}"
                         Severity="{Binding Severity}" />

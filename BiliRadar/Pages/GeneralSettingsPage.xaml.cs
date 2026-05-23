@@ -50,6 +50,7 @@ public sealed partial class GeneralSettingsPage : Page
         RunningLaunchActionBox.SelectedIndex = AppSettings.RunningLaunchAction == RunningLaunchAction.OpenCustomWebPage ? 1 : 0;
         CustomLaunchWebPageUrlBox.Text = AppSettings.CustomLaunchWebPageUrl;
         DefaultOpenPageBox.SelectedIndex = (int)AppSettings.DefaultOpenPage;
+        LiveSectionDisplayModeBox.SelectedIndex = (int)AppSettings.LiveSectionDisplayMode;
         UpdateCustomLaunchWebPageUrlBoxState();
         await LoadStartupStateAsync();
         _isLoadingSettings = false;
@@ -201,6 +202,21 @@ public sealed partial class GeneralSettingsPage : Page
     private void UpdateCustomLaunchWebPageUrlBoxState()
     {
         CustomLaunchWebPageUrlBox.IsEnabled = RunningLaunchActionBox.SelectedIndex == 1;
+    }
+
+    private void LiveSectionDisplayModeBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_isLoadingSettings)
+        {
+            return;
+        }
+
+        AppSettings.LiveSectionDisplayMode = LiveSectionDisplayModeBox.SelectedIndex switch
+        {
+            1 => LiveSectionDisplayMode.Collapsed,
+            2 => LiveSectionDisplayMode.Hidden,
+            _ => LiveSectionDisplayMode.Expanded,
+        };
     }
 
     private void SignInButton_Click(object sender, RoutedEventArgs e)
@@ -363,6 +379,7 @@ public sealed partial class GeneralSettingsPage : Page
             DefaultOpenPageValue = AppSettings.DefaultOpenPage.ToString(),
             NotificationCheckIntervalMinutes = AppSettings.NotificationCheckIntervalMinutes,
             NotificationTargetMode = AppSettings.NotificationTargetMode.ToString(),
+            LiveSectionDisplayMode = AppSettings.LiveSectionDisplayMode.ToString(),
             VideoNotificationsEnabled = AppSettings.VideoNotificationsEnabled,
             LiveNotificationsEnabled = AppSettings.LiveNotificationsEnabled,
             CustomNotificationCreators = AppSettings.CustomNotificationCreators.ToList(),
@@ -385,6 +402,7 @@ public sealed partial class GeneralSettingsPage : Page
         AppSettings.NotificationTargetMode = ParseEnum(import.NotificationTargetMode, NotificationTargetMode.AllFollowing);
         AppSettings.VideoNotificationsEnabled = import.VideoNotificationsEnabled;
         AppSettings.LiveNotificationsEnabled = import.LiveNotificationsEnabled;
+        AppSettings.LiveSectionDisplayMode = ParseEnum(import.LiveSectionDisplayMode, LiveSectionDisplayMode.Expanded);
         AppSettings.CustomNotificationCreators = import.CustomNotificationCreators ?? [];
         AppSettings.KnownVideoUpdateIds = import.KnownVideoUpdateIds ?? [];
         AppSettings.KnownLiveRoomIds = import.KnownLiveRoomIds ?? [];
@@ -402,6 +420,7 @@ public sealed partial class GeneralSettingsPage : Page
         RunningLaunchActionBox.SelectedIndex = AppSettings.RunningLaunchAction == RunningLaunchAction.OpenCustomWebPage ? 1 : 0;
         CustomLaunchWebPageUrlBox.Text = AppSettings.CustomLaunchWebPageUrl;
         DefaultOpenPageBox.SelectedIndex = (int)AppSettings.DefaultOpenPage;
+        LiveSectionDisplayModeBox.SelectedIndex = (int)AppSettings.LiveSectionDisplayMode;
         UpdateCustomLaunchWebPageUrlBoxState();
         AutoStartSwitch.IsOn = import.AutoStartEnabled;
         _isLoadingSettings = false;
@@ -498,6 +517,8 @@ public sealed partial class GeneralSettingsPage : Page
         public int NotificationCheckIntervalMinutes { get; set; } = 15;
 
         public string NotificationTargetMode { get; set; } = nameof(Services.NotificationTargetMode.AllFollowing);
+
+        public string LiveSectionDisplayMode { get; set; } = nameof(Services.LiveSectionDisplayMode.Expanded);
 
         public bool VideoNotificationsEnabled { get; set; } = true;
 

@@ -22,6 +22,7 @@ public static class AppSettings
     private const string RunningLaunchActionKey = "RunningLaunchAction";
     private const string CustomLaunchWebPageUrlKey = "CustomLaunchWebPageUrl";
     private const string DefaultOpenPageKey = "DefaultOpenPage";
+    private const string LiveSectionDisplayModeKey = "LiveSectionDisplayMode";
     private const string CustomNotificationCreatorsKey = "CustomNotificationCreators";
     private const string DefaultCustomLaunchWebPageUrl = "https://www.bilibili.com/";
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -137,6 +138,18 @@ public static class AppSettings
                 : DefaultOpenPage.Following;
         }
         set => LocalSettings.Values[DefaultOpenPageKey] = (int)value;
+    }
+
+    public static LiveSectionDisplayMode LiveSectionDisplayMode
+    {
+        get
+        {
+            var value = ReadRawInt(LiveSectionDisplayModeKey, (int)LiveSectionDisplayMode.Expanded);
+            return Enum.IsDefined(typeof(LiveSectionDisplayMode), value)
+                ? (LiveSectionDisplayMode)value
+                : LiveSectionDisplayMode.Expanded;
+        }
+        set => LocalSettings.Values[LiveSectionDisplayModeKey] = (int)value;
     }
 
     public static bool VideoNotificationBaselineInitialized
@@ -302,4 +315,11 @@ public enum DefaultOpenPage
     Following = 0,
     History = 1,
     ViewLater = 2,
+}
+
+public enum LiveSectionDisplayMode
+{
+    Expanded = 0,
+    Collapsed = 1,
+    Hidden = 2,
 }

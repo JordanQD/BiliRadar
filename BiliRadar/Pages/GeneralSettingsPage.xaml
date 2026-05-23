@@ -169,6 +169,26 @@
 
             <TextBlock
                 Style="{StaticResource SettingsSectionHeaderTextBlockStyle}"
+                Text="显示" />
+            <controls:SettingsCard
+                Description="控制关注页面中正在直播区域的显示方式。"
+                Header="正在直播">
+                <controls:SettingsCard.HeaderIcon>
+                    <FontIcon Glyph="&#xE7C0;" />
+                </controls:SettingsCard.HeaderIcon>
+                <ComboBox
+                    x:Name="LiveSectionDisplayModeBox"
+                    Width="200"
+                    AutomationProperties.AutomationId="LiveSectionDisplayModeBox"
+                    SelectionChanged="LiveSectionDisplayModeBox_SelectionChanged">
+                    <ComboBoxItem Content="默认展开显示" />
+                    <ComboBoxItem Content="默认折叠显示" />
+                    <ComboBoxItem Content="不显示" />
+                </ComboBox>
+            </controls:SettingsCard>
+
+            <TextBlock
+                Style="{StaticResource SettingsSectionHeaderTextBlockStyle}"
                 Text="配置" />
             <controls:SettingsCard
                 Description="导出当前通知、启动和登录状态配置。"

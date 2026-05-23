@@ -19,6 +19,8 @@ using Microsoft.UI.Xaml.Markup;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Shapes;
+using CommunityToolkit.WinUI.Animations;
+using Microsoft.UI.Xaml.Media.Animation;
 using WinRT.Interop;
 using Windows.System;
 using Windows.Storage.Streams;
@@ -66,6 +68,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     private bool _hasMoreUpdates = true;
     private bool _hasMoreHistory = true;
     private bool _hasMoreViewLater = true;
+    private bool _isLiveSectionExpanded;
     private int _unreadCount;
     private int _followingCount;
     private string _lastCheckedText = "尚未检查";
@@ -102,6 +105,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         HideFromTaskbar();
         ContentSelectorBar.SelectedItem = FollowingSelectorItem;
         ShowSelectedPage(FollowingSelectorItem);
+        ApplyLiveSectionDisplayMode(AppSettings.LiveSectionDisplayMode);
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -176,6 +180,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             AdjustWindowSizeToContent();
             Activate();
             ResetCurrentPageScrollPosition();
+            ApplyLiveSectionDisplayMode(AppSettings.LiveSectionDisplayMode);
             ShowWindowNative(_hwnd, SwShow);
             SetWindowPos(_hwnd, HwndTopmost, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate | SwpShowWindow);
             SetForegroundWindow(_hwnd);
@@ -568,6 +573,11 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         HistoryPagePanel.Visibility = selectedItem == HistorySelectorItem ? Visibility.Visible : Visibility.Collapsed;
         ViewLaterPagePanel.Visibility = selectedItem == ViewLaterSelectorItem ? Visibility.Visible : Visibility.Collapsed;
         ResetCurrentPageScrollPosition();
+
+        if (selectedItem == FollowingSelectorItem)
+        {
+            ApplyLiveSectionDisplayMode(AppSettings.LiveSectionDisplayMode);
+        }
     }
 
     private void ResetCurrentPageScrollPosition()
@@ -1012,11 +1022,59 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     private void RenderLiveCreators()
     {
         LiveCreatorCardsPanel.Children.Clear();
-        LiveCreatorsSection.Visibility = LiveCreators.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
         foreach (var item in LiveCreators)
         {
             LiveCreatorCardsPanel.Children.Add(CreateLiveCreatorItem(item));
         }
+
+        var hasLiveCreators = LiveCreators.Count > 0;
+        if (AppSettings.LiveSectionDisplayMode == LiveSectionDisplayMode.Hidden)
+        {
+            LiveCreatorsSection.Visibility = Visibility.Collapsed;
+            LatestVideosHeader.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            LiveCreatorsSection.Visibility = hasLiveCreators ? Visibility.Visible : Visibility.Collapsed;
+            LatestVideosHeader.Visibility = Visibility.Visible;
+            if (hasLiveCreators)
+            {
+                ApplyLiveSectionExpandedState(_isLiveSectionExpanded);
+            }
+        }
+    }
+
+    private void ApplyLiveSectionDisplayMode(LiveSectionDisplayMode mode)
+    {
+        if (mode == LiveSectionDisplayMode.Hidden)
+        {
+            _isLiveSectionExpanded = false;
+            LiveCreatorsSection.Visibility = Visibility.Collapsed;
+            LatestVideosHeader.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            _isLiveSectionExpanded = mode == LiveSectionDisplayMode.Expanded;
+            LatestVideosHeader.Visibility = Visibility.Visible;
+            if (LiveCreators.Count > 0)
+            {
+                LiveCreatorsSection.Visibility = Visibility.Visible;
+                ApplyLiveSectionExpandedState(_isLiveSectionExpanded);
+            }
+        }
+    }
+
+    private void LiveSectionToggleButton_Click(object sender, RoutedEventArgs e)
+    {
+        _isLiveSectionExpanded = !_isLiveSectionExpanded;
+        ApplyLiveSectionExpandedState(_isLiveSectionExpanded);
+    }
+
+    private void ApplyLiveSectionExpandedState(bool expanded)
+    {
+        LiveCardsScrollViewer.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+        LiveSectionChevronCollapsed.Visibility = expanded ? Visibility.Collapsed : Visibility.Visible;
+        LiveSectionChevronExpanded.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private FrameworkElement CreateLiveCreatorItem(LiveCreatorRow item)
@@ -2039,6 +2097,17 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         }
     }
 
+    private void StatusNotificationInfoBar_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement element)
+        {
+            AnimationBuilder.Create()
+                .Opacity(to: 1, from: 0, duration: TimeSpan.FromMilliseconds(250), easingType: EasingType.Cubic, easingMode: EasingMode.EaseOut)
+                .Translation(Axis.Y, to: 0, from: 20, duration: TimeSpan.FromMilliseconds(250), easingType: EasingType.Cubic, easingMode: EasingMode.EaseOut)
+                .Start(element);
+        }
+    }
+
     private void StatusNotificationInfoBar_CloseButtonClick(InfoBar sender, object args)
     {
         if (sender.DataContext is StatusNotification notification)
@@ -2047,10 +2116,17 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         }
     }
 
-    private void RemoveStatusNotification(StatusNotification notification)
+    private async void RemoveStatusNotification(StatusNotification notification)
     {
+        if (notification.IsRemoving)
+        {
+            return;
+        }
+
         notification.AutoDismissTimer?.Stop();
         notification.AutoDismissTimer = null;
+
+        await AnimateOutAsync(notification);
         StatusNotifications.Remove(notification);
     }
 
@@ -2062,7 +2138,47 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             notification.AutoDismissTimer = null;
         }
 
-        StatusNotifications.Clear();
+        _ = ClearStatusNotificationsWithAnimationAsync();
+    }
+
+    private async Task ClearStatusNotificationsWithAnimationAsync()
+    {
+        var items = StatusNotifications.ToList();
+        foreach (var notification in items)
+        {
+            await AnimateOutAsync(notification);
+            StatusNotifications.Remove(notification);
+        }
+    }
+
+    private Task AnimateOutAsync(StatusNotification notification)
+    {
+        if (notification.IsRemoving)
+        {
+            return Task.CompletedTask;
+        }
+
+        notification.IsRemoving = true;
+
+        var container = StatusItemsControl.ContainerFromItem(notification) as ContentPresenter;
+        if (container is null
+            || VisualTreeHelper.GetChildrenCount(container) == 0
+            || VisualTreeHelper.GetChild(container, 0) is not InfoBar infoBar)
+        {
+            return Task.CompletedTask;
+        }
+
+        var tcs = new TaskCompletionSource<bool>();
+        AnimationBuilder.Create()
+            .Opacity(to: 0, from: 1, duration: TimeSpan.FromMilliseconds(150), easingType: EasingType.Cubic, easingMode: EasingMode.EaseIn)
+            .Translation(Axis.Y, to: 20, from: 0, duration: TimeSpan.FromMilliseconds(150), easingType: EasingType.Cubic, easingMode: EasingMode.EaseIn)
+            .Start(infoBar, () =>
+            {
+                infoBar.IsOpen = false;
+                tcs.TrySetResult(true);
+            });
+
+        return tcs.Task;
     }
 
     private static bool IsTransientStatus(InfoBarSeverity severity)
@@ -2083,6 +2199,8 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         public InfoBarSeverity Severity { get; }
 
         internal Microsoft.UI.Dispatching.DispatcherQueueTimer? AutoDismissTimer { get; set; }
+
+        internal bool IsRemoving { get; set; }
     }
 
     private static FrameworkElement CreateStats(VideoUpdateRow item)
