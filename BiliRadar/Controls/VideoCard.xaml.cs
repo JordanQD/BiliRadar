@@ -32,7 +32,7 @@ public sealed partial class VideoCard : UserControl
     // Dynamically built text panel elements
     private TextBlock _titleText = null!, _descText = null!, _creatorText = null!, _timeText = null!;
     private Button _avatarBtn = null!;
-    private ImageBrush _avatarBrush = null!;
+    private BiliAvatarImage _avatarImage = null!;
     private MenuFlyout? _flyout;
     private MenuFlyoutItem? _relItem;
     private VideoUpdateRow? _item;
@@ -88,12 +88,12 @@ public sealed partial class VideoCard : UserControl
         Grid.SetRow(creatorRow, 2);
         textPanel.Children.Add(creatorRow);
 
-        _avatarBrush = new ImageBrush { Stretch = Stretch.UniformToFill };
+        _avatarImage = new BiliAvatarImage { Width = 24, Height = 24, CornerRadius = new CornerRadius(12) };
         var avatarContainer = new Grid { Width = 24, Height = 24, VerticalAlignment = VerticalAlignment.Center };
         // Layer 1: Placeholder circle visible until avatar image loads
         avatarContainer.Children.Add(new Border { Width = 24, Height = 24, CornerRadius = new CornerRadius(12), Background = (Brush)app.Resources["CardBackgroundFillColorSecondaryBrush"] });
-        // Layer 2: Actual avatar image on top (same size, circular)
-        avatarContainer.Children.Add(new Border { Width = 24, Height = 24, CornerRadius = new CornerRadius(12), Background = _avatarBrush });
+        // Layer 2: Actual avatar image on top (same size, circular via CornerRadius)
+        avatarContainer.Children.Add(_avatarImage);
 
         _avatarBtn = new Button { Width = 24, Height = 24, MinWidth = 0, Padding = new Thickness(0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center, Content = avatarContainer, Style = (Style)app.Resources["SubtleButtonStyle"] };
         _avatarBtn.Click += (_, _) => { if (_item is not null) CreatorAvatarClicked?.Invoke(this, _item); };
@@ -140,7 +140,7 @@ public sealed partial class VideoCard : UserControl
         else { DurationBadge.Visibility = Visibility.Visible; DurationText.Text = item.DurationText; }
 
         if (!string.IsNullOrWhiteSpace(item.CoverUrl)) _ = LoadImg(CoverImage, item.CoverUrl);
-        if (!string.IsNullOrWhiteSpace(item.AvatarUrl)) _ = LoadImgBrush(_avatarBrush, item.AvatarUrl);
+        if (!string.IsNullOrWhiteSpace(item.AvatarUrl) && Uri.TryCreate(item.AvatarUrl, UriKind.Absolute, out var avatarUri)) _avatarImage.Source = avatarUri;
 
         ApplyVLMode();
     }
