@@ -15,7 +15,6 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
     private const string FollowingsUrl = "https://api.bilibili.com/x/relation/followings";
     private const string FollowingLiveUrl = "https://api.live.bilibili.com/xlive/web-ucenter/v1/xfetter/GetWebList";
     private const string CreatorCardUrl = "https://api.bilibili.com/x/web-interface/card";
-    private const string CreatorSpaceMomentsUrl = "https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/space";
     private const string CreatorLiveUrl = "https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByUser";
     private const string RelationUrl = "https://api.bilibili.com/x/relation";
     private const string ModifyRelationUrl = "https://api.bilibili.com/x/relation/modify";
@@ -163,25 +162,58 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
         }
 
         var cookie = _cookieStore.GetCookieString();
-        var url = $"{CreatorSpaceMomentsUrl}?host_mid={mid}&type=video&timezone_offset=-480";
+        var url = $"https://api.bilibili.com/x/space/arc/search?mid={mid}&ps=5&pn=1&order=pubdate";
         using var document = await SendJsonAsync(url, cookie, cancellationToken).ConfigureAwait(false);
         EnsureBiliSuccess(document.RootElement);
 
         if (!document.RootElement.TryGetProperty("data", out var data)
-            || !data.TryGetProperty("items", out var items)
-            || items.ValueKind != JsonValueKind.Array)
+            || !data.TryGetProperty("list", out var list)
+            || !list.TryGetProperty("vlist", out var vlist)
+            || vlist.ValueKind != JsonValueKind.Array)
         {
             return Array.Empty<BiliVideoUpdate>();
         }
 
         var updates = new List<BiliVideoUpdate>();
-        foreach (var item in items.EnumerateArray())
+        foreach (var item in vlist.EnumerateArray())
         {
-            var update = TryCreateVideoUpdate(item);
-            if (update is not null && (update.CreatorMid == mid || update.CreatorMid <= 0))
+            var bvid = GetString(item, "bvid");
+            var aid = GetInt64(item, "aid");
+            var id = !string.IsNullOrWhiteSpace(bvid) ? bvid : aid.ToString();
+            var title = GetString(item, "title");
+            if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(title))
             {
-                updates.Add(update);
+                continue;
             }
+
+            var cover = NormalizeUrl(GetString(item, "pic"));
+            var duration = GetString(item, "length");
+            var description = GetString(item, "description");
+            var creatorName = GetString(item, "author");
+            var createdTimestamp = GetInt64(item, "created");
+            var publishedAt = createdTimestamp > 0
+                ? DateTimeOffset.FromUnixTimeSeconds(createdTimestamp).ToLocalTime()
+                : DateTimeOffset.Now;
+            var jumpUrl = $"https://www.bilibili.com/video/{bvid}";
+            var commentCount = GetInt32(item, "comment");
+            var playCount = GetInt32(item, "play");
+
+            updates.Add(new BiliVideoUpdate(
+                id,
+                aid,
+                mid,
+                creatorName,
+                title,
+                publishedAt,
+                jumpUrl,
+                true,
+                cover,
+                string.Empty,
+                FormatRelativeTime(publishedAt),
+                duration,
+                description,
+                playCount,
+                commentCount));
         }
 
         return updates;
@@ -527,6 +559,7 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
         }
 
         JsonElement video;
+        var isOpus = false;
         if (major.TryGetProperty("archive", out var archive))
         {
             video = archive;
@@ -538,24 +571,49 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
         else if (major.TryGetProperty("opus", out var opus))
         {
             video = opus;
+            isOpus = true;
         }
         else
         {
             return null;
         }
 
-        var bvid = GetString(video, "bvid");
-        var title = GetString(video, "title");
-        var cover = NormalizeUrl(GetString(video, "cover"));
-        var duration = GetString(video, "duration_text");
-        var description = GetString(video, "desc");
         var jumpUrl = NormalizeUrl(GetString(video, "jump_url"));
+        var bvid = GetString(video, "bvid");
+        if (string.IsNullOrWhiteSpace(bvid) && !string.IsNullOrWhiteSpace(jumpUrl))
+        {
+            bvid = ExtractBvidFromUrl(jumpUrl);
+        }
+
         var aid = GetInt64(video, "aid");
+        if (aid <= 0 && isOpus && !string.IsNullOrWhiteSpace(jumpUrl))
+        {
+            aid = ExtractAidFromUrl(jumpUrl);
+        }
+
         var id = !string.IsNullOrWhiteSpace(bvid) ? bvid : aid.ToString();
+        var title = GetString(video, "title");
         if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(title))
         {
             return null;
         }
+
+        var cover = NormalizeUrl(GetString(video, "cover"));
+        if (string.IsNullOrWhiteSpace(cover) && isOpus && video.TryGetProperty("pics", out var pics)
+            && pics.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var pic in pics.EnumerateArray())
+            {
+                cover = NormalizeUrl(GetString(pic, "url"));
+                if (!string.IsNullOrWhiteSpace(cover))
+                {
+                    break;
+                }
+            }
+        }
+
+        var duration = GetString(video, "duration_text");
+        var description = GetString(video, "desc");
 
         var author = modules.TryGetProperty("module_author", out var authorModule) ? authorModule : default;
         var creatorMid = GetInt64(author, "mid");
@@ -1180,5 +1238,27 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
         }
 
         return url.StartsWith("//", StringComparison.Ordinal) ? $"https:{url}" : url;
+    }
+
+    private static string ExtractBvidFromUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return string.Empty;
+        }
+
+        var match = System.Text.RegularExpressions.Regex.Match(url, @"BV[\w]+", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        return match.Success ? match.Value : string.Empty;
+    }
+
+    private static long ExtractAidFromUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return 0;
+        }
+
+        var match = System.Text.RegularExpressions.Regex.Match(url, @"av(\d+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        return match.Success && long.TryParse(match.Groups[1].Value, out var aid) ? aid : 0;
     }
 }

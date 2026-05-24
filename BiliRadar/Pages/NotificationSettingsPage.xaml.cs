@@ -289,8 +289,8 @@ public sealed partial class NotificationSettingsPage : Page
             };
 
             CustomNotificationCreators.Add(subscription);
-            SaveCustomNotificationCreators();
             await SeedNotificationBaselineAsync(subscription);
+            SaveCustomNotificationCreators();
             CustomNotificationStatusText.Text = $"已添加：{subscription.Name}";
             dialog.Hide();
         };

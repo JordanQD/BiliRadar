@@ -13,6 +13,7 @@ public sealed class UpdateMonitorService
     public UpdateMonitorService(IBiliDataProvider dataProvider)
     {
         _dataProvider = dataProvider;
+        LastCheckedAt = DateTimeOffset.Now;
     }
 
     public DateTimeOffset LastCheckedAt { get; private set; }
@@ -47,6 +48,11 @@ public sealed class UpdateMonitorService
         var updates = await _dataProvider.GetRecentVideoUpdatesAsync(cancellationToken);
         LastCheckedAt = DateTimeOffset.Now;
         return updates;
+    }
+
+    public Task<IReadOnlyList<BiliVideoUpdate>> GetRecentVideoUpdatesForNotificationAsync(CancellationToken cancellationToken = default)
+    {
+        return _dataProvider.GetRecentVideoUpdatesAsync(cancellationToken);
     }
 
     public Task<BiliVideoUpdatePage> LoadMoreAsync(CancellationToken cancellationToken = default)

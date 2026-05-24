@@ -374,7 +374,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         IReadOnlyList<BiliVideoUpdate> updates = [];
         try
         {
-            updates = await _updateMonitorService.RefreshAsync();
+            updates = await _updateMonitorService.GetRecentVideoUpdatesForNotificationAsync();
         }
         catch
         {
@@ -402,7 +402,15 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         {
             try
             {
-                videoUpdates.AddRange(await _updateMonitorService.GetCreatorVideoUpdatesAsync(subscription.Mid));
+                var updates = await _updateMonitorService.GetCreatorVideoUpdatesAsync(subscription.Mid);
+                foreach (var update in updates)
+                {
+                    videoUpdates.Add(update with
+                    {
+                        AvatarUrl = subscription.AvatarUrl,
+                        CreatorName = string.IsNullOrWhiteSpace(update.CreatorName) ? subscription.Name : update.CreatorName,
+                    });
+                }
             }
             catch
             {

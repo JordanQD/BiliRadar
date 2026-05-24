@@ -88,6 +88,7 @@
                     <Button
                         x:Name="LiveSectionToggleButton"
                         Padding="0"
+                        BorderThickness="0"
                         HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Stretch"
                         Click="LiveSectionToggleButton_Click"
