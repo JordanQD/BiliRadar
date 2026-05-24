@@ -10,6 +10,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Markup;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Microsoft.UI.Xaml.Shapes;
 using Windows.Storage.Streams;
 using System.Runtime.InteropServices.WindowsRuntime;
 
@@ -32,8 +33,7 @@ public sealed partial class VideoCard : UserControl
     // Dynamically built text panel elements
     private TextBlock _titleText = null!, _descText = null!, _creatorText = null!, _timeText = null!;
     private Button _avatarBtn = null!;
-    private Border _avatarFrame = null!;
-    private ImageBrush _avatarBrush = null!;
+    private Image _avatarImage = null!;
     private MenuFlyout? _flyout;
     private MenuFlyoutItem? _relItem;
     private VideoUpdateRow? _item;
@@ -89,12 +89,12 @@ public sealed partial class VideoCard : UserControl
         Grid.SetRow(creatorRow, 2);
         textPanel.Children.Add(creatorRow);
 
-        _avatarFrame = new Border { Width = 24, Height = 24, VerticalAlignment = VerticalAlignment.Center, Background = (Brush)app.Resources["CardBackgroundFillColorSecondaryBrush"], CornerRadius = new CornerRadius(12) };
-        _avatarBrush = new ImageBrush { Stretch = Stretch.UniformToFill };
-        var avatarInner = new Border { Width = 24, Height = 24, CornerRadius = new CornerRadius(12), Background = _avatarBrush };
-        _avatarFrame.Child = avatarInner;
+        _avatarImage = new Image { Stretch = Stretch.UniformToFill };
+        var avatarContainer = new Grid { Width = 24, Height = 24, VerticalAlignment = VerticalAlignment.Center };
+        avatarContainer.Children.Add(new Ellipse { Width = 24, Height = 24, Fill = (Brush)app.Resources["CardBackgroundFillColorSecondaryBrush"] });
+        avatarContainer.Children.Add(new Border { Width = 24, Height = 24, CornerRadius = new CornerRadius(12), Child = _avatarImage });
 
-        _avatarBtn = new Button { Width = 24, Height = 24, MinWidth = 0, Padding = new Thickness(0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center, Content = _avatarFrame, Style = (Style)app.Resources["SubtleButtonStyle"] };
+        _avatarBtn = new Button { Width = 24, Height = 24, MinWidth = 0, Padding = new Thickness(0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center, Content = avatarContainer, Style = (Style)app.Resources["SubtleButtonStyle"] };
         _avatarBtn.Click += (_, _) => { if (_item is not null) CreatorAvatarClicked?.Invoke(this, _item); };
         ToolTipService.SetToolTip(_avatarBtn, "打开 UP 主主页");
         creatorRow.Children.Add(_avatarBtn);
@@ -139,7 +139,7 @@ public sealed partial class VideoCard : UserControl
         else { DurationBadge.Visibility = Visibility.Visible; DurationText.Text = item.DurationText; }
 
         if (!string.IsNullOrWhiteSpace(item.CoverUrl)) _ = LoadImg(CoverImage, item.CoverUrl);
-        if (!string.IsNullOrWhiteSpace(item.AvatarUrl)) _ = LoadImgBrush(_avatarBrush, item.AvatarUrl);
+        if (!string.IsNullOrWhiteSpace(item.AvatarUrl)) _ = LoadImg(_avatarImage, item.AvatarUrl);
 
         ApplyVLMode();
     }
@@ -182,6 +182,7 @@ public sealed partial class VideoCard : UserControl
     private static async Task LoadImg(Image img, string url)
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var u)) return;
+        if (ImgCache.TryGetValue(u.AbsoluteUri, out var c)) { img.DispatcherQueue.TryEnqueue(() => img.Source = c); return; }
         for (int i = 1; i <= MaxRetries; i++)
             try
             {
@@ -190,10 +191,10 @@ public sealed partial class VideoCard : UserControl
                 r.Headers.TryAddWithoutValidation("Referer", "https://www.bilibili.com/");
                 using var res = await Http.SendAsync(r); res.EnsureSuccessStatusCode();
                 var b = await res.Content.ReadAsByteArrayAsync();
-                img.DispatcherQueue.TryEnqueue(async () => { try { using var s = new InMemoryRandomAccessStream(); await s.WriteAsync(b.AsBuffer()); s.Seek(0); var bmp = new BitmapImage(); await bmp.SetSourceAsync(s); img.Source = bmp; } catch { img.Source = new BitmapImage(u); } });
+                img.DispatcherQueue.TryEnqueue(async () => { try { using var s = new InMemoryRandomAccessStream(); await s.WriteAsync(b.AsBuffer()); s.Seek(0); var bmp = new BitmapImage(); await bmp.SetSourceAsync(s); ImgCache[u.AbsoluteUri] = bmp; img.Source = bmp; } catch { var bmp = new BitmapImage(u); ImgCache[u.AbsoluteUri] = bmp; img.Source = bmp; } });
                 return;
             }
-            catch { if (i == MaxRetries) img.DispatcherQueue.TryEnqueue(() => img.Source = new BitmapImage(u)); else await Task.Delay(RetryDelay * i); }
+            catch { if (i == MaxRetries) img.DispatcherQueue.TryEnqueue(() => { var bmp = new BitmapImage(u); ImgCache[u.AbsoluteUri] = bmp; img.Source = bmp; }); else await Task.Delay(RetryDelay * i); }
     }
 
     private static async Task LoadImgBrush(ImageBrush br, string url)
