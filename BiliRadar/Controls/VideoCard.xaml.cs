@@ -10,9 +10,8 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Markup;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
-using Microsoft.UI.Xaml.Shapes;
-using Windows.Storage.Streams;
 using System.Runtime.InteropServices.WindowsRuntime;
+using Windows.Storage.Streams;
 
 namespace BiliRadar.Controls;
 
@@ -33,7 +32,7 @@ public sealed partial class VideoCard : UserControl
     // Dynamically built text panel elements
     private TextBlock _titleText = null!, _descText = null!, _creatorText = null!, _timeText = null!;
     private Button _avatarBtn = null!;
-    private Image _avatarImage = null!;
+    private ImageBrush _avatarBrush = null!;
     private MenuFlyout? _flyout;
     private MenuFlyoutItem? _relItem;
     private VideoUpdateRow? _item;
@@ -89,10 +88,12 @@ public sealed partial class VideoCard : UserControl
         Grid.SetRow(creatorRow, 2);
         textPanel.Children.Add(creatorRow);
 
-        _avatarImage = new Image { Stretch = Stretch.UniformToFill };
+        _avatarBrush = new ImageBrush { Stretch = Stretch.UniformToFill };
         var avatarContainer = new Grid { Width = 24, Height = 24, VerticalAlignment = VerticalAlignment.Center };
-        avatarContainer.Children.Add(new Ellipse { Width = 24, Height = 24, Fill = (Brush)app.Resources["CardBackgroundFillColorSecondaryBrush"] });
-        avatarContainer.Children.Add(new Border { Width = 24, Height = 24, CornerRadius = new CornerRadius(12), Child = _avatarImage });
+        // Layer 1: Placeholder circle visible until avatar image loads
+        avatarContainer.Children.Add(new Border { Width = 24, Height = 24, CornerRadius = new CornerRadius(12), Background = (Brush)app.Resources["CardBackgroundFillColorSecondaryBrush"] });
+        // Layer 2: Actual avatar image on top (same size, circular)
+        avatarContainer.Children.Add(new Border { Width = 24, Height = 24, CornerRadius = new CornerRadius(12), Background = _avatarBrush });
 
         _avatarBtn = new Button { Width = 24, Height = 24, MinWidth = 0, Padding = new Thickness(0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center, Content = avatarContainer, Style = (Style)app.Resources["SubtleButtonStyle"] };
         _avatarBtn.Click += (_, _) => { if (_item is not null) CreatorAvatarClicked?.Invoke(this, _item); };
@@ -139,7 +140,7 @@ public sealed partial class VideoCard : UserControl
         else { DurationBadge.Visibility = Visibility.Visible; DurationText.Text = item.DurationText; }
 
         if (!string.IsNullOrWhiteSpace(item.CoverUrl)) _ = LoadImg(CoverImage, item.CoverUrl);
-        if (!string.IsNullOrWhiteSpace(item.AvatarUrl)) _ = LoadImg(_avatarImage, item.AvatarUrl);
+        if (!string.IsNullOrWhiteSpace(item.AvatarUrl)) _ = LoadImgBrush(_avatarBrush, item.AvatarUrl);
 
         ApplyVLMode();
     }
