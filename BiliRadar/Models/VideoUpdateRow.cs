@@ -52,7 +52,7 @@ public sealed class VideoUpdateRow
 
     public string AvatarUrl { get; }
 
-    public string Tip { get; }
+    public string Tip { get; set; }
 
     public string DurationText { get; }
 

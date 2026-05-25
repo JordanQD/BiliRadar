@@ -102,6 +102,10 @@
                 <TextBlock
                     Style="{StaticResource SettingsSectionHeaderTextBlockStyle}"
                     Text="自定义 UP" />
+                <TextBlock
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Text="自定义 UP 的通知通过关注动态流检测，因此仅对你已关注的 UP 生效。开播通知不受此限制。"
+                    TextWrapping="Wrap" />
                 <controls:SettingsCard
                     Description="UP 主页链接或 UID"
                     Header="添加自定义 UP"

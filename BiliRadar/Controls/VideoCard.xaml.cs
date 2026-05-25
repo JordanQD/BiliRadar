@@ -32,7 +32,7 @@ public sealed partial class VideoCard : UserControl
     // Dynamically built text panel elements
     private TextBlock _titleText = null!, _descText = null!, _creatorText = null!, _timeText = null!;
     private Button _avatarBtn = null!;
-    private BiliAvatarImage _avatarImage = null!;
+    private PersonPicture _avatarPic = null!;
     private MenuFlyout? _flyout;
     private MenuFlyoutItem? _relItem;
     private VideoUpdateRow? _item;
@@ -88,14 +88,50 @@ public sealed partial class VideoCard : UserControl
         Grid.SetRow(creatorRow, 2);
         textPanel.Children.Add(creatorRow);
 
-        _avatarImage = new BiliAvatarImage { Width = 24, Height = 24, CornerRadius = new CornerRadius(12) };
-        var avatarContainer = new Grid { Width = 24, Height = 24, VerticalAlignment = VerticalAlignment.Center };
-        // Layer 1: Placeholder circle visible until avatar image loads
-        avatarContainer.Children.Add(new Border { Width = 24, Height = 24, CornerRadius = new CornerRadius(12), Background = (Brush)app.Resources["CardBackgroundFillColorSecondaryBrush"] });
-        // Layer 2: Actual avatar image on top (same size, circular via CornerRadius)
-        avatarContainer.Children.Add(_avatarImage);
+        _avatarPic = new PersonPicture { Width = 24, Height = 24 };
 
-        _avatarBtn = new Button { Width = 24, Height = 24, MinWidth = 0, Padding = new Thickness(0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center, Content = avatarContainer, Style = (Style)app.Resources["SubtleButtonStyle"] };
+        _avatarBtn = new Button { Width = 24, Height = 24, MinWidth = 0, Padding = new Thickness(0), BorderThickness = new Thickness(0), BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Transparent), Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center, Content = _avatarPic };
+        _avatarBtn.Template = XamlReader.Load("""
+            <ControlTemplate
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                TargetType="Button">
+                <Border x:Name="Root"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="12">
+                    <VisualStateManager.VisualStateGroups>
+                        <VisualStateGroup x:Name="CommonStates">
+                            <VisualState x:Name="Normal" />
+                            <VisualState x:Name="PointerOver">
+                                <VisualState.Setters>
+                                    <Setter Target="Root.Background" Value="{ThemeResource SubtleFillColorSecondaryBrush}" />
+                                </VisualState.Setters>
+                            </VisualState>
+                            <VisualState x:Name="Pressed">
+                                <VisualState.Setters>
+                                    <Setter Target="Root.Background" Value="{ThemeResource SubtleFillColorTertiaryBrush}" />
+                                </VisualState.Setters>
+                            </VisualState>
+                            <VisualState x:Name="Disabled">
+                                <VisualState.Setters>
+                                    <Setter Target="Root.Opacity" Value="0.5" />
+                                </VisualState.Setters>
+                            </VisualState>
+                        </VisualStateGroup>
+                    </VisualStateManager.VisualStateGroups>
+                    <ContentPresenter Padding="{TemplateBinding Padding}"
+                                      HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                      VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      ContentTransitions="{TemplateBinding ContentTransitions}" />
+                </Border>
+            </ControlTemplate>
+            """) as ControlTemplate;
         _avatarBtn.Click += (_, _) => { if (_item is not null) CreatorAvatarClicked?.Invoke(this, _item); };
         ToolTipService.SetToolTip(_avatarBtn, "打开 UP 主主页");
         creatorRow.Children.Add(_avatarBtn);
@@ -140,7 +176,7 @@ public sealed partial class VideoCard : UserControl
         else { DurationBadge.Visibility = Visibility.Visible; DurationText.Text = item.DurationText; }
 
         if (!string.IsNullOrWhiteSpace(item.CoverUrl)) _ = LoadImg(CoverImage, item.CoverUrl);
-        if (!string.IsNullOrWhiteSpace(item.AvatarUrl) && Uri.TryCreate(item.AvatarUrl, UriKind.Absolute, out var avatarUri)) _avatarImage.Source = avatarUri;
+        if (!string.IsNullOrWhiteSpace(item.AvatarUrl)) _ = LoadAvatar(_avatarPic, item.AvatarUrl);
 
         ApplyVLMode();
     }
@@ -214,6 +250,24 @@ public sealed partial class VideoCard : UserControl
                 return;
             }
             catch { if (i == MaxRetries) br.DispatcherQueue.TryEnqueue(() => { var bmp = new BitmapImage(u); ImgCache[u.AbsoluteUri] = bmp; br.ImageSource = bmp; }); else await Task.Delay(RetryDelay * i); }
+    }
+
+    private static async Task LoadAvatar(PersonPicture personPic, string url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var u)) return;
+        if (ImgCache.TryGetValue(u.AbsoluteUri, out var c)) { personPic.DispatcherQueue.TryEnqueue(() => personPic.ProfilePicture = c); return; }
+        for (int i = 1; i <= MaxRetries; i++)
+            try
+            {
+                using var r = new HttpRequestMessage(HttpMethod.Get, u);
+                r.Headers.TryAddWithoutValidation("User-Agent", BiliWebDataProvider.BrowserUserAgent);
+                r.Headers.TryAddWithoutValidation("Referer", "https://www.bilibili.com/");
+                using var res = await Http.SendAsync(r); res.EnsureSuccessStatusCode();
+                var b = await res.Content.ReadAsByteArrayAsync();
+                personPic.DispatcherQueue.TryEnqueue(async () => { try { using var s = new InMemoryRandomAccessStream(); await s.WriteAsync(b.AsBuffer()); s.Seek(0); var bmp = new BitmapImage(); await bmp.SetSourceAsync(s); ImgCache[u.AbsoluteUri] = bmp; personPic.ProfilePicture = bmp; } catch { var bmp = new BitmapImage(u); ImgCache[u.AbsoluteUri] = bmp; personPic.ProfilePicture = bmp; } });
+                return;
+            }
+            catch { if (i == MaxRetries) personPic.DispatcherQueue.TryEnqueue(() => { var bmp = new BitmapImage(u); ImgCache[u.AbsoluteUri] = bmp; personPic.ProfilePicture = bmp; }); else await Task.Delay(RetryDelay * i); }
     }
 
     private static IconElement MakeMenuIcon(string data) => (IconElement)XamlReader.Load($$"""<PathIcon xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Width="24" Height="24" Data="{{data}}" />""");

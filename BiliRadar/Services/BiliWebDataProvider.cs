@@ -619,8 +619,8 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
         var creatorMid = GetInt64(author, "mid");
         var creatorName = GetString(author, "name");
         var avatar = NormalizeUrl(GetString(author, "face"));
-        var tip = GetString(author, "pub_time");
         var publishedAt = TryGetPublishedAt(author, out var time) ? time : DateTimeOffset.Now;
+        var tip = FormatRelativeTime(publishedAt);
 
         var likeCount = 0;
         var commentCount = 0;

@@ -266,6 +266,14 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
                     Updates.Insert(newRows.Count, row);
                     newRows.Add(row);
                 }
+                else
+                {
+                    var existing = Updates.FirstOrDefault(r => string.Equals(r.Id, update.Id, StringComparison.OrdinalIgnoreCase));
+                    if (existing != null)
+                    {
+                        existing.Tip = update.Tip;
+                    }
+                }
             }
 
             if (VideoCardsPanel.Children.Count == 0)
@@ -278,6 +286,8 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
                 {
                     VideoCardsPanel.Children.Insert(0, CreateVideoCard(newRows[index]));
                 }
+
+                SyncCardTimeTexts();
             }
 
             _hasMoreUpdates = Updates.Count > 0;
@@ -397,43 +407,48 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     private async Task RefreshCustomNotificationDataAsync()
     {
         var subscriptions = AppSettings.CustomNotificationCreators;
-        var videoUpdates = new List<BiliVideoUpdate>();
-        foreach (var subscription in subscriptions.Where(item => item.VideoNotificationsEnabled))
+
+        // Use the real-time following feed (same as AllFollowing mode).
+        IReadOnlyList<BiliVideoUpdate> allUpdates = [];
+        try
         {
-            try
-            {
-                var updates = await _updateMonitorService.GetCreatorVideoUpdatesAsync(subscription.Mid);
-                foreach (var update in updates)
-                {
-                    videoUpdates.Add(update with
-                    {
-                        AvatarUrl = subscription.AvatarUrl,
-                        CreatorName = string.IsNullOrWhiteSpace(update.CreatorName) ? subscription.Name : update.CreatorName,
-                    });
-                }
-            }
-            catch
-            {
-            }
+            allUpdates = await _updateMonitorService.GetRecentVideoUpdatesForNotificationAsync();
         }
+        catch
+        {
+        }
+
+        // Time cutoff: last time the user manually opened/refreshed the Following page.
+        // Only videos published after this point are considered "new".
+        var cutoff = _updateMonitorService.LastCheckedAt;
+
+        var subscribedMids = subscriptions
+            .Where(item => item.VideoNotificationsEnabled)
+            .Select(item => item.Mid)
+            .ToHashSet();
+        var videoUpdates = allUpdates
+            .Where(u => u.PublishedAt > cutoff && subscribedMids.Contains(u.CreatorMid))
+            .ToList();
 
         await _notificationService.NotifyVideoUpdatesAsync(videoUpdates);
 
-        var liveCreators = new List<BiliLiveCreator>();
-        foreach (var subscription in subscriptions.Where(item => item.LiveNotificationsEnabled))
+        // Live: use the following live list (same API as AllFollowing mode), filter by custom MIDs.
+        IReadOnlyList<BiliLiveCreator> allLiveCreators = [];
+        try
         {
-            try
-            {
-                var liveCreator = await _updateMonitorService.GetCreatorLiveAsync(subscription.Mid);
-                if (liveCreator is not null)
-                {
-                    liveCreators.Add(liveCreator);
-                }
-            }
-            catch
-            {
-            }
+            allLiveCreators = await _updateMonitorService.GetFollowingLiveCreatorsAsync();
         }
+        catch
+        {
+        }
+
+        var subscribedLiveMids = subscriptions
+            .Where(item => item.LiveNotificationsEnabled)
+            .Select(item => item.Mid)
+            .ToHashSet();
+        var liveCreators = allLiveCreators
+            .Where(lc => subscribedLiveMids.Contains(lc.Mid))
+            .ToList();
 
         await _notificationService.NotifyLiveStartsAsync(liveCreators);
     }
@@ -1425,14 +1440,62 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Center,
             IsEnabled = item.CreatorMid > 0,
-            Style = (Style)Application.Current.Resources["SubtleButtonStyle"],
+            Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
+            BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
+            BorderThickness = new Thickness(0),
             Tag = item,
             Content = CreateAvatar(item),
         };
+        avatarButton.Template = CreateCircularButtonTemplate(12);
         ToolTipService.SetToolTip(avatarButton, "打开 UP 主主页");
         avatarButton.Click += CreatorAvatarButton_Click;
         avatarButton.ContextFlyout = CreateVideoCardMenuFlyout(item, relationActionMode);
         return avatarButton;
+    }
+
+    private static ControlTemplate CreateCircularButtonTemplate(double cornerRadius)
+    {
+        return (ControlTemplate)XamlReader.Load($$"""
+            <ControlTemplate
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                TargetType="Button">
+                <Border x:Name="Root"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="{{cornerRadius}}">
+                    <VisualStateManager.VisualStateGroups>
+                        <VisualStateGroup x:Name="CommonStates">
+                            <VisualState x:Name="Normal" />
+                            <VisualState x:Name="PointerOver">
+                                <VisualState.Setters>
+                                    <Setter Target="Root.Background" Value="{ThemeResource SubtleFillColorSecondaryBrush}" />
+                                </VisualState.Setters>
+                            </VisualState>
+                            <VisualState x:Name="Pressed">
+                                <VisualState.Setters>
+                                    <Setter Target="Root.Background" Value="{ThemeResource SubtleFillColorTertiaryBrush}" />
+                                </VisualState.Setters>
+                            </VisualState>
+                            <VisualState x:Name="Disabled">
+                                <VisualState.Setters>
+                                    <Setter Target="Root.Opacity" Value="0.5" />
+                                </VisualState.Setters>
+                            </VisualState>
+                        </VisualStateGroup>
+                    </VisualStateManager.VisualStateGroups>
+                    <ContentPresenter Padding="{TemplateBinding Padding}"
+                                      HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                      VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      ContentTransitions="{TemplateBinding ContentTransitions}" />
+                </Border>
+            </ControlTemplate>
+            """);
     }
 
     private MenuFlyout CreateVideoCardMenuFlyout(VideoUpdateRow item, CreatorRelationActionMode relationActionMode)
@@ -2482,6 +2545,31 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     {
         public int X;
         public int Y;
+    }
+
+    private void SyncCardTimeTexts()
+    {
+        var count = Math.Min(Updates.Count, VideoCardsPanel.Children.Count);
+        for (var i = 0; i < count; i++)
+        {
+            if (VideoCardsPanel.Children[i] is FrameworkElement card)
+            {
+                UpdateCardTimeText(card, Updates[i].Tip);
+            }
+        }
+    }
+
+    private static void UpdateCardTimeText(FrameworkElement card, string tip)
+    {
+        if (card is not Border { Child: Grid root }) return;
+        if (root.Children.FirstOrDefault() is not Grid textPanel) return;
+        if (textPanel.Children.Count < 3) return;
+        if (textPanel.Children[2] is not Grid creatorPanel) return;
+        if (creatorPanel.Children.Count < 3) return;
+        if (creatorPanel.Children[2] is TextBlock timeText)
+        {
+            timeText.Text = tip;
+        }
     }
 
 }

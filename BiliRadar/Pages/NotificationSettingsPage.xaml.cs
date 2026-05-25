@@ -470,8 +470,8 @@ public sealed partial class NotificationSettingsPage : Page
     {
         try
         {
-            var updates = await _updateMonitorService.GetCreatorVideoUpdatesAsync(subscription.Mid);
-            AppSettings.KnownVideoUpdateIds = updates
+            var allUpdates = await _updateMonitorService.GetCreatorVideoUpdatesAsync(subscription.Mid);
+            AppSettings.KnownVideoUpdateIds = allUpdates
                 .Select(item => item.Id)
                 .Concat(AppSettings.KnownVideoUpdateIds)
                 .Where(item => !string.IsNullOrWhiteSpace(item))
