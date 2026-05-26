@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using BiliRadar.Helpers;
 using BiliRadar.Pages;
@@ -18,7 +17,7 @@ public sealed partial class SettingsWindow : Window
 {
     private const int WindowWidth = 1360;
     private const int WindowHeight = 900;
-    private const double TallTitleBarHeight = 48;
+    private const double StandardTitleBarHeight = 32;
 
     private readonly AppWindow _appWindow;
 
@@ -29,9 +28,9 @@ public sealed partial class SettingsWindow : Window
         var hwnd = WindowNative.GetWindowHandle(this);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(hwnd));
         _appWindow.Title = LocalizationHelper.GetString("SettingsWindow.Title", "BiliRadar 设置");
+        WindowIconHelper.ApplyTo(_appWindow, hwnd);
         ResizeForCurrentDpi(hwnd);
         ConfigureTitleBar(hwnd);
-        titleBar.Loaded += TitleBar_Loaded;
 
         ApplySystemThemeToCaptionButtons();
         RootGrid.ActualThemeChanged += (_, _) => ApplySystemThemeToCaptionButtons();
@@ -99,49 +98,16 @@ public sealed partial class SettingsWindow : Window
 
         var appTitleBar = _appWindow.TitleBar;
         appTitleBar.ExtendsContentIntoTitleBar = true;
-        appTitleBar.PreferredHeightOption = TitleBarHeightOption.Tall;
+        appTitleBar.PreferredHeightOption = TitleBarHeightOption.Standard;
 
         var scale = GetDpiForWindow(hwnd) / 96.0;
         var titleBarHeight = appTitleBar.Height > 0
             ? appTitleBar.Height / scale
-            : TallTitleBarHeight;
+            : StandardTitleBarHeight;
 
         titleBar.Height = titleBarHeight;
         titleBar.MinHeight = titleBarHeight;
         this.SetTitleBar(titleBar);
-    }
-
-    private void TitleBar_Loaded(object sender, RoutedEventArgs e)
-    {
-        titleBar.Loaded -= TitleBar_Loaded;
-        RemovePaneToggleButtonInset();
-    }
-
-    private void RemovePaneToggleButtonInset()
-    {
-        foreach (var element in EnumerateDescendants(titleBar))
-        {
-            if (element is Button { Name: "PART_PaneToggleButton" } button)
-            {
-                button.Margin = new Thickness(0);
-                break;
-            }
-        }
-    }
-
-    private static IEnumerable<DependencyObject> EnumerateDescendants(DependencyObject parent)
-    {
-        var childCount = VisualTreeHelper.GetChildrenCount(parent);
-        for (var i = 0; i < childCount; i++)
-        {
-            var child = VisualTreeHelper.GetChild(parent, i);
-            yield return child;
-
-            foreach (var descendant in EnumerateDescendants(child))
-            {
-                yield return descendant;
-            }
-        }
     }
 
     private void ApplySystemThemeToCaptionButtons()

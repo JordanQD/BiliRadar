@@ -193,4 +193,6 @@
   <data name="MainWindow.Title" xml:space="preserve"><value>BiliRadar</value></data>
   <data name="SettingsWindow.Title" xml:space="preserve"><value>BiliRadar 设置</value></data>
   <data name="WebSignInWindow.Title" xml:space="preserve"><value>BiliRadar 登录</value></data>
+  <data name="SignInNotificationTitle" xml:space="preserve"><value>欢迎使用 BiliRadar</value></data>
+  <data name="SignInNotificationBody" xml:space="preserve"><value>点击登录 Bilibili 账号以获取关注动态</value></data>
 </root>

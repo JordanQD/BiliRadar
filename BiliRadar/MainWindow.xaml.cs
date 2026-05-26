@@ -89,6 +89,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         _hwnd = WindowNative.GetWindowHandle(this);
         _appWindow = AppWindow.GetFromWindowId(Microsoft.UI.Win32Interop.GetWindowIdFromWindow(_hwnd));
         _appWindow.Title = LocalizationHelper.GetString("MainWindow.Title", "BiliRadar");
+        WindowIconHelper.ApplyTo(_appWindow, _hwnd);
         _appWindow.Resize(new SizeInt32(WindowWidthDip, WindowMinHeightDip));
         _appWindow.Closing += AppWindow_Closing;
         Activated += MainWindow_Activated;

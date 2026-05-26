@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using BiliRadar.Helpers;
 using BiliRadar.Services;
@@ -15,6 +16,8 @@ namespace BiliRadar;
 
 public sealed partial class WebSignInWindow : Window
 {
+    private const double StandardTitleBarHeight = 32;
+
     private readonly CookieStore _cookieStore;
     private readonly BiliKernelAuthService _authService;
     private readonly AppWindow _appWindow;
@@ -29,8 +32,9 @@ public sealed partial class WebSignInWindow : Window
         var hwnd = WindowNative.GetWindowHandle(this);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(hwnd));
         _appWindow.Title = LocalizationHelper.GetString("WebSignInWindow.Title", "BiliRadar 登录");
+        WindowIconHelper.ApplyTo(_appWindow, hwnd);
         _appWindow.Resize(new SizeInt32(1200, 720));
-        ConfigureTitleBar();
+        ConfigureTitleBar(hwnd);
 
         mainView.Loaded += MainView_Loaded;
         Closed += WebSignInWindow_Closed;
@@ -44,6 +48,7 @@ public sealed partial class WebSignInWindow : Window
         try
         {
             await mainView.EnsureCoreWebView2Async();
+            mainView.CoreWebView2.CookieManager.DeleteAllCookies();
             mainView.CoreWebView2.Navigate("https://passport.bilibili.com/login");
         }
         catch (Exception ex)
@@ -121,13 +126,22 @@ public sealed partial class WebSignInWindow : Window
         }
     }
 
-    private void ConfigureTitleBar()
+    private void ConfigureTitleBar(IntPtr hwnd)
     {
+        this.ExtendsContentIntoTitleBar = true;
+
         var appTitleBar = _appWindow.TitleBar;
         appTitleBar.ExtendsContentIntoTitleBar = true;
         appTitleBar.PreferredHeightOption = TitleBarHeightOption.Standard;
 
-        titleBar.Height = appTitleBar.Height;
+        var scale = GetDpiForWindow(hwnd) / 96.0;
+        var titleBarHeight = appTitleBar.Height > 0
+            ? appTitleBar.Height / scale
+            : StandardTitleBarHeight;
+
+        titleBar.Height = titleBarHeight;
+        titleBar.MinHeight = titleBarHeight;
+        this.SetTitleBar(titleBar);
     }
 
     private void ShowStatus(string message, InfoBarSeverity severity)
@@ -142,4 +156,7 @@ public sealed partial class WebSignInWindow : Window
         Closed -= WebSignInWindow_Closed;
         _authService.Dispose();
     }
+
+    [DllImport("user32.dll")]
+    private static extern uint GetDpiForWindow(IntPtr hwnd);
 }
