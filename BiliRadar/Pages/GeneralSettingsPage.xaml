@@ -17,13 +17,32 @@
 
     <ScrollView
         x:Name="SettingsScrollView"
-        Padding="36,32,36,0"
+        Padding="36,32,36,16"
         VerticalScrollBarVisibility="Auto"
         VerticalScrollMode="Auto">
-        <Border>
-            <StackPanel
-                MaxWidth="1064"
-                Spacing="{StaticResource SettingsCardSpacing}">
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup>
+                <VisualState x:Name="Wide">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="640" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="SettingsScrollView.Padding" Value="36,32,36,16" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Narrow">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="0" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="SettingsScrollView.Padding" Value="12,16,12,16" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+        <StackPanel
+            MaxWidth="1064"
+            Spacing="{StaticResource SettingsCardSpacing}">
             <StackPanel.ChildrenTransitions>
                 <EntranceThemeTransition FromVerticalOffset="36" />
                 <RepositionThemeTransition IsStaggeringEnabled="False" />
@@ -66,7 +85,9 @@
                 </controls:SettingsCard.HeaderIcon>
                 <ComboBox
                     x:Name="RunningLaunchActionBox"
-                    Width="220"
+                    MinWidth="160"
+                    MaxWidth="300"
+                    HorizontalAlignment="Stretch"
                     AutomationProperties.AutomationId="RunningLaunchActionBox"
                     SelectionChanged="RunningLaunchActionBox_SelectionChanged">
                     <ComboBoxItem Content="打开设置" />
@@ -81,7 +102,9 @@
                 </controls:SettingsCard.HeaderIcon>
                 <TextBox
                     x:Name="CustomLaunchWebPageUrlBox"
-                    Width="360"
+                    MinWidth="200"
+                    MaxWidth="400"
+                    HorizontalAlignment="Stretch"
                     AutomationProperties.AutomationId="CustomLaunchWebPageUrlBox"
                     LostFocus="CustomLaunchWebPageUrlBox_LostFocus"
                     PlaceholderText="https://www.bilibili.com/"
@@ -95,7 +118,9 @@
                 </controls:SettingsCard.HeaderIcon>
                 <ComboBox
                     x:Name="DefaultOpenPageBox"
-                    Width="220"
+                    MinWidth="160"
+                    MaxWidth="300"
+                    HorizontalAlignment="Stretch"
                     AutomationProperties.AutomationId="DefaultOpenPageBox"
                     SelectionChanged="DefaultOpenPageBox_SelectionChanged">
                     <ComboBoxItem Content="关注" />
@@ -177,7 +202,9 @@
                 </controls:SettingsCard.HeaderIcon>
                 <ComboBox
                     x:Name="LiveSectionDisplayModeBox"
-                    Width="200"
+                    MinWidth="160"
+                    MaxWidth="300"
+                    HorizontalAlignment="Stretch"
                     AutomationProperties.AutomationId="LiveSectionDisplayModeBox"
                     SelectionChanged="LiveSectionDisplayModeBox_SelectionChanged">
                     <ComboBoxItem Content="默认展开显示" />
@@ -219,6 +246,5 @@
                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                 TextWrapping="Wrap" />
         </StackPanel>
-        </Border>
     </ScrollView>
 </Page>

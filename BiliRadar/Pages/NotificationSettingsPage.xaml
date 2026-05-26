@@ -17,15 +17,33 @@
 
     <ScrollView
         x:Name="SettingsScrollView"
-        Padding="36,32,36,0"
+        Padding="36,32,36,16"
         VerticalScrollBarVisibility="Auto"
         VerticalScrollMode="Auto">
-        <Border>
-            <StackPanel
-                MaxWidth="1064"
-                Spacing="{StaticResource SettingsCardSpacing}">
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup>
+                <VisualState x:Name="Wide">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="640" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="SettingsScrollView.Padding" Value="36,32,36,16" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Narrow">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="0" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="SettingsScrollView.Padding" Value="12,16,12,16" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+        <StackPanel
+            MaxWidth="1064"
+            Spacing="{StaticResource SettingsCardSpacing}">
             <StackPanel.ChildrenTransitions>
-                <EntranceThemeTransition FromVerticalOffset="36" />
                 <RepositionThemeTransition IsStaggeringEnabled="False" />
             </StackPanel.ChildrenTransitions>
 
@@ -45,7 +63,9 @@
                 </controls:SettingsCard.HeaderIcon>
                 <NumberBox
                     x:Name="NotificationCheckIntervalBox"
-                    Width="160"
+                    MinWidth="120"
+                    MaxWidth="200"
+                    HorizontalAlignment="Stretch"
                     AutomationProperties.AutomationId="NotificationCheckIntervalBox"
                     Minimum="1"
                     SpinButtonPlacementMode="Inline"
@@ -63,7 +83,9 @@
                 </controls:SettingsCard.HeaderIcon>
                 <ComboBox
                     x:Name="NotificationTargetModeBox"
-                    Width="220"
+                    MinWidth="160"
+                    MaxWidth="300"
+                    HorizontalAlignment="Stretch"
                     AutomationProperties.AutomationId="NotificationTargetModeBox"
                     SelectionChanged="NotificationTargetModeBox_SelectionChanged">
                     <ComboBoxItem Content="所有 UP 更新" />
@@ -134,6 +156,8 @@
                     <ListView
                         x:Name="CustomNotificationCreatorsList"
                         HorizontalContentAlignment="Stretch"
+                        ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                        ScrollViewer.VerticalScrollMode="Disabled"
                         SelectionMode="None">
                         <ListView.ItemContainerStyle>
                             <Style TargetType="ListViewItem">
@@ -148,7 +172,34 @@
                                     HorizontalAlignment="Stretch"
                                     MinHeight="64"
                                     Padding="24,10"
-                                    ColumnSpacing="16">
+                                    ColumnSpacing="16"
+                                    RowSpacing="8">
+                                    <VisualStateManager.VisualStateGroups>
+                                        <VisualStateGroup>
+                                            <VisualState x:Name="WideItem">
+                                                <VisualState.StateTriggers>
+                                                    <AdaptiveTrigger MinWindowWidth="640" />
+                                                </VisualState.StateTriggers>
+                                                <VisualState.Setters>
+                                                    <Setter Target="ControlsRow.(Grid.Column)" Value="1" />
+                                                    <Setter Target="ControlsRow.(Grid.Row)" Value="0" />
+                                                </VisualState.Setters>
+                                            </VisualState>
+                                            <VisualState x:Name="NarrowItem">
+                                                <VisualState.StateTriggers>
+                                                    <AdaptiveTrigger MinWindowWidth="0" />
+                                                </VisualState.StateTriggers>
+                                                <VisualState.Setters>
+                                                    <Setter Target="ControlsRow.(Grid.Column)" Value="0" />
+                                                    <Setter Target="ControlsRow.(Grid.Row)" Value="1" />
+                                                </VisualState.Setters>
+                                            </VisualState>
+                                        </VisualStateGroup>
+                                    </VisualStateManager.VisualStateGroups>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
@@ -169,6 +220,7 @@
                                             TextTrimming="CharacterEllipsis" />
                                     </StackPanel>
                                     <StackPanel
+                                        x:Name="ControlsRow"
                                         Grid.Column="1"
                                         VerticalAlignment="Center"
                                         Orientation="Horizontal"
@@ -225,6 +277,5 @@
                     TextWrapping="Wrap" />
             </StackPanel>
         </StackPanel>
-        </Border>
     </ScrollView>
 </Page>

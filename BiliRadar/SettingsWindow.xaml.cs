@@ -43,6 +43,17 @@ public sealed partial class SettingsWindow : Window
 
         GeneralNavItem.IsSelected = true;
         navFrame.Navigate(typeof(GeneralSettingsPage));
+        RootGrid.SizeChanged += OnRootGridSizeChanged;
+    }
+
+    private void OnRootGridSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        navView.PaneDisplayMode = e.NewSize.Width switch
+        {
+            < 640 => NavigationViewPaneDisplayMode.LeftMinimal,
+            < 1008 => NavigationViewPaneDisplayMode.LeftCompact,
+            _ => NavigationViewPaneDisplayMode.Left,
+        };
     }
 
     public void ShowWindow()
@@ -68,6 +79,11 @@ public sealed partial class SettingsWindow : Window
         if (navFrame.CurrentSourcePageType != pageType)
         {
             navFrame.Navigate(pageType);
+        }
+
+        if (navView.PaneDisplayMode == NavigationViewPaneDisplayMode.LeftMinimal)
+        {
+            navView.IsPaneOpen = false;
         }
     }
 

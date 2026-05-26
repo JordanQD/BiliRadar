@@ -15,18 +15,20 @@ namespace BiliRadar.Pages;
 
 public sealed partial class NotificationSettingsPage : Page
 {
-    private readonly BiliWebDataProvider _dataProvider = new(new CookieStore());
-    private readonly UpdateMonitorService _updateMonitorService;
+    private BiliWebDataProvider? _dataProvider;
+    private UpdateMonitorService? _updateMonitorService;
     private bool _isLoadingSettings;
     private Popup? _notificationPopup;
     private InfoBar? _notificationInfoBar;
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _notificationInfoTimer;
 
+    private BiliWebDataProvider DataProvider => _dataProvider ??= new(new CookieStore());
+    private UpdateMonitorService UpdateMonitorService => _updateMonitorService ??= new(DataProvider);
+
     public ObservableCollection<NotificationCreatorSubscription> CustomNotificationCreators { get; } = [];
 
     public NotificationSettingsPage()
     {
-        _updateMonitorService = new UpdateMonitorService(_dataProvider);
         InitializeComponent();
         CustomNotificationCreatorsList.ItemsSource = CustomNotificationCreators;
         Loaded += NotificationSettingsPage_Loaded;
@@ -53,7 +55,7 @@ public sealed partial class NotificationSettingsPage : Page
 
     private void NotificationSettingsPage_Unloaded(object sender, RoutedEventArgs e)
     {
-        _dataProvider.Dispose();
+        _dataProvider?.Dispose();
     }
 
     private void VideoNotificationSwitch_Toggled(object sender, RoutedEventArgs e)
@@ -408,7 +410,7 @@ public sealed partial class NotificationSettingsPage : Page
     {
         try
         {
-            return await _updateMonitorService.GetCreatorAsync(mid)
+            return await UpdateMonitorService.GetCreatorAsync(mid)
                 ?? new BiliCreator(mid, $"UID {mid}", string.Empty);
         }
         catch
@@ -470,7 +472,7 @@ public sealed partial class NotificationSettingsPage : Page
     {
         try
         {
-            var allUpdates = await _updateMonitorService.GetCreatorVideoUpdatesAsync(subscription.Mid);
+            var allUpdates = await UpdateMonitorService.GetCreatorVideoUpdatesAsync(subscription.Mid);
             AppSettings.KnownVideoUpdateIds = allUpdates
                 .Select(item => item.Id)
                 .Concat(AppSettings.KnownVideoUpdateIds)
@@ -485,7 +487,7 @@ public sealed partial class NotificationSettingsPage : Page
 
         try
         {
-            var liveCreator = await _updateMonitorService.GetCreatorLiveAsync(subscription.Mid);
+            var liveCreator = await UpdateMonitorService.GetCreatorLiveAsync(subscription.Mid);
             if (liveCreator is not null)
             {
                 AppSettings.KnownLiveRoomIds = new[] { liveCreator.RoomId.ToString() }

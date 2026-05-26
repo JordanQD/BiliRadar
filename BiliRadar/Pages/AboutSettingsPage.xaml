@@ -17,13 +17,32 @@
 
     <ScrollView
         x:Name="SettingsScrollView"
-        Padding="36,32,36,0"
+        Padding="36,32,36,16"
         VerticalScrollBarVisibility="Auto"
         VerticalScrollMode="Auto">
-        <Border>
-            <StackPanel
-                MaxWidth="1064"
-                Spacing="{StaticResource SettingsCardSpacing}">
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup>
+                <VisualState x:Name="Wide">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="640" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="SettingsScrollView.Padding" Value="36,32,36,16" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Narrow">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="0" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="SettingsScrollView.Padding" Value="12,16,12,16" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+        <StackPanel
+            MaxWidth="1064"
+            Spacing="{StaticResource SettingsCardSpacing}">
             <StackPanel.ChildrenTransitions>
                 <RepositionThemeTransition />
             </StackPanel.ChildrenTransitions>
@@ -111,6 +130,5 @@
                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                 TextWrapping="Wrap" />
         </StackPanel>
-        </Border>
     </ScrollView>
 </Page>
