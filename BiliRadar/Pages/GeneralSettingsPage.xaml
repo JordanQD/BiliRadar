@@ -5,16 +5,6 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls">
 
-    <Page.Resources>
-        <x:Double x:Key="SettingsCardSpacing">4</x:Double>
-        <Style
-            x:Key="SettingsSectionHeaderTextBlockStyle"
-            BasedOn="{StaticResource BodyStrongTextBlockStyle}"
-            TargetType="TextBlock">
-            <Setter Property="Margin" Value="1,28,0,6" />
-        </Style>
-    </Page.Resources>
-
     <ScrollView
         x:Name="SettingsScrollView"
         Padding="36,32,36,16"
@@ -65,6 +55,7 @@
                 <ToggleSwitch
                     x:Name="AutoStartSwitch"
                     AutomationProperties.AutomationId="AutoStartSwitch"
+                    AutomationProperties.Name="开机后自动运行"
                     Toggled="AutoStartSwitch_Toggled" />
             </controls:SettingsCard>
             <InfoBar
@@ -89,6 +80,7 @@
                     MaxWidth="300"
                     HorizontalAlignment="Stretch"
                     AutomationProperties.AutomationId="RunningLaunchActionBox"
+                    AutomationProperties.Name="重复打开应用时"
                     SelectionChanged="RunningLaunchActionBox_SelectionChanged">
                     <ComboBoxItem Content="打开设置" />
                     <ComboBoxItem Content="打开自定义网页" />
@@ -106,6 +98,7 @@
                     MaxWidth="400"
                     HorizontalAlignment="Stretch"
                     AutomationProperties.AutomationId="CustomLaunchWebPageUrlBox"
+                    AutomationProperties.Name="自定义网页"
                     LostFocus="CustomLaunchWebPageUrlBox_LostFocus"
                     PlaceholderText="https://www.bilibili.com/"
                     TextChanged="CustomLaunchWebPageUrlBox_TextChanged" />
@@ -122,6 +115,7 @@
                     MaxWidth="300"
                     HorizontalAlignment="Stretch"
                     AutomationProperties.AutomationId="DefaultOpenPageBox"
+                    AutomationProperties.Name="默认打开页面"
                     SelectionChanged="DefaultOpenPageBox_SelectionChanged">
                     <ComboBoxItem Content="关注" />
                     <ComboBoxItem Content="历史" />
@@ -206,6 +200,7 @@
                     MaxWidth="300"
                     HorizontalAlignment="Stretch"
                     AutomationProperties.AutomationId="LiveSectionDisplayModeBox"
+                    AutomationProperties.Name="正在直播"
                     SelectionChanged="LiveSectionDisplayModeBox_SelectionChanged">
                     <ComboBoxItem Content="默认展开显示" />
                     <ComboBoxItem Content="默认折叠显示" />

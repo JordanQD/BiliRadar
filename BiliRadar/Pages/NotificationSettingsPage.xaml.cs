@@ -6,9 +6,10 @@ using System.Threading.Tasks;
 using BiliRadar.Models;
 using BiliRadar.Services;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace BiliRadar.Pages;
@@ -18,9 +19,6 @@ public sealed partial class NotificationSettingsPage : Page
     private BiliWebDataProvider? _dataProvider;
     private UpdateMonitorService? _updateMonitorService;
     private bool _isLoadingSettings;
-    private Popup? _notificationPopup;
-    private InfoBar? _notificationInfoBar;
-    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _notificationInfoTimer;
 
     private BiliWebDataProvider DataProvider => _dataProvider ??= new(new CookieStore());
     private UpdateMonitorService UpdateMonitorService => _updateMonitorService ??= new(DataProvider);
@@ -103,52 +101,45 @@ public sealed partial class NotificationSettingsPage : Page
 
     private async void AddCreatorButton_Click(object sender, RoutedEventArgs e)
     {
-        var dialogContentWidth = Math.Clamp((XamlRoot?.Size.Width ?? 0) * 0.45, 360, 480);
-        var linkBox = new TextBox
+        const double dialogContentMaxWidth = 480;
+        const double dialogVerticalSpacing = 12;
+        var availableDialogWidth = Math.Max(280, (XamlRoot?.Size.Width ?? dialogContentMaxWidth) - 96);
+        var dialogContentMinWidth = Math.Min(360, availableDialogWidth);
+
+        // --- link input row ---
+        var linkBox = new AutoSuggestBox
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             MinWidth = 0,
             PlaceholderText = "https://space.bilibili.com/123456 或 UID",
+            QueryIcon = new SymbolIcon(Symbol.Find),
         };
-        var resolveButton = new Button
-        {
-            Width = 44,
-            Height = 40,
-            Padding = new Thickness(0),
-            Content = new SymbolIcon(Symbol.Find),
-        };
+        AutomationProperties.SetName(linkBox, "UP 主页链接或 UID");
+
+        // --- creator info (always visible, placeholder initially) ---
         var avatarPicture = new PersonPicture
         {
-            Width = 56,
-            Height = 56,
+            Width = 40,
+            Height = 40,
             Initials = "UP",
         };
         var creatorNameText = new TextBlock
         {
-            Text = "未读取",
+            Text = "输入链接或 UID",
             Style = (Style)Application.Current.Resources["BodyStrongTextBlockStyle"],
+            TextTrimming = TextTrimming.CharacterEllipsis,
         };
         var creatorDetailText = new TextBlock
         {
-            Text = "输入链接或 UID 后读取 UP 信息。",
+            Text = "点击查询按钮读取 UP 信息",
             Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
             TextWrapping = TextWrapping.Wrap,
         };
-        var videoSwitch = new ToggleSwitch
-        {
-            IsOn = true,
-        };
-        var liveSwitch = new ToggleSwitch
-        {
-            IsOn = true,
-        };
-
-        BiliCreator? resolvedCreator = null;
 
         var creatorInfoGrid = new Grid
         {
             ColumnSpacing = 12,
-            Visibility = Visibility.Collapsed,
+            VerticalAlignment = VerticalAlignment.Center,
         };
         creatorInfoGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         creatorInfoGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -163,41 +154,84 @@ public sealed partial class NotificationSettingsPage : Page
         Grid.SetColumn(creatorTextPanel, 1);
         creatorInfoGrid.Children.Add(creatorTextPanel);
 
+        // --- error InfoBar (overlays creator info, animated) ---
+        var dialogInfoBar = new InfoBar
+        {
+            IsClosable = false,
+            IsOpen = false,
+            Opacity = 0,
+        };
+
+        var fadeInAnimation = new DoubleAnimation
+        {
+            From = 0,
+            To = 1,
+            Duration = TimeSpan.FromMilliseconds(200),
+        };
+        var fadeOutAnimation = new DoubleAnimation
+        {
+            From = 1,
+            To = 0,
+            Duration = TimeSpan.FromMilliseconds(300),
+        };
+
+        var fadeInStoryboard = new Storyboard();
+        fadeInStoryboard.Children.Add(fadeInAnimation);
+        Storyboard.SetTarget(fadeInAnimation, dialogInfoBar);
+        Storyboard.SetTargetProperty(fadeInAnimation, "Opacity");
+
+        var fadeOutStoryboard = new Storyboard();
+        fadeOutStoryboard.Children.Add(fadeOutAnimation);
+        Storyboard.SetTarget(fadeOutAnimation, dialogInfoBar);
+        Storyboard.SetTargetProperty(fadeOutAnimation, "Opacity");
+
+        var dialogInfoTimer = DispatcherQueue.CreateTimer();
+        dialogInfoTimer.Interval = TimeSpan.FromSeconds(3);
+        dialogInfoTimer.Tick += (_, _) =>
+        {
+            dialogInfoTimer.Stop();
+            fadeOutStoryboard.Begin();
+        };
+        fadeOutStoryboard.Completed += (_, _) =>
+        {
+            dialogInfoBar.IsOpen = false;
+        };
+
+        // overlay: InfoBar sits on top of creator info, same height
+        var infoOverlayGrid = new Grid
+        {
+            MinHeight = 52,
+        };
+        infoOverlayGrid.Children.Add(creatorInfoGrid);
+        infoOverlayGrid.Children.Add(dialogInfoBar);
+
+        // --- notification toggles ---
+        var videoSwitch = new ToggleSwitch { IsOn = true };
+        var liveSwitch = new ToggleSwitch { IsOn = true };
         var notificationOptions = new StackPanel
         {
-            Width = dialogContentWidth,
             HorizontalAlignment = HorizontalAlignment.Stretch,
-            Spacing = 8,
+            Spacing = dialogVerticalSpacing,
         };
-        notificationOptions.Children.Add(CreateDialogSwitchRow("视频更新通知", videoSwitch, dialogContentWidth));
-        notificationOptions.Children.Add(CreateDialogSwitchRow("开播通知", liveSwitch, dialogContentWidth));
+        notificationOptions.Children.Add(CreateDialogSwitchRow("视频更新通知", videoSwitch));
+        notificationOptions.Children.Add(CreateDialogSwitchRow("开播通知", liveSwitch));
 
-        var linkGrid = new Grid
-        {
-            Width = dialogContentWidth,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            ColumnSpacing = 8,
-        };
-        linkGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        linkGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        linkGrid.Children.Add(linkBox);
-        Grid.SetColumn(resolveButton, 1);
-        linkGrid.Children.Add(resolveButton);
-
+        // --- content panel ---
         var contentPanel = new StackPanel
         {
-            Width = dialogContentWidth,
+            MinWidth = dialogContentMinWidth,
+            MaxWidth = dialogContentMaxWidth,
             HorizontalAlignment = HorizontalAlignment.Stretch,
-            Spacing = 14,
+            Spacing = dialogVerticalSpacing,
         };
-        contentPanel.Children.Add(linkGrid);
-        contentPanel.Children.Add(creatorInfoGrid);
+        contentPanel.Children.Add(linkBox);
+        contentPanel.Children.Add(infoOverlayGrid);
         contentPanel.Children.Add(notificationOptions);
 
         var dialog = new ContentDialog
         {
             XamlRoot = XamlRoot,
-            Title = "添加UP主",
+            Title = "添加 UP 主",
             Content = contentPanel,
             PrimaryButtonText = "保存",
             CloseButtonText = "取消",
@@ -205,63 +239,92 @@ public sealed partial class NotificationSettingsPage : Page
             IsPrimaryButtonEnabled = false,
         };
 
-        linkBox.TextChanged += (_, _) =>
+        BiliCreator? resolvedCreator = null;
+
+        // --- reset to placeholder ---
+        void ResetToPlaceholder()
         {
             resolvedCreator = null;
             dialog.IsPrimaryButtonEnabled = false;
-            creatorNameText.Text = "未读取";
-            creatorDetailText.Text = "输入链接或 UID 后读取 UP 信息。";
-            creatorInfoGrid.Visibility = Visibility.Collapsed;
             avatarPicture.ProfilePicture = null;
             avatarPicture.Initials = "UP";
-        };
-
-        void ShowDialogMessage(InfoBarSeverity severity, string title, string message)
-        {
-            ShowNotificationInfoBar(severity, title, message);
+            creatorNameText.Text = "输入链接或 UID";
+            creatorDetailText.Text = "点击查询按钮读取 UP 信息";
+            DismissInfoBar();
         }
 
+        // --- show error overlay ---
+        void ShowError(InfoBarSeverity severity, string title, string message)
+        {
+            dialogInfoBar.Severity = severity;
+            dialogInfoBar.Title = title;
+            dialogInfoBar.Message = message;
+            dialogInfoBar.IsOpen = true;
+            fadeInStoryboard.Begin();
+            dialogInfoTimer.Stop();
+            dialogInfoTimer.Start();
+        }
+
+        // --- dismiss info bar immediately ---
+        void DismissInfoBar()
+        {
+            dialogInfoTimer.Stop();
+            if (dialogInfoBar.IsOpen)
+            {
+                dialogInfoBar.IsOpen = false;
+                dialogInfoBar.Opacity = 0;
+            }
+        }
+
+        // --- resolve creator ---
         async Task ResolveCreatorForDialogAsync()
         {
             var mid = TryParseCreatorMid(linkBox.Text);
             if (mid <= 0)
             {
-                ShowDialogMessage(InfoBarSeverity.Warning, "输入无效", "请输入有效的 UP 主页链接或 UID。");
+                ShowError(InfoBarSeverity.Warning, "输入无效", "请输入有效的 UP 主页链接或 UID。");
                 return;
             }
 
             if (CustomNotificationCreators.Any(item => item.Mid == mid))
             {
-                ShowDialogMessage(InfoBarSeverity.Warning, "已存在", "这个 UP 已经在通知列表里。");
+                ShowError(InfoBarSeverity.Warning, "已存在", "这个 UP 已经在通知列表里。");
                 return;
             }
 
-            resolveButton.IsEnabled = false;
-            ShowDialogMessage(InfoBarSeverity.Informational, "正在读取", "正在读取 UP 信息...");
+            linkBox.IsEnabled = false;
+            creatorDetailText.Text = "正在读取 UP 信息...";
+            DismissInfoBar();
             try
             {
                 resolvedCreator = await TryResolveCreatorAsync(mid);
-                creatorNameText.Text = resolvedCreator.Name;
-                creatorDetailText.Text = $"UID {resolvedCreator.Mid}";
-                creatorInfoGrid.Visibility = Visibility.Visible;
                 avatarPicture.Initials = string.IsNullOrWhiteSpace(resolvedCreator.Name) ? "UP" : resolvedCreator.Name[..1];
                 avatarPicture.ProfilePicture = string.IsNullOrWhiteSpace(resolvedCreator.AvatarUrl)
                     ? null
                     : new BitmapImage(new Uri(resolvedCreator.AvatarUrl));
+                creatorNameText.Text = resolvedCreator.Name;
+                creatorDetailText.Text = $"UID {resolvedCreator.Mid}";
                 dialog.IsPrimaryButtonEnabled = true;
-                ShowDialogMessage(InfoBarSeverity.Success, "读取完成", "已读取 UP 信息。");
             }
             catch (Exception ex)
             {
-                ShowDialogMessage(InfoBarSeverity.Error, "读取失败", ex.Message);
+                ShowError(InfoBarSeverity.Error, "读取失败", ex.Message);
             }
             finally
             {
-                resolveButton.IsEnabled = true;
+                linkBox.IsEnabled = true;
             }
         }
 
-        resolveButton.Click += async (_, _) => await ResolveCreatorForDialogAsync();
+        linkBox.TextChanged += (_, args) =>
+        {
+            if (args.Reason == AutoSuggestionBoxTextChangeReason.UserInput)
+            {
+                ResetToPlaceholder();
+            }
+        };
+        linkBox.QuerySubmitted += async (_, _) => await ResolveCreatorForDialogAsync();
+
         dialog.PrimaryButtonClick += async (_, args) =>
         {
             args.Cancel = true;
@@ -277,7 +340,7 @@ public sealed partial class NotificationSettingsPage : Page
 
             if (CustomNotificationCreators.Any(item => item.Mid == resolvedCreator.Mid))
             {
-                ShowDialogMessage(InfoBarSeverity.Warning, "已存在", "这个 UP 已经在通知列表里。");
+                ShowError(InfoBarSeverity.Warning, "已存在", "这个 UP 已经在通知列表里。");
                 return;
             }
 
@@ -300,18 +363,17 @@ public sealed partial class NotificationSettingsPage : Page
         await dialog.ShowAsync();
     }
 
-    private static FrameworkElement CreateDialogSwitchRow(string label, ToggleSwitch toggleSwitch, double rowWidth)
+    private static FrameworkElement CreateDialogSwitchRow(string label, ToggleSwitch toggleSwitch)
     {
-        toggleSwitch.OnContent = string.Empty;
-        toggleSwitch.OffContent = string.Empty;
-        toggleSwitch.Width = 64;
+        toggleSwitch.OnContent = null;
+        toggleSwitch.OffContent = null;
+        toggleSwitch.Width = 48;
         toggleSwitch.MinWidth = 0;
         toggleSwitch.HorizontalAlignment = HorizontalAlignment.Right;
-        toggleSwitch.RenderTransform = new TranslateTransform { X = 28 };
+        AutomationProperties.SetName(toggleSwitch, label);
 
         var row = new Grid
         {
-            Width = rowWidth,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             ColumnSpacing = 12,
         };
@@ -339,71 +401,6 @@ public sealed partial class NotificationSettingsPage : Page
         row.Children.Add(toggleSwitch);
 
         return row;
-    }
-
-    private void ShowNotificationInfoBar(InfoBarSeverity severity, string title, string message)
-    {
-        _notificationInfoTimer ??= DispatcherQueue.CreateTimer();
-        _notificationInfoTimer.Stop();
-        _notificationInfoTimer.Interval = TimeSpan.FromSeconds(3);
-        _notificationInfoTimer.Tick -= NotificationInfoTimer_Tick;
-        _notificationInfoTimer.Tick += NotificationInfoTimer_Tick;
-
-        if (_notificationInfoBar is null)
-        {
-            _notificationInfoBar = new InfoBar
-            {
-                Width = 380,
-                IsClosable = false,
-            };
-            _notificationInfoBar.Loaded += (_, _) => RepositionNotificationInfoBar();
-        }
-
-        if (_notificationPopup is null)
-        {
-            _notificationPopup = new Popup
-            {
-                XamlRoot = XamlRoot,
-                Child = _notificationInfoBar,
-                IsLightDismissEnabled = false,
-            };
-        }
-
-        _notificationInfoBar.Severity = severity;
-        _notificationInfoBar.Title = title;
-        _notificationInfoBar.Message = message;
-        _notificationInfoBar.IsOpen = true;
-        _notificationPopup.IsOpen = true;
-        RepositionNotificationInfoBar();
-        _notificationInfoTimer.Start();
-    }
-
-    private void RepositionNotificationInfoBar()
-    {
-        if (_notificationPopup is null || _notificationInfoBar is null)
-        {
-            return;
-        }
-
-        _notificationInfoBar.UpdateLayout();
-        var width = _notificationInfoBar.ActualWidth > 0 ? _notificationInfoBar.ActualWidth : _notificationInfoBar.Width;
-        var height = _notificationInfoBar.ActualHeight > 0 ? _notificationInfoBar.ActualHeight : 72;
-        _notificationPopup.HorizontalOffset = Math.Max(24, XamlRoot.Size.Width - width - 24);
-        _notificationPopup.VerticalOffset = Math.Max(24, XamlRoot.Size.Height - height - 24);
-    }
-
-    private void NotificationInfoTimer_Tick(Microsoft.UI.Dispatching.DispatcherQueueTimer sender, object args)
-    {
-        sender.Stop();
-        if (_notificationInfoBar is not null)
-        {
-            _notificationInfoBar.IsOpen = false;
-        }
-
-        if (_notificationPopup is not null)
-        {
-            _notificationPopup.IsOpen = false;
-        }
     }
 
     private async Task<BiliCreator> TryResolveCreatorAsync(long mid)

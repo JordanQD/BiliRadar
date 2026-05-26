@@ -5,16 +5,6 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls">
 
-    <Page.Resources>
-        <x:Double x:Key="SettingsCardSpacing">4</x:Double>
-        <Style
-            x:Key="SettingsSectionHeaderTextBlockStyle"
-            BasedOn="{StaticResource BodyStrongTextBlockStyle}"
-            TargetType="TextBlock">
-            <Setter Property="Margin" Value="1,28,0,6" />
-        </Style>
-    </Page.Resources>
-
     <ScrollView
         x:Name="SettingsScrollView"
         Padding="36,32,36,16"
@@ -67,6 +57,7 @@
                     MaxWidth="200"
                     HorizontalAlignment="Stretch"
                     AutomationProperties.AutomationId="NotificationCheckIntervalBox"
+                    AutomationProperties.Name="通知检查间隔"
                     Minimum="1"
                     SpinButtonPlacementMode="Inline"
                     ValueChanged="NotificationCheckIntervalBox_ValueChanged" />
@@ -87,6 +78,7 @@
                     MaxWidth="300"
                     HorizontalAlignment="Stretch"
                     AutomationProperties.AutomationId="NotificationTargetModeBox"
+                    AutomationProperties.Name="通知对象"
                     SelectionChanged="NotificationTargetModeBox_SelectionChanged">
                     <ComboBoxItem Content="所有 UP 更新" />
                     <ComboBoxItem Content="自定义 UP 通知" />
@@ -102,6 +94,7 @@
                 <ToggleSwitch
                     x:Name="VideoNotificationSwitch"
                     AutomationProperties.AutomationId="VideoNotificationSwitch"
+                    AutomationProperties.Name="视频更新通知"
                     Toggled="VideoNotificationSwitch_Toggled" />
             </controls:SettingsCard>
             <controls:SettingsCard
@@ -114,6 +107,7 @@
                 <ToggleSwitch
                     x:Name="LiveNotificationSwitch"
                     AutomationProperties.AutomationId="LiveNotificationSwitch"
+                    AutomationProperties.Name="开播通知"
                     Toggled="LiveNotificationSwitch_Toggled" />
             </controls:SettingsCard>
 
@@ -139,6 +133,7 @@
                         x:Name="AddCreatorButton"
                         MinWidth="112"
                         AutomationProperties.AutomationId="AddCreatorButton"
+                        AutomationProperties.Name="添加自定义 UP"
                         Click="AddCreatorButton_Click">
                         <StackPanel
                             Orientation="Horizontal"
