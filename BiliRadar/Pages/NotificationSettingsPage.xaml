@@ -31,6 +31,7 @@
             </VisualStateGroup>
         </VisualStateManager.VisualStateGroups>
         <StackPanel
+            Margin="0,0,0,32"
             MaxWidth="1064"
             Spacing="{StaticResource SettingsCardSpacing}">
             <StackPanel.ChildrenTransitions>
@@ -49,8 +50,8 @@
                 Text="检查频率" />
             <controls:SettingsCard
                 x:Uid="NotificationIntervalCard"
-                Description="BiliRadar 在后台检查动态和直播状态的时间间隔。"
-                Header="通知检查间隔">
+                Description="应用在后台检查动态和直播状态的时间间隔。"
+                Header="通知检查间隔（分钟）">
                 <controls:SettingsCard.HeaderIcon>
                     <FontIcon Glyph="&#xE823;" />
                 </controls:SettingsCard.HeaderIcon>
@@ -61,7 +62,7 @@
                     MaxWidth="200"
                     HorizontalAlignment="Stretch"
                     AutomationProperties.AutomationId="NotificationCheckIntervalBox"
-                    AutomationProperties.Name="通知检查间隔"
+                    AutomationProperties.Name="通知检查间隔（分钟）"
                     Minimum="1"
                     SpinButtonPlacementMode="Inline"
                     ValueChanged="NotificationCheckIntervalBox_ValueChanged" />
@@ -124,39 +125,29 @@
 
             <StackPanel
                 x:Name="CustomNotificationPanel"
-                Margin="0,0,0,12"
                 Spacing="{StaticResource SettingsCardSpacing}">
                 <TextBlock
                     x:Uid="NotificationCustomSectionHeader"
                     Style="{StaticResource SettingsSectionHeaderTextBlockStyle}"
-                    Text="自定义 UP" />
-                <TextBlock
-                    x:Uid="NotificationCustomSectionDescription"
-                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    Text="自定义 UP 的通知通过关注动态流检测，因此仅对你已关注的 UP 生效。开播通知不受此限制。"
-                    TextWrapping="Wrap" />
+                    Text="自定义通知" />
                 <controls:SettingsCard
                     x:Uid="NotificationAddCustomCreatorCard"
-                    Description="UP 主页链接或 UID"
-                    Header="添加自定义 UP"
+                    Description="通知通过关注动态流检测，因此仅对你已关注的 UP 生效。"
+                    Header="自定义 UP"
                     HorizontalContentAlignment="Right">
                     <controls:SettingsCard.HeaderIcon>
-                        <FontIcon Glyph="&#xE710;" />
+                        <PathIcon Data="M10 2C12.7614 2 15 4.23858 15 7C15 9.76142 12.7614 12 10 12C7.23858 12 5 9.76142 5 7C5 4.23858 7.23858 2 10 2ZM10 3.5C8.067 3.5 6.5 5.067 6.5 7C6.5 8.933 8.067 10.5 10 10.5C11.933 10.5 13.5 8.933 13.5 7C13.5 5.067 11.933 3.5 10 3.5ZM4.25 14H11.25C11.6642 14 12 14.3358 12 14.75C12 15.1642 11.6642 15.5 11.25 15.5H4.25C3.83579 15.5 3.5 15.8358 3.5 16.25V17.16C3.5 17.82 3.79 18.44 4.29 18.86C5.54 19.94 7.44 20.5 10 20.5C10.58 20.5 11.13 20.47 11.65 20.41C12.0615 20.3626 12.4337 20.6579 12.4811 21.0694C12.5285 21.4808 12.2332 21.853 11.8218 21.9004C11.2493 21.9664 10.642 22 10 22C7.11 22 4.87 21.34 3.31 20C2.48 19.29 2 18.25 2 17.16V16.25C2 15.0074 3.00736 14 4.25 14ZM18 12C18.4142 12 18.75 12.3358 18.75 12.75V16.25H22.25C22.6642 16.25 23 16.5858 23 17C23 17.4142 22.6642 17.75 22.25 17.75H18.75V21.25C18.75 21.6642 18.4142 22 18 22C17.5858 22 17.25 21.6642 17.25 21.25V17.75H13.75C13.3358 17.75 13 17.4142 13 17C13 16.5858 13.3358 16.25 13.75 16.25H17.25V12.75C17.25 12.3358 17.5858 12 18 12Z" />
                     </controls:SettingsCard.HeaderIcon>
                     <Button
                         x:Name="AddCreatorButton"
                         x:Uid="NotificationAddCreatorButton"
-                        MinWidth="112"
+                        MinWidth="40"
+                        Width="40"
+                        Height="40"
+                        Padding="0"
                         AutomationProperties.AutomationId="AddCreatorButton"
                         AutomationProperties.Name="添加自定义 UP"
-                        Click="AddCreatorButton_Click">
-                        <StackPanel
-                            Orientation="Horizontal"
-                            Spacing="8">
-                            <FontIcon Glyph="&#xE710;" />
-                            <TextBlock x:Uid="NotificationAddCreatorButtonText" Text="添加 UP" />
-                        </StackPanel>
-                    </Button>
+                        Click="AddCreatorButton_Click" />
                 </controls:SettingsCard>
                 <ListView
                         x:Name="CustomNotificationCreatorsList"
@@ -283,7 +274,8 @@
                     x:Name="CustomNotificationStatusText"
                     Margin="1,8,0,0"
                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    TextWrapping="Wrap" />
+                    TextWrapping="Wrap"
+                    Visibility="Collapsed" />
             </StackPanel>
         </StackPanel>
     </ScrollView>

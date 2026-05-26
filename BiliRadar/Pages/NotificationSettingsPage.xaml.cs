@@ -9,6 +9,7 @@ using BiliRadar.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Markup;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
@@ -17,6 +18,8 @@ namespace BiliRadar.Pages;
 
 public sealed partial class NotificationSettingsPage : Page
 {
+    private const string PersonAddIconData = "M17.5 12C20.5375661 12 23 14.4624339 23 17.5C23 20.5375661 20.5375661 23 17.5 23C14.4624339 23 12 20.5375661 12 17.5C12 14.4624339 14.4624339 12 17.5 12ZM12.0222607 13.9993086C11.7255613 14.4626083 11.4860296 14.9660345 11.3136172 15.4996352L4.25354153 15.499921C3.83932796 15.499921 3.50354153 15.8357075 3.50354153 16.249921L3.50354153 17.1572408C3.50354153 17.8128951 3.78953221 18.4359296 4.28670709 18.8633654C5.5447918 19.9450082 7.44080155 20.5010712 10 20.5010712C10.598839 20.5010712 11.1614445 20.4706245 11.6881394 20.4101192C11.9370538 20.9102887 12.2508544 21.3740111 12.6170965 21.7904935C11.8149076 21.9312924 10.9419626 22.0010712 10 22.0010712C7.11050247 22.0010712 4.87168436 21.3444691 3.30881727 20.0007885C2.48019625 19.2883988 2.00354153 18.2500002 2.00354153 17.1572408L2.00354153 16.249921C2.00354153 15.0072804 3.01090084 13.999921 4.25354153 13.999921L12.0222607 13.9993086ZM17.5 14.25C17.9142 14.25 18.25 14.5858 18.25 15V16.75H20C20.4142 16.75 20.75 17.0858 20.75 17.5C20.75 17.9142 20.4142 18.25 20 18.25H18.25V20C18.25 20.4142 17.9142 20.75 17.5 20.75C17.0858 20.75 16.75 20.4142 16.75 20V18.25H15C14.5858 18.25 14.25 17.9142 14.25 17.5C14.25 17.0858 14.5858 16.75 15 16.75H16.75V15C16.75 14.5858 17.0858 14.25 17.5 14.25ZM10 2.0046246C12.7614237 2.0046246 15 4.24320085 15 7.0046246C15 9.76604835 12.7614237 12.0046246 10 12.0046246C7.23857625 12.0046246 5 9.76604835 5 7.0046246C5 4.24320085 7.23857625 2.0046246 10 2.0046246ZM10 3.5046246C8.06700338 3.5046246 6.5 5.07162798 6.5 7.0046246C6.5 8.93762123 8.06700338 10.5046246 10 10.5046246C11.9329966 10.5046246 13.5 8.93762123 13.5 7.0046246C13.5 5.07162798 11.9329966 3.5046246 10 3.5046246Z";
+
     private BiliWebDataProvider? _dataProvider;
     private UpdateMonitorService? _updateMonitorService;
     private bool _isLoadingSettings;
@@ -29,6 +32,7 @@ public sealed partial class NotificationSettingsPage : Page
     public NotificationSettingsPage()
     {
         InitializeComponent();
+        AddCreatorButton.Content = CreateButtonPathIcon(PersonAddIconData, 20);
         CustomNotificationCreatorsList.ItemsSource = CustomNotificationCreators;
         Loaded += NotificationSettingsPage_Loaded;
         Unloaded += NotificationSettingsPage_Unloaded;
@@ -357,7 +361,7 @@ public sealed partial class NotificationSettingsPage : Page
             CustomNotificationCreators.Add(subscription);
             await SeedNotificationBaselineAsync(subscription);
             SaveCustomNotificationCreators();
-            CustomNotificationStatusText.Text = LocalizationHelper.Format("AddedCreator", subscription.Name);
+            SetCustomNotificationStatus(LocalizationHelper.Format("AddedCreator", subscription.Name));
             dialog.Hide();
         };
 
@@ -404,6 +408,24 @@ public sealed partial class NotificationSettingsPage : Page
         return row;
     }
 
+    private static FrameworkElement CreateButtonPathIcon(string data, double size)
+    {
+        return (FrameworkElement)XamlReader.Load($$"""
+            <Viewbox
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                Width="{{size}}"
+                Height="{{size}}"
+                Stretch="Uniform">
+                <Path
+                    Width="24"
+                    Height="24"
+                    Data="{{data}}"
+                    Fill="{ThemeResource TextFillColorPrimaryBrush}"
+                    Stretch="Uniform" />
+            </Viewbox>
+            """);
+    }
+
     private async Task<BiliCreator> TryResolveCreatorAsync(long mid)
     {
         try
@@ -448,7 +470,13 @@ public sealed partial class NotificationSettingsPage : Page
 
         CustomNotificationCreators.Remove(subscription);
         SaveCustomNotificationCreators();
-        CustomNotificationStatusText.Text = LocalizationHelper.Format("RemovedCreator", subscription.Name);
+        SetCustomNotificationStatus(LocalizationHelper.Format("RemovedCreator", subscription.Name));
+    }
+
+    private void SetCustomNotificationStatus(string message)
+    {
+        CustomNotificationStatusText.Text = message;
+        CustomNotificationStatusText.Visibility = string.IsNullOrWhiteSpace(message) ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private void UpdateNotificationModeVisibility()

@@ -51,7 +51,7 @@
                 Text="启动" />
             <controls:SettingsCard
                 x:Uid="GeneralAutoStartCard"
-                Description="登录 Windows 后自动启动 BiliRadar。"
+                Description="登录 Windows 后自动启动应用。"
                 Header="开机后自动运行">
                 <controls:SettingsCard.HeaderIcon>
                     <FontIcon Glyph="&#xE7E8;" />
@@ -75,11 +75,62 @@
                 Style="{StaticResource SettingsSectionHeaderTextBlockStyle}"
                 Text="登录选项" />
             <controls:SettingsCard
+                x:Uid="GeneralLoginStatusCard"
+                Description="登录 Bilibili 账号后可以获取关注动态。"
+                Header="登录状态"
+                HorizontalContentAlignment="Stretch">
+                <controls:SettingsCard.HeaderIcon>
+                    <FontIcon Glyph="&#xE77B;" />
+                </controls:SettingsCard.HeaderIcon>
+                <Grid ColumnSpacing="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <PersonPicture
+                        x:Name="AvatarPicture"
+                        Width="32"
+                        Height="32"
+                        VerticalAlignment="Center"
+                        Initials="BR" />
+                    <StackPanel
+                        Grid.Column="1"
+                        VerticalAlignment="Center"
+                        Spacing="0">
+                        <TextBlock
+                            x:Name="AccountNameText"
+                            x:Uid="GeneralAccountNameText"
+                            VerticalAlignment="Center"
+                            Style="{ThemeResource BodyStrongTextBlockStyle}"
+                            Text="未登录" />
+                        <TextBlock
+                            x:Name="AccountDetailText"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Text="网页登录后会保存登录状态，用于刷新关注动态。"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+                    <Button
+                        x:Name="LoginActionButton"
+                        Grid.Column="2"
+                        Width="40"
+                        Height="40"
+                        Padding="0"
+                        VerticalAlignment="Center"
+                        AutomationProperties.AutomationId="LoginActionButton"
+                        AutomationProperties.Name="登录操作"
+                        Click="LoginActionButton_Click"
+                        ToolTipService.ToolTip="网页登录">
+                        <FontIcon Glyph="&#xE722;" />
+                    </Button>
+                </Grid>
+            </controls:SettingsCard>
+            <controls:SettingsCard
                 x:Uid="GeneralRunningLaunchActionCard"
-                Description="BiliRadar 已经在后台运行时，从开始菜单再次打开后的行为。"
+                Description="应用已经在后台运行时，从开始菜单再次打开后的行为。"
                 Header="重复打开应用时">
                 <controls:SettingsCard.HeaderIcon>
-                    <FontIcon Glyph="&#xE8AB;" />
+                    <FontIcon Glyph="&#xE8EE;" />
                 </controls:SettingsCard.HeaderIcon>
                 <ComboBox
                     x:Name="RunningLaunchActionBox"
@@ -115,7 +166,7 @@
             </controls:SettingsCard>
             <controls:SettingsCard
                 x:Uid="GeneralDefaultOpenPageCard"
-                Description="点击任务栏托盘图标打开 BiliRadar 时默认显示的页面。"
+                Description="点击任务栏托盘图标打开应用时默认显示的页面。"
                 Header="默认打开页面">
                 <controls:SettingsCard.HeaderIcon>
                     <FontIcon Glyph="&#xE71B;" />
@@ -134,75 +185,6 @@
                     <ComboBoxItem x:Uid="GeneralDefaultOpenViewLaterItem" Content="稍后再看" />
                 </ComboBox>
             </controls:SettingsCard>
-            <controls:SettingsCard
-                x:Uid="GeneralLoginStatusCard"
-                Header="Bilibili 登录状态"
-                HorizontalContentAlignment="Stretch">
-                <controls:SettingsCard.HeaderIcon>
-                    <FontIcon Glyph="&#xE77B;" />
-                </controls:SettingsCard.HeaderIcon>
-                <Grid ColumnSpacing="16">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <PersonPicture
-                        x:Name="AvatarPicture"
-                        Width="48"
-                        Height="48"
-                        VerticalAlignment="Center"
-                        Initials="BR" />
-                    <StackPanel
-                        Grid.Column="1"
-                        VerticalAlignment="Center"
-                        Spacing="2">
-                        <TextBlock
-                            x:Name="AccountNameText"
-                            x:Uid="GeneralAccountNameText"
-                            Style="{ThemeResource BodyStrongTextBlockStyle}"
-                            Text="未登录" />
-                        <TextBlock
-                            x:Name="AccountDetailText"
-                            x:Uid="GeneralAccountDetailText"
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Text="网页登录后会保存登录状态，用于刷新关注动态。"
-                            TextWrapping="Wrap" />
-                    </StackPanel>
-                    <StackPanel
-                        Grid.Column="2"
-                        VerticalAlignment="Center"
-                        Orientation="Horizontal"
-                        Spacing="8">
-                        <Button
-                            x:Name="SignInButton"
-                            x:Uid="GeneralSignInButton"
-                            AutomationProperties.AutomationId="SignInButton"
-                            Click="SignInButton_Click"
-                            Content="网页登录" />
-                        <Button
-                            x:Name="RefreshStatusButton"
-                            x:Uid="GeneralRefreshStatusButton"
-                            AutomationProperties.AutomationId="RefreshStatusButton"
-                            Click="RefreshStatusButton_Click"
-                            Content="刷新" />
-                        <Button
-                            x:Name="SignOutButton"
-                            x:Uid="GeneralSignOutButton"
-                            AutomationProperties.AutomationId="SignOutButton"
-                            Click="SignOutButton_Click"
-                            Content="清除" />
-                    </StackPanel>
-                </Grid>
-            </controls:SettingsCard>
-            <InfoBar
-                x:Name="AccountInfoBar"
-                x:Uid="GeneralAccountInfoBar"
-                Margin="0,4,0,0"
-                IsClosable="False"
-                IsOpen="True"
-                Message="正在检查登录状态..."
-                Severity="Informational" />
 
             <TextBlock
                 x:Uid="GeneralDisplaySectionHeader"
@@ -213,7 +195,7 @@
                 Description="控制关注页面中正在直播区域的显示方式。"
                 Header="正在直播">
                 <controls:SettingsCard.HeaderIcon>
-                    <FontIcon Glyph="&#xE7C0;" />
+                    <FontIcon Glyph="&#xE8B2;" />
                 </controls:SettingsCard.HeaderIcon>
                 <ComboBox
                     x:Name="LiveSectionDisplayModeBox"
@@ -239,7 +221,7 @@
                 Description="导出当前通知、启动和登录状态配置。"
                 Header="导出配置">
                 <controls:SettingsCard.HeaderIcon>
-                    <FontIcon Glyph="&#xE74E;" />
+                    <FontIcon Glyph="&#xEDE1;" />
                 </controls:SettingsCard.HeaderIcon>
                 <Button
                     x:Name="ExportConfigButton"
@@ -253,7 +235,7 @@
                 Description="从 JSON 配置文件恢复通知、启动和登录状态配置。"
                 Header="导入配置">
                 <controls:SettingsCard.HeaderIcon>
-                    <FontIcon Glyph="&#xE8B5;" />
+                    <FontIcon Glyph="&#xEDE2;" />
                 </controls:SettingsCard.HeaderIcon>
                 <Button
                     x:Name="ImportConfigButton"
@@ -278,7 +260,7 @@
                 Description="手动切换界面显示语言。重启应用后生效。"
                 Header="界面语言">
                 <controls:SettingsCard.HeaderIcon>
-                    <FontIcon Glyph="&#xE8B1;" />
+                    <FontIcon Glyph="&#xF2B7;" />
                 </controls:SettingsCard.HeaderIcon>
                 <ComboBox
                     x:Name="LanguageSelectorBox"

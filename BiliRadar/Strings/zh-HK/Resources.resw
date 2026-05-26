@@ -23,11 +23,11 @@
   <data name="GeneralPageTitle.Text" xml:space="preserve"><value>通用</value></data>
   <data name="GeneralStartupSectionHeader.Text" xml:space="preserve"><value>啟動</value></data>
   <data name="GeneralAutoStartCard.Header" xml:space="preserve"><value>開機後自動運行</value></data>
-  <data name="GeneralAutoStartCard.Description" xml:space="preserve"><value>登錄 Windows 後自動啟動 BiliRadar。</value></data>
+  <data name="GeneralAutoStartCard.Description" xml:space="preserve"><value>登錄 Windows 後自動啟動應用。</value></data>
   <data name="GeneralAutoStartSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>開機後自動運行</value></data>
   <data name="GeneralLaunchOptionsSectionHeader.Text" xml:space="preserve"><value>登錄選項</value></data>
   <data name="GeneralRunningLaunchActionCard.Header" xml:space="preserve"><value>重複打開應用時</value></data>
-  <data name="GeneralRunningLaunchActionCard.Description" xml:space="preserve"><value>BiliRadar 已經在後台運行時，從開始菜單再次打開後的行為。</value></data>
+  <data name="GeneralRunningLaunchActionCard.Description" xml:space="preserve"><value>應用已經在後台運行時，從開始菜單再次打開後的行為。</value></data>
   <data name="GeneralRunningLaunchActionBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>重複打開應用時</value></data>
   <data name="GeneralRunningLaunchOpenSettingsItem.Content" xml:space="preserve"><value>打開設定</value></data>
   <data name="GeneralRunningLaunchOpenCustomWebPageItem.Content" xml:space="preserve"><value>打開自訂網頁</value></data>
@@ -35,12 +35,13 @@
   <data name="GeneralCustomLaunchWebPageCard.Description" xml:space="preserve"><value>重複打開應用並選擇打開網頁時使用。</value></data>
   <data name="GeneralCustomLaunchWebPageUrlBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>自訂網頁</value></data>
   <data name="GeneralDefaultOpenPageCard.Header" xml:space="preserve"><value>默認打開頁面</value></data>
-  <data name="GeneralDefaultOpenPageCard.Description" xml:space="preserve"><value>點擊任務欄托盤圖標打開 BiliRadar 時默認顯示的頁面。</value></data>
+  <data name="GeneralDefaultOpenPageCard.Description" xml:space="preserve"><value>點擊任務欄托盤圖標打開應用時默認顯示的頁面。</value></data>
   <data name="GeneralDefaultOpenPageBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>默認打開頁面</value></data>
   <data name="GeneralDefaultOpenFollowingItem.Content" xml:space="preserve"><value>關注</value></data>
   <data name="GeneralDefaultOpenHistoryItem.Content" xml:space="preserve"><value>歷史</value></data>
   <data name="GeneralDefaultOpenViewLaterItem.Content" xml:space="preserve"><value>稍後再看</value></data>
-  <data name="GeneralLoginStatusCard.Header" xml:space="preserve"><value>Bilibili 登錄狀態</value></data>
+  <data name="GeneralLoginStatusCard.Header" xml:space="preserve"><value>登錄狀態</value></data>
+  <data name="GeneralLoginStatusCard.Description" xml:space="preserve"><value>登錄 Bilibili 賬號後可以獲取關注動態。</value></data>
   <data name="GeneralAccountNameText.Text" xml:space="preserve"><value>未登錄</value></data>
   <data name="GeneralAccountDetailText.Text" xml:space="preserve"><value>網頁登錄後會保存登錄狀態，用於刷新關注動態。</value></data>
   <data name="GeneralSignInButton.Content" xml:space="preserve"><value>網頁登錄</value></data>
@@ -70,9 +71,9 @@
 
   <data name="NotificationPageTitle.Text" xml:space="preserve"><value>通知</value></data>
   <data name="NotificationIntervalSectionHeader.Text" xml:space="preserve"><value>檢查頻率</value></data>
-  <data name="NotificationIntervalCard.Header" xml:space="preserve"><value>通知檢查間隔</value></data>
-  <data name="NotificationIntervalCard.Description" xml:space="preserve"><value>BiliRadar 在後台檢查動態和直播狀態的時間間隔。</value></data>
-  <data name="NotificationCheckIntervalBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>通知檢查間隔</value></data>
+  <data name="NotificationIntervalCard.Header" xml:space="preserve"><value>通知檢查間隔（分鐘）</value></data>
+  <data name="NotificationIntervalCard.Description" xml:space="preserve"><value>應用在後台檢查動態和直播狀態的時間間隔。</value></data>
+  <data name="NotificationCheckIntervalBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>通知檢查間隔（分鐘）</value></data>
   <data name="NotificationTargetSectionHeader.Text" xml:space="preserve"><value>通知對象</value></data>
   <data name="NotificationTargetCard.Header" xml:space="preserve"><value>通知對象</value></data>
   <data name="NotificationTargetCard.Description" xml:space="preserve"><value>選擇監聽全部關注列表，或只監聽手動添加的 UP。</value></data>
@@ -85,10 +86,10 @@
   <data name="NotificationLiveNotifyCard.Header" xml:space="preserve"><value>開播通知</value></data>
   <data name="NotificationLiveNotifyCard.Description" xml:space="preserve"><value>關注 UP 開始直播時提醒。</value></data>
   <data name="NotificationLiveNotificationSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>開播通知</value></data>
-  <data name="NotificationCustomSectionHeader.Text" xml:space="preserve"><value>自訂 UP</value></data>
+  <data name="NotificationCustomSectionHeader.Text" xml:space="preserve"><value>自訂通知</value></data>
   <data name="NotificationCustomSectionDescription.Text" xml:space="preserve"><value>自訂 UP 的通知通過關注動態流檢測，因此僅對你已關注的 UP 生效。開播通知不受此限制。</value></data>
-  <data name="NotificationAddCustomCreatorCard.Header" xml:space="preserve"><value>添加自訂 UP</value></data>
-  <data name="NotificationAddCustomCreatorCard.Description" xml:space="preserve"><value>UP 主頁連結或 UID</value></data>
+  <data name="NotificationAddCustomCreatorCard.Header" xml:space="preserve"><value>自訂 UP</value></data>
+  <data name="NotificationAddCustomCreatorCard.Description" xml:space="preserve"><value>通知通過關注動態流檢測，因此僅對你已關注的 UP 生效。</value></data>
   <data name="NotificationAddCreatorButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>添加自訂 UP</value></data>
   <data name="NotificationAddCreatorButtonText.Text" xml:space="preserve"><value>添加 UP</value></data>
   <data name="NotificationCustomVideoLabel.Text" xml:space="preserve"><value>影片</value></data>
