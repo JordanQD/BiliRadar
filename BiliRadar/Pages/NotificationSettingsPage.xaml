@@ -7,7 +7,7 @@
 
     <ScrollView
         x:Name="SettingsScrollView"
-        Padding="36,32,36,16"
+        Padding="36,32,36,0"
         VerticalScrollBarVisibility="Auto"
         VerticalScrollMode="Auto">
         <VisualStateManager.VisualStateGroups>
@@ -17,7 +17,7 @@
                         <AdaptiveTrigger MinWindowWidth="640" />
                     </VisualState.StateTriggers>
                     <VisualState.Setters>
-                        <Setter Target="SettingsScrollView.Padding" Value="36,32,36,16" />
+                        <Setter Target="SettingsScrollView.Padding" Value="36,32,36,0" />
                     </VisualState.Setters>
                 </VisualState>
                 <VisualState x:Name="Narrow">
@@ -38,14 +38,17 @@
             </StackPanel.ChildrenTransitions>
 
             <TextBlock
+                x:Uid="NotificationPageTitle"
                 Margin="0,0,0,12"
                 Style="{ThemeResource TitleTextBlockStyle}"
                 Text="通知" />
 
             <TextBlock
+                x:Uid="NotificationIntervalSectionHeader"
                 Style="{StaticResource SettingsSectionHeaderTextBlockStyle}"
                 Text="检查频率" />
             <controls:SettingsCard
+                x:Uid="NotificationIntervalCard"
                 Description="BiliRadar 在后台检查动态和直播状态的时间间隔。"
                 Header="通知检查间隔">
                 <controls:SettingsCard.HeaderIcon>
@@ -53,6 +56,7 @@
                 </controls:SettingsCard.HeaderIcon>
                 <NumberBox
                     x:Name="NotificationCheckIntervalBox"
+                    x:Uid="NotificationCheckIntervalBox"
                     MinWidth="120"
                     MaxWidth="200"
                     HorizontalAlignment="Stretch"
@@ -64,9 +68,11 @@
             </controls:SettingsCard>
 
             <TextBlock
+                x:Uid="NotificationTargetSectionHeader"
                 Style="{StaticResource SettingsSectionHeaderTextBlockStyle}"
                 Text="通知对象" />
             <controls:SettingsCard
+                x:Uid="NotificationTargetCard"
                 Description="选择监听全部关注列表，或只监听手动添加的 UP。"
                 Header="通知对象">
                 <controls:SettingsCard.HeaderIcon>
@@ -74,18 +80,20 @@
                 </controls:SettingsCard.HeaderIcon>
                 <ComboBox
                     x:Name="NotificationTargetModeBox"
+                    x:Uid="NotificationTargetModeBox"
                     MinWidth="160"
                     MaxWidth="300"
                     HorizontalAlignment="Stretch"
                     AutomationProperties.AutomationId="NotificationTargetModeBox"
                     AutomationProperties.Name="通知对象"
                     SelectionChanged="NotificationTargetModeBox_SelectionChanged">
-                    <ComboBoxItem Content="所有 UP 更新" />
-                    <ComboBoxItem Content="自定义 UP 通知" />
+                    <ComboBoxItem x:Uid="NotificationTargetAllFollowingItem" Content="所有 UP 更新" />
+                    <ComboBoxItem x:Uid="NotificationTargetCustomCreatorsItem" Content="自定义 UP 通知" />
                 </ComboBox>
             </controls:SettingsCard>
             <controls:SettingsCard
                 x:Name="GlobalVideoNotificationCard"
+                x:Uid="NotificationVideoNotifyCard"
                 Description="关注 UP 发布新视频时提醒。"
                 Header="视频更新通知">
                 <controls:SettingsCard.HeaderIcon>
@@ -93,12 +101,14 @@
                 </controls:SettingsCard.HeaderIcon>
                 <ToggleSwitch
                     x:Name="VideoNotificationSwitch"
+                    x:Uid="NotificationVideoNotificationSwitch"
                     AutomationProperties.AutomationId="VideoNotificationSwitch"
                     AutomationProperties.Name="视频更新通知"
                     Toggled="VideoNotificationSwitch_Toggled" />
             </controls:SettingsCard>
             <controls:SettingsCard
                 x:Name="GlobalLiveNotificationCard"
+                x:Uid="NotificationLiveNotifyCard"
                 Description="关注 UP 开始直播时提醒。"
                 Header="开播通知">
                 <controls:SettingsCard.HeaderIcon>
@@ -106,6 +116,7 @@
                 </controls:SettingsCard.HeaderIcon>
                 <ToggleSwitch
                     x:Name="LiveNotificationSwitch"
+                    x:Uid="NotificationLiveNotificationSwitch"
                     AutomationProperties.AutomationId="LiveNotificationSwitch"
                     AutomationProperties.Name="开播通知"
                     Toggled="LiveNotificationSwitch_Toggled" />
@@ -113,16 +124,19 @@
 
             <StackPanel
                 x:Name="CustomNotificationPanel"
-                Margin="0,0,0,36"
+                Margin="0,0,0,12"
                 Spacing="{StaticResource SettingsCardSpacing}">
                 <TextBlock
+                    x:Uid="NotificationCustomSectionHeader"
                     Style="{StaticResource SettingsSectionHeaderTextBlockStyle}"
                     Text="自定义 UP" />
                 <TextBlock
+                    x:Uid="NotificationCustomSectionDescription"
                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                     Text="自定义 UP 的通知通过关注动态流检测，因此仅对你已关注的 UP 生效。开播通知不受此限制。"
                     TextWrapping="Wrap" />
                 <controls:SettingsCard
+                    x:Uid="NotificationAddCustomCreatorCard"
                     Description="UP 主页链接或 UID"
                     Header="添加自定义 UP"
                     HorizontalContentAlignment="Right">
@@ -131,6 +145,7 @@
                     </controls:SettingsCard.HeaderIcon>
                     <Button
                         x:Name="AddCreatorButton"
+                        x:Uid="NotificationAddCreatorButton"
                         MinWidth="112"
                         AutomationProperties.AutomationId="AddCreatorButton"
                         AutomationProperties.Name="添加自定义 UP"
@@ -139,16 +154,11 @@
                             Orientation="Horizontal"
                             Spacing="8">
                             <FontIcon Glyph="&#xE710;" />
-                            <TextBlock Text="添加 UP" />
+                            <TextBlock x:Uid="NotificationAddCreatorButtonText" Text="添加 UP" />
                         </StackPanel>
                     </Button>
                 </controls:SettingsCard>
-                <Border
-                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1"
-                    CornerRadius="{ThemeResource ControlCornerRadius}">
-                    <ListView
+                <ListView
                         x:Name="CustomNotificationCreatorsList"
                         HorizontalContentAlignment="Stretch"
                         ScrollViewer.VerticalScrollBarVisibility="Disabled"
@@ -225,9 +235,11 @@
                                             Orientation="Horizontal"
                                             Spacing="8">
                                             <TextBlock
+                                                x:Uid="NotificationCustomVideoLabel"
                                                 VerticalAlignment="Center"
                                                 Text="视频" />
                                             <ToggleSwitch
+                                                x:Uid="NotificationCustomVideoSwitch"
                                                 AutomationProperties.Name="视频更新通知"
                                                 OffContent=""
                                                 OnContent=""
@@ -240,9 +252,11 @@
                                             Orientation="Horizontal"
                                             Spacing="8">
                                             <TextBlock
+                                                x:Uid="NotificationCustomLiveLabel"
                                                 VerticalAlignment="Center"
                                                 Text="开播" />
                                             <ToggleSwitch
+                                                x:Uid="NotificationCustomLiveSwitch"
                                                 AutomationProperties.Name="开播通知"
                                                 OffContent=""
                                                 OnContent=""
@@ -251,6 +265,7 @@
                                                 Toggled="CustomLiveNotificationSwitch_Toggled" />
                                         </StackPanel>
                                         <Button
+                                            x:Uid="NotificationRemoveCreatorButton"
                                             Width="36"
                                             Height="36"
                                             Padding="0"
@@ -264,7 +279,6 @@
                             </DataTemplate>
                         </ListView.ItemTemplate>
                     </ListView>
-                </Border>
                 <TextBlock
                     x:Name="CustomNotificationStatusText"
                     Margin="1,8,0,0"

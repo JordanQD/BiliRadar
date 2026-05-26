@@ -37,7 +37,7 @@
         x:Key="SettingsSectionHeaderTextBlockStyle"
         BasedOn="{StaticResource BodyStrongTextBlockStyle}"
         TargetType="TextBlock">
-        <Setter Property="Margin" Value="1,28,0,6" />
+        <Setter Property="Margin" Value="1,36,0,8" />
     </Style>
 
 </ResourceDictionary>

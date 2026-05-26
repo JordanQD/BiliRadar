@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using BiliRadar.Helpers;
 using BiliRadar.Pages;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
@@ -27,7 +28,7 @@ public sealed partial class SettingsWindow : Window
 
         var hwnd = WindowNative.GetWindowHandle(this);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(hwnd));
-        _appWindow.Title = "BiliRadar 设置";
+        _appWindow.Title = LocalizationHelper.GetString("SettingsWindow.Title", "BiliRadar 设置");
         ResizeForCurrentDpi(hwnd);
         ConfigureTitleBar(hwnd);
         titleBar.Loaded += TitleBar_Loaded;

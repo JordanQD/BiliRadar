@@ -2,8 +2,7 @@
 <Window
     x:Class="BiliRadar.SettingsWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Title="BiliRadar 设置">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <Window.SystemBackdrop>
         <MicaBackdrop />
@@ -46,14 +45,17 @@
             <NavigationView.MenuItems>
                 <NavigationViewItem
                     x:Name="GeneralNavItem"
+                    x:Uid="SettingsGeneralNavItem"
                     Content="通用"
                     Icon="Setting"
                     Tag="general" />
                 <NavigationViewItem
+                    x:Uid="SettingsNotificationNavItem"
                     Content="通知"
                     Icon="Message"
                     Tag="notification" />
                 <NavigationViewItem
+                    x:Uid="SettingsAboutNavItem"
                     Content="关于"
                     Icon="Help"
                     Tag="about" />

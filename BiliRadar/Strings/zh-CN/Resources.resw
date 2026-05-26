@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="MainFollowingSelectorItem.Text" xml:space="preserve"><value>关注</value></data>
+  <data name="MainHistorySelectorItem.Text" xml:space="preserve"><value>历史</value></data>
+  <data name="MainViewLaterSelectorItem.Text" xml:space="preserve"><value>稍后再看</value></data>
+  <data name="MainLiveSectionHeader.Text" xml:space="preserve"><value>正在直播</value></data>
+  <data name="MainLatestVideosHeader.Text" xml:space="preserve"><value>最新视频</value></data>
+  <data name="MainHistoryEmptyTitle.Text" xml:space="preserve"><value>暂无历史记录</value></data>
+  <data name="MainHistoryEmptyDescription.Text" xml:space="preserve"><value>登录后会显示最近看过的视频。</value></data>
+  <data name="MainViewLaterEmptyTitle.Text" xml:space="preserve"><value>暂无稍后再看</value></data>
+  <data name="MainViewLaterEmptyDescription.Text" xml:space="preserve"><value>添加视频后会出现在这里。</value></data>
+
+  <data name="SettingsGeneralNavItem.Content" xml:space="preserve"><value>通用</value></data>
+  <data name="SettingsNotificationNavItem.Content" xml:space="preserve"><value>通知</value></data>
+  <data name="SettingsAboutNavItem.Content" xml:space="preserve"><value>关于</value></data>
+  <data name="WebSignInTitleBar.Title" xml:space="preserve"><value>BiliRadar 登录</value></data>
+
+  <data name="GeneralPageTitle.Text" xml:space="preserve"><value>通用</value></data>
+  <data name="GeneralStartupSectionHeader.Text" xml:space="preserve"><value>启动</value></data>
+  <data name="GeneralAutoStartCard.Header" xml:space="preserve"><value>开机后自动运行</value></data>
+  <data name="GeneralAutoStartCard.Description" xml:space="preserve"><value>登录 Windows 后自动启动 BiliRadar。</value></data>
+  <data name="GeneralAutoStartSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>开机后自动运行</value></data>
+  <data name="GeneralLaunchOptionsSectionHeader.Text" xml:space="preserve"><value>登录选项</value></data>
+  <data name="GeneralRunningLaunchActionCard.Header" xml:space="preserve"><value>重复打开应用时</value></data>
+  <data name="GeneralRunningLaunchActionCard.Description" xml:space="preserve"><value>BiliRadar 已经在后台运行时，从开始菜单再次打开后的行为。</value></data>
+  <data name="GeneralRunningLaunchActionBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>重复打开应用时</value></data>
+  <data name="GeneralRunningLaunchOpenSettingsItem.Content" xml:space="preserve"><value>打开设置</value></data>
+  <data name="GeneralRunningLaunchOpenCustomWebPageItem.Content" xml:space="preserve"><value>打开自定义网页</value></data>
+  <data name="GeneralCustomLaunchWebPageCard.Header" xml:space="preserve"><value>自定义网页</value></data>
+  <data name="GeneralCustomLaunchWebPageCard.Description" xml:space="preserve"><value>重复打开应用并选择打开网页时使用。</value></data>
+  <data name="GeneralCustomLaunchWebPageUrlBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>自定义网页</value></data>
+  <data name="GeneralDefaultOpenPageCard.Header" xml:space="preserve"><value>默认打开页面</value></data>
+  <data name="GeneralDefaultOpenPageCard.Description" xml:space="preserve"><value>点击任务栏托盘图标打开 BiliRadar 时默认显示的页面。</value></data>
+  <data name="GeneralDefaultOpenPageBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>默认打开页面</value></data>
+  <data name="GeneralDefaultOpenFollowingItem.Content" xml:space="preserve"><value>关注</value></data>
+  <data name="GeneralDefaultOpenHistoryItem.Content" xml:space="preserve"><value>历史</value></data>
+  <data name="GeneralDefaultOpenViewLaterItem.Content" xml:space="preserve"><value>稍后再看</value></data>
+  <data name="GeneralLoginStatusCard.Header" xml:space="preserve"><value>Bilibili 登录状态</value></data>
+  <data name="GeneralAccountNameText.Text" xml:space="preserve"><value>未登录</value></data>
+  <data name="GeneralAccountDetailText.Text" xml:space="preserve"><value>网页登录后会保存登录状态，用于刷新关注动态。</value></data>
+  <data name="GeneralSignInButton.Content" xml:space="preserve"><value>网页登录</value></data>
+  <data name="GeneralRefreshStatusButton.Content" xml:space="preserve"><value>刷新</value></data>
+  <data name="GeneralSignOutButton.Content" xml:space="preserve"><value>清除</value></data>
+  <data name="GeneralAccountInfoBar.Message" xml:space="preserve"><value>正在检查登录状态...</value></data>
+  <data name="GeneralDisplaySectionHeader.Text" xml:space="preserve"><value>显示</value></data>
+  <data name="GeneralLiveSectionDisplayModeCard.Header" xml:space="preserve"><value>正在直播</value></data>
+  <data name="GeneralLiveSectionDisplayModeCard.Description" xml:space="preserve"><value>控制关注页面中正在直播区域的显示方式。</value></data>
+  <data name="GeneralLiveSectionDisplayModeBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>正在直播</value></data>
+  <data name="GeneralLiveExpandedItem.Content" xml:space="preserve"><value>默认展开显示</value></data>
+  <data name="GeneralLiveCollapsedItem.Content" xml:space="preserve"><value>默认折叠显示</value></data>
+  <data name="GeneralLiveHiddenItem.Content" xml:space="preserve"><value>不显示</value></data>
+  <data name="GeneralConfigSectionHeader.Text" xml:space="preserve"><value>配置</value></data>
+  <data name="GeneralExportConfigCard.Header" xml:space="preserve"><value>导出配置</value></data>
+  <data name="GeneralExportConfigCard.Description" xml:space="preserve"><value>导出当前通知、启动和登录状态配置。</value></data>
+  <data name="GeneralExportConfigButton.Content" xml:space="preserve"><value>导出</value></data>
+  <data name="GeneralImportConfigCard.Header" xml:space="preserve"><value>导入配置</value></data>
+  <data name="GeneralImportConfigCard.Description" xml:space="preserve"><value>从 JSON 配置文件恢复通知、启动和登录状态配置。</value></data>
+  <data name="GeneralImportConfigButton.Content" xml:space="preserve"><value>导入</value></data>
+  <data name="GeneralDebugSectionHeader.Text" xml:space="preserve"><value>调试</value></data>
+  <data name="GeneralLanguageCard.Header" xml:space="preserve"><value>界面语言</value></data>
+  <data name="GeneralLanguageCard.Description" xml:space="preserve"><value>手动切换界面显示语言。重启应用后生效。</value></data>
+  <data name="GeneralLanguageSelectorBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>界面语言</value></data>
+  <data name="GeneralLanguageZhCnItem.Content" xml:space="preserve"><value>简体中文</value></data>
+  <data name="GeneralLanguageZhHkItem.Content" xml:space="preserve"><value>繁體中文（香港）</value></data>
+
+  <data name="NotificationPageTitle.Text" xml:space="preserve"><value>通知</value></data>
+  <data name="NotificationIntervalSectionHeader.Text" xml:space="preserve"><value>检查频率</value></data>
+  <data name="NotificationIntervalCard.Header" xml:space="preserve"><value>通知检查间隔</value></data>
+  <data name="NotificationIntervalCard.Description" xml:space="preserve"><value>BiliRadar 在后台检查动态和直播状态的时间间隔。</value></data>
+  <data name="NotificationCheckIntervalBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>通知检查间隔</value></data>
+  <data name="NotificationTargetSectionHeader.Text" xml:space="preserve"><value>通知对象</value></data>
+  <data name="NotificationTargetCard.Header" xml:space="preserve"><value>通知对象</value></data>
+  <data name="NotificationTargetCard.Description" xml:space="preserve"><value>选择监听全部关注列表，或只监听手动添加的 UP。</value></data>
+  <data name="NotificationTargetModeBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>通知对象</value></data>
+  <data name="NotificationTargetAllFollowingItem.Content" xml:space="preserve"><value>所有 UP 更新</value></data>
+  <data name="NotificationTargetCustomCreatorsItem.Content" xml:space="preserve"><value>自定义 UP 通知</value></data>
+  <data name="NotificationVideoNotifyCard.Header" xml:space="preserve"><value>视频更新通知</value></data>
+  <data name="NotificationVideoNotifyCard.Description" xml:space="preserve"><value>关注 UP 发布新视频时提醒。</value></data>
+  <data name="NotificationVideoNotificationSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>视频更新通知</value></data>
+  <data name="NotificationLiveNotifyCard.Header" xml:space="preserve"><value>开播通知</value></data>
+  <data name="NotificationLiveNotifyCard.Description" xml:space="preserve"><value>关注 UP 开始直播时提醒。</value></data>
+  <data name="NotificationLiveNotificationSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>开播通知</value></data>
+  <data name="NotificationCustomSectionHeader.Text" xml:space="preserve"><value>自定义 UP</value></data>
+  <data name="NotificationCustomSectionDescription.Text" xml:space="preserve"><value>自定义 UP 的通知通过关注动态流检测，因此仅对你已关注的 UP 生效。开播通知不受此限制。</value></data>
+  <data name="NotificationAddCustomCreatorCard.Header" xml:space="preserve"><value>添加自定义 UP</value></data>
+  <data name="NotificationAddCustomCreatorCard.Description" xml:space="preserve"><value>UP 主页链接或 UID</value></data>
+  <data name="NotificationAddCreatorButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>添加自定义 UP</value></data>
+  <data name="NotificationAddCreatorButtonText.Text" xml:space="preserve"><value>添加 UP</value></data>
+  <data name="NotificationCustomVideoLabel.Text" xml:space="preserve"><value>视频</value></data>
+  <data name="NotificationCustomVideoSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>视频更新通知</value></data>
+  <data name="NotificationCustomLiveLabel.Text" xml:space="preserve"><value>开播</value></data>
+  <data name="NotificationCustomLiveSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>开播通知</value></data>
+  <data name="NotificationRemoveCreatorButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>删除自定义 UP</value></data>
+  <data name="NotificationSettings.VideoNotifyCard.Header" xml:space="preserve"><value>视频更新通知</value></data>
+  <data name="NotificationSettings.LiveNotifyCard.Header" xml:space="preserve"><value>开播通知</value></data>
+
+  <data name="AboutPageTitle.Text" xml:space="preserve"><value>关于</value></data>
+  <data name="AboutExpander.Header" xml:space="preserve"><value>BiliRadar</value></data>
+  <data name="AboutExpander.Description" xml:space="preserve"><value>一个放在任务栏托盘里的 B 站动态雷达。</value></data>
+  <data name="AboutCloneRepositoryCard.Header" xml:space="preserve"><value>克隆此仓库</value></data>
+  <data name="AboutIssueRequestCard.Header" xml:space="preserve"><value>提交问题或功能建议</value></data>
+  <data name="AboutDependenciesCard.Header" xml:space="preserve"><value>依赖与参考</value></data>
+
+  <data name="VideoLoadFailed" xml:space="preserve"><value>视频动态加载失败：{0}</value></data>
+  <data name="NoVideoUpdates" xml:space="preserve"><value>暂无视频动态。</value></data>
+  <data name="AddedToViewLater" xml:space="preserve"><value>已添加到稍后再看</value></data>
+  <data name="AddedToViewLaterDetail" xml:space="preserve"><value>可以稍后在 B 站继续观看。</value></data>
+  <data name="AddToViewLaterFailed" xml:space="preserve"><value>添加到稍后再看失败</value></data>
+  <data name="LoadEarlierFailed" xml:space="preserve"><value>加载更早内容失败：{0}</value></data>
+  <data name="NoHistory" xml:space="preserve"><value>暂无历史记录。</value></data>
+  <data name="HistoryLoadFailed" xml:space="preserve"><value>历史记录加载失败：{0}</value></data>
+  <data name="LoadEarlierHistoryFailed" xml:space="preserve"><value>加载更早历史失败：{0}</value></data>
+  <data name="NoViewLater" xml:space="preserve"><value>暂无稍后再看。</value></data>
+  <data name="ViewLaterLoadFailed" xml:space="preserve"><value>稍后再看加载失败：{0}</value></data>
+  <data name="LoadMoreViewLaterFailed" xml:space="preserve"><value>加载更多稍后再看失败：{0}</value></data>
+  <data name="CookieCleared" xml:space="preserve"><value>Cookie 已清除。</value></data>
+  <data name="InvalidVideoLink" xml:space="preserve"><value>当前视频链接无效。</value></data>
+  <data name="InvalidLiveRoomLink" xml:space="preserve"><value>当前直播间链接无效。</value></data>
+  <data name="InvalidCreatorLink" xml:space="preserve"><value>当前 UP 主主页链接无效。</value></data>
+  <data name="UnfollowFailed" xml:space="preserve"><value>取消关注失败：{0}</value></data>
+  <data name="FollowFailed" xml:space="preserve"><value>关注失败：{0}</value></data>
+  <data name="Followed" xml:space="preserve"><value>已关注：{0}</value></data>
+  <data name="Unfollowed" xml:space="preserve"><value>已取消关注：{0}</value></data>
+  <data name="AddedToViewLaterToast" xml:space="preserve"><value>已添加到稍后再看。</value></data>
+  <data name="AddToViewLaterFailedToast" xml:space="preserve"><value>添加稍后再看失败：{0}</value></data>
+  <data name="RemovedFromViewLater" xml:space="preserve"><value>已移出稍后再看。</value></data>
+  <data name="RemoveFromViewLaterFailed" xml:space="preserve"><value>移出稍后再看失败：{0}</value></data>
+  <data name="LoginWindowInitFailed" xml:space="preserve"><value>登录窗口初始化失败：{0}</value></data>
+  <data name="LoginSuccessExchanging" xml:space="preserve"><value>网页登录成功，正在换取更稳定的登录凭据...</value></data>
+  <data name="LoginSuccessSaved" xml:space="preserve"><value>登录成功，已保存登录凭据。</value></data>
+  <data name="StartupTaskFallback" xml:space="preserve"><value>当前运行方式不支持应用启动任务，已改用当前用户启动项。</value></data>
+  <data name="StartupDisabledByUser" xml:space="preserve"><value>自启已被系统设置关闭，请在 Windows 启动应用设置中重新允许。</value></data>
+  <data name="StartupDisabledByPolicy" xml:space="preserve"><value>自启已被系统策略禁用。</value></data>
+  <data name="NotLoggedIn" xml:space="preserve"><value>尚未登录。</value></data>
+  <data name="NotLoggedInShort" xml:space="preserve"><value>未登录</value></data>
+  <data name="LoginStatusHint" xml:space="preserve"><value>网页登录后会保存登录状态，用于刷新关注动态。</value></data>
+  <data name="CheckingLoginStatus" xml:space="preserve"><value>正在检查登录状态...</value></data>
+  <data name="CookieInvalid" xml:space="preserve"><value>已保存 Cookie，但登录状态无效或已过期。</value></data>
+  <data name="LoginStatusInvalid" xml:space="preserve"><value>登录状态失效</value></data>
+  <data name="PleaseRelogin" xml:space="preserve"><value>请重新登录。</value></data>
+  <data name="LoggedIn" xml:space="preserve"><value>已登录。</value></data>
+  <data name="StatusUnknown" xml:space="preserve"><value>状态未知</value></data>
+  <data name="CookieUnverifiable" xml:space="preserve"><value>Cookie 已保存，但暂时无法验证。</value></data>
+  <data name="LoginStatusCheckFailed" xml:space="preserve"><value>登录状态检查失败：{0}</value></data>
+  <data name="ExportFailed" xml:space="preserve"><value>导出失败：{0}</value></data>
+  <data name="ExportedTo" xml:space="preserve"><value>已导出到：{0}</value></data>
+  <data name="ImportFailed" xml:space="preserve"><value>导入失败：{0}</value></data>
+  <data name="ImportedFrom" xml:space="preserve"><value>已导入：{0}</value></data>
+  <data name="InvalidConfigFile" xml:space="preserve"><value>配置文件为空或格式不正确。</value></data>
+  <data name="OpenedUrl" xml:space="preserve"><value>已打开：{0}</value></data>
+  <data name="OpenLinkFailed" xml:space="preserve"><value>打开链接失败：{0}</value></data>
+  <data name="AddCreatorDialogTitle" xml:space="preserve"><value>添加 UP 主</value></data>
+  <data name="EnterLinkOrUid" xml:space="preserve"><value>输入链接或 UID</value></data>
+  <data name="ClickQueryToFetch" xml:space="preserve"><value>点击查询按钮读取 UP 信息</value></data>
+  <data name="FetchingCreatorInfo" xml:space="preserve"><value>正在读取 UP 信息...</value></data>
+  <data name="InputInvalid" xml:space="preserve"><value>输入无效</value></data>
+  <data name="InputInvalidDetail" xml:space="preserve"><value>请输入有效的 UP 主页链接或 UID。</value></data>
+  <data name="AlreadyExists" xml:space="preserve"><value>已存在</value></data>
+  <data name="AlreadyExistsDetail" xml:space="preserve"><value>这个 UP 已经在通知列表里。</value></data>
+  <data name="FetchFailed" xml:space="preserve"><value>读取失败</value></data>
+  <data name="AddedCreator" xml:space="preserve"><value>已添加：{0}</value></data>
+  <data name="RemovedCreator" xml:space="preserve"><value>已删除：{0}</value></data>
+  <data name="On" xml:space="preserve"><value>开</value></data>
+  <data name="Off" xml:space="preserve"><value>关</value></data>
+  <data name="SaveButton" xml:space="preserve"><value>保存</value></data>
+  <data name="CancelButton" xml:space="preserve"><value>取消</value></data>
+  <data name="CreatorLinkPlaceholder" xml:space="preserve"><value>https://space.bilibili.com/123456 或 UID</value></data>
+  <data name="CreatorLinkAutomationName" xml:space="preserve"><value>UP 主页链接或 UID</value></data>
+  <data name="FilePickerJsonLabel" xml:space="preserve"><value>JSON 配置</value></data>
+  <data name="NoFollowingData" xml:space="preserve"><value>暂无关注数据</value></data>
+  <data name="LastCheckedNotYet" xml:space="preserve"><value>尚未检查</value></data>
+  <data name="OpenLiveRoomTooltip" xml:space="preserve"><value>打开 {0} 的直播间</value></data>
+  <data name="AddToViewLaterTooltip" xml:space="preserve"><value>添加到稍后再看</value></data>
+  <data name="RemoveFromViewLaterTooltip" xml:space="preserve"><value>移出稍后再看</value></data>
+  <data name="OpenCreatorHomeTooltip" xml:space="preserve"><value>打开 UP 主主页</value></data>
+  <data name="FollowCreatorMenuItem" xml:space="preserve"><value>关注</value></data>
+  <data name="UnfollowCreatorMenuItem" xml:space="preserve"><value>取消关注</value></data>
+  <data name="TrayOpenBiliRadar" xml:space="preserve"><value>打开 BiliRadar</value></data>
+  <data name="TraySettings" xml:space="preserve"><value>设置</value></data>
+  <data name="TrayExit" xml:space="preserve"><value>退出</value></data>
+  <data name="VideoNotificationTitle" xml:space="preserve"><value>{0} 发布了新视频</value></data>
+  <data name="AddToViewLaterButton" xml:space="preserve"><value>添加到稍后再看</value></data>
+  <data name="OpenVideoButton" xml:space="preserve"><value>打开视频</value></data>
+  <data name="LiveNotificationFallbackTitle" xml:space="preserve"><value>正在直播</value></data>
+  <data name="LiveNotificationTitle" xml:space="preserve"><value>{0} 开播了</value></data>
+  <data name="CloneCommandCopied" xml:space="preserve"><value>已复制克隆命令。</value></data>
+  <data name="LanguageRestartMessage" xml:space="preserve"><value>语言已切换为 {0}，重启应用后生效。</value></data>
+  <data name="MainWindow.Title" xml:space="preserve"><value>BiliRadar</value></data>
+  <data name="SettingsWindow.Title" xml:space="preserve"><value>BiliRadar 设置</value></data>
+  <data name="WebSignInWindow.Title" xml:space="preserve"><value>BiliRadar 登录</value></data>
+</root>

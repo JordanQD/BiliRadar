@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Net.Http;
 using System.Threading.Tasks;
+using BiliRadar.Helpers;
 using BiliRadar.Models;
 using BiliRadar.Services;
 using Microsoft.UI.Xaml;
@@ -133,7 +134,7 @@ public sealed partial class VideoCard : UserControl
             </ControlTemplate>
             """) as ControlTemplate;
         _avatarBtn.Click += (_, _) => { if (_item is not null) CreatorAvatarClicked?.Invoke(this, _item); };
-        ToolTipService.SetToolTip(_avatarBtn, "打开 UP 主主页");
+        ToolTipService.SetToolTip(_avatarBtn, LocalizationHelper.GetString("OpenCreatorHomeTooltip"));
         creatorRow.Children.Add(_avatarBtn);
 
         _creatorText = new TextBlock { FontSize = 12, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Foreground = (Brush)app.Resources["TextFillColorSecondaryBrush"], MaxWidth = 120, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.NoWrap };
@@ -186,7 +187,9 @@ public sealed partial class VideoCard : UserControl
         if (_vlMode == ViewLaterButtonMode.None) { ViewLaterBtn.Visibility = Visibility.Collapsed; return; }
         ViewLaterBtn.Visibility = Visibility.Visible;
         ViewLaterIcon.Glyph = _vlMode == ViewLaterButtonMode.Remove ? "" : "";
-        ToolTipService.SetToolTip(ViewLaterBtn, _vlMode == ViewLaterButtonMode.Remove ? "移出稍后再看" : "添加到稍后再看");
+        ToolTipService.SetToolTip(ViewLaterBtn, _vlMode == ViewLaterButtonMode.Remove
+            ? LocalizationHelper.GetString("RemoveFromViewLaterTooltip")
+            : LocalizationHelper.GetString("AddToViewLaterTooltip"));
     }
 
     private void BuildFlyout()
@@ -207,7 +210,19 @@ public sealed partial class VideoCard : UserControl
         _avatarBtn.ContextFlyout = _flyout;
     }
 
-    private void SetRelMenu(CreatorRelationActionMode m) { if (_relItem is null) return; _relItem.Tag = m; _relItem.Text = m == CreatorRelationActionMode.Follow ? "关注" : "取消关注"; _relItem.Icon = MakeMenuIcon(m == CreatorRelationActionMode.Follow ? FollowIcon : UnfollowIcon); }
+    private void SetRelMenu(CreatorRelationActionMode m)
+    {
+        if (_relItem is null)
+        {
+            return;
+        }
+
+        _relItem.Tag = m;
+        _relItem.Text = m == CreatorRelationActionMode.Follow
+            ? LocalizationHelper.GetString("FollowCreatorMenuItem")
+            : LocalizationHelper.GetString("UnfollowCreatorMenuItem");
+        _relItem.Icon = MakeMenuIcon(m == CreatorRelationActionMode.Follow ? FollowIcon : UnfollowIcon);
+    }
 
     private void CardBorder_Tapped(object sender, TappedRoutedEventArgs e) { if (IsInteractive(e.OriginalSource as DependencyObject)) return; if (_item is not null) { e.Handled = true; CoverTapped?.Invoke(this, _item); } }
     private void CoverBtn_Click(object sender, RoutedEventArgs e) { if (_item is not null) CoverTapped?.Invoke(this, _item); }

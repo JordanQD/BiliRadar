@@ -1,5 +1,6 @@
 using System;
 using System.Windows.Input;
+using BiliRadar.Helpers;
 using H.NotifyIcon;
 using Microsoft.Win32;
 using Microsoft.UI.Xaml.Controls;
@@ -64,10 +65,10 @@ internal sealed class TrayIconService : IDisposable
     {
         var menu = new MenuFlyout();
 
-        menu.Items.Add(CreateMenuItem("打开 BiliRadar", "\uE8A7", _openAction));
-        menu.Items.Add(CreateMenuItem("设置", "\uE713", _settingsAction));
+        menu.Items.Add(CreateMenuItem(LocalizationHelper.GetString("TrayOpenBiliRadar"), "\uE8A7", _openAction));
+        menu.Items.Add(CreateMenuItem(LocalizationHelper.GetString("TraySettings"), "\uE713", _settingsAction));
         menu.Items.Add(new MenuFlyoutSeparator());
-        menu.Items.Add(CreateMenuItem("退出", "\uE8BB", _exitAction));
+        menu.Items.Add(CreateMenuItem(LocalizationHelper.GetString("TrayExit"), "\uE8BB", _exitAction));
 
         return menu;
     }

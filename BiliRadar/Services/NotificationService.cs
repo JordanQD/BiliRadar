@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading.Tasks;
 using BiliRadar.Models;
+using BiliRadar.Helpers;
 using Microsoft.UI.Xaml;
 using Microsoft.Windows.AppNotifications;
 using Microsoft.Windows.AppNotifications.Builder;
@@ -235,13 +236,13 @@ public sealed class NotificationService
             .AddArgument("kind", "video")
             .AddArgument("action", OpenAction)
             .AddArgument("url", update.Url)
-            .AddText($"{update.CreatorName} 发布了新视频")
+            .AddText(LocalizationHelper.Format("VideoNotificationTitle", update.CreatorName))
             .AddText(update.Title)
-            .AddButton(new AppNotificationButton("添加到稍后再看")
+            .AddButton(new AppNotificationButton(LocalizationHelper.GetString("AddToViewLaterButton"))
                 .AddArgument("kind", "video")
                 .AddArgument("action", WatchLaterAction)
                 .AddArgument("aid", update.Aid.ToString()))
-            .AddButton(new AppNotificationButton("打开视频")
+            .AddButton(new AppNotificationButton(LocalizationHelper.GetString("OpenVideoButton"))
                 .AddArgument("kind", "video")
                 .AddArgument("action", OpenAction)
                 .AddArgument("url", update.Url));
@@ -253,14 +254,14 @@ public sealed class NotificationService
     private static void ShowLiveNotification(BiliLiveCreator creator)
     {
         var title = string.IsNullOrWhiteSpace(creator.Title)
-            ? "正在直播"
+            ? LocalizationHelper.GetString("LiveNotificationFallbackTitle")
             : creator.Title;
 
         var builder = new AppNotificationBuilder()
             .AddArgument("kind", "live")
             .AddArgument("action", OpenAction)
             .AddArgument("url", creator.Url)
-            .AddText($"{creator.Name} 开播了")
+            .AddText(LocalizationHelper.Format("LiveNotificationTitle", creator.Name))
             .AddText(title);
 
         AddImages(builder, creator.AvatarUrl, string.Empty);

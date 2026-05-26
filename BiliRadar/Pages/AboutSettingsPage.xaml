@@ -7,7 +7,7 @@
 
     <ScrollView
         x:Name="SettingsScrollView"
-        Padding="36,32,36,16"
+        Padding="36,32,36,0"
         VerticalScrollBarVisibility="Auto"
         VerticalScrollMode="Auto">
         <VisualStateManager.VisualStateGroups>
@@ -17,7 +17,7 @@
                         <AdaptiveTrigger MinWindowWidth="640" />
                     </VisualState.StateTriggers>
                     <VisualState.Setters>
-                        <Setter Target="SettingsScrollView.Padding" Value="36,32,36,16" />
+                        <Setter Target="SettingsScrollView.Padding" Value="36,32,36,0" />
                     </VisualState.Setters>
                 </VisualState>
                 <VisualState x:Name="Narrow">
@@ -38,13 +38,15 @@
             </StackPanel.ChildrenTransitions>
 
             <TextBlock
+                x:Uid="AboutPageTitle"
                 Margin="0,0,0,12"
                 Style="{ThemeResource TitleTextBlockStyle}"
                 Text="关于" />
 
             <controls:SettingsExpander
                 x:Name="AboutExpander"
-                Margin="0,0,0,36"
+                x:Uid="AboutExpander"
+                Margin="0,0,0,12"
                 Description="一个放在任务栏托盘里的 B 站动态雷达。"
                 Header="BiliRadar"
                 IsExpanded="True">
@@ -60,6 +62,7 @@
                 <controls:SettingsExpander.Items>
                     <controls:SettingsCard
                         x:Name="CloneRepositoryCard"
+                        x:Uid="AboutCloneRepositoryCard"
                         Click="CloneRepositoryCard_Click"
                         Header="克隆此仓库"
                         IsClickEnabled="True">
@@ -75,6 +78,7 @@
                     </controls:SettingsCard>
                     <controls:SettingsCard
                         x:Name="IssueRequestCard"
+                        x:Uid="AboutIssueRequestCard"
                         Click="IssueRequestCard_Click"
                         Header="提交问题或功能建议"
                         IsClickEnabled="True">
@@ -86,6 +90,7 @@
                         </controls:SettingsCard.ActionIcon>
                     </controls:SettingsCard>
                     <controls:SettingsCard
+                        x:Uid="AboutDependenciesCard"
                         HorizontalContentAlignment="Left"
                         ContentAlignment="Vertical"
                         Header="依赖与参考">
@@ -116,7 +121,7 @@
             </controls:SettingsExpander>
             <TextBlock
                 x:Name="AboutStatusText"
-                Margin="1,8,0,36"
+                Margin="1,8,0,0"
                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                 TextWrapping="Wrap" />
         </StackPanel>

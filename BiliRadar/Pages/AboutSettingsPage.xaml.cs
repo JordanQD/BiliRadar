@@ -1,4 +1,5 @@
 using System;
+using BiliRadar.Helpers;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.ApplicationModel;
@@ -29,7 +30,7 @@ public sealed partial class AboutSettingsPage : Page
         var dataPackage = new DataPackage();
         dataPackage.SetText(GitCloneTextBlock.Text);
         Clipboard.SetContent(dataPackage);
-        AboutStatusText.Text = "已复制克隆命令。";
+        AboutStatusText.Text = LocalizationHelper.GetString("CloneCommandCopied");
     }
 
     private async void IssueRequestCard_Click(object sender, RoutedEventArgs e)
@@ -37,11 +38,11 @@ public sealed partial class AboutSettingsPage : Page
         try
         {
             await Launcher.LaunchUriAsync(new Uri(IssuesUrl));
-            AboutStatusText.Text = $"已打开：{IssuesUrl}";
+            AboutStatusText.Text = LocalizationHelper.Format("OpenedUrl", IssuesUrl);
         }
         catch (Exception ex)
         {
-            AboutStatusText.Text = $"打开链接失败：{ex.Message}";
+            AboutStatusText.Text = LocalizationHelper.Format("OpenLinkFailed", ex.Message);
         }
     }
 

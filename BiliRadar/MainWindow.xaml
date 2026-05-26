@@ -3,8 +3,7 @@
     x:Class="BiliRadar.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:models="using:BiliRadar.Models"
-    Title="BiliRadar">
+    xmlns:models="using:BiliRadar.Models">
 
     <Window.SystemBackdrop>
         <DesktopAcrylicBackdrop />
@@ -54,9 +53,9 @@
             <SelectorBar
                 x:Name="ContentSelectorBar"
                 SelectionChanged="ContentSelectorBar_SelectionChanged">
-                <SelectorBarItem x:Name="FollowingSelectorItem" Text="关注" Icon="Contact" />
-                <SelectorBarItem x:Name="HistorySelectorItem" Text="历史" Icon="Clock" />
-                <SelectorBarItem x:Name="ViewLaterSelectorItem" Text="稍后再看" Icon="Favorite" />
+                <SelectorBarItem x:Name="FollowingSelectorItem" x:Uid="MainFollowingSelectorItem" Text="关注" Icon="Contact" />
+                <SelectorBarItem x:Name="HistorySelectorItem" x:Uid="MainHistorySelectorItem" Text="历史" Icon="Clock" />
+                <SelectorBarItem x:Name="ViewLaterSelectorItem" x:Uid="MainViewLaterSelectorItem" Text="稍后再看" Icon="Favorite" />
             </SelectorBar>
 
             <Button
@@ -99,6 +98,7 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <TextBlock
+                                x:Uid="MainLiveSectionHeader"
                                 Grid.Column="0"
                                 FontSize="12"
                                 FontWeight="SemiBold"
@@ -139,6 +139,7 @@
                 </StackPanel>
                 <TextBlock
                     x:Name="LatestVideosHeader"
+                    x:Uid="MainLatestVideosHeader"
                     Margin="0,0,0,6"
                     FontSize="12"
                     FontWeight="SemiBold"
@@ -180,11 +181,13 @@
                     Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                     Glyph="&#xE823;" />
                 <TextBlock
+                    x:Uid="MainHistoryEmptyTitle"
                     HorizontalAlignment="Center"
                     FontSize="14"
                     FontWeight="SemiBold"
                     Text="暂无历史记录" />
                 <TextBlock
+                    x:Uid="MainHistoryEmptyDescription"
                     HorizontalAlignment="Center"
                     FontSize="12"
                     Foreground="{ThemeResource TextFillColorTertiaryBrush}"
@@ -222,11 +225,13 @@
                     Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                     Glyph="&#xE734;" />
                 <TextBlock
+                    x:Uid="MainViewLaterEmptyTitle"
                     HorizontalAlignment="Center"
                     FontSize="14"
                     FontWeight="SemiBold"
                     Text="暂无稍后再看" />
                 <TextBlock
+                    x:Uid="MainViewLaterEmptyDescription"
                     HorizontalAlignment="Center"
                     FontSize="12"
                     Foreground="{ThemeResource TextFillColorTertiaryBrush}"

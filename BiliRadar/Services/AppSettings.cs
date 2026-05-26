@@ -24,6 +24,7 @@ public static class AppSettings
     private const string DefaultOpenPageKey = "DefaultOpenPage";
     private const string LiveSectionDisplayModeKey = "LiveSectionDisplayMode";
     private const string CustomNotificationCreatorsKey = "CustomNotificationCreators";
+    private const string AppLanguageKey = "AppLanguage";
     private const string DefaultCustomLaunchWebPageUrl = "https://www.bilibili.com/";
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -190,6 +191,12 @@ public static class AppSettings
             LocalSettings.Values[CustomNotificationCreatorsKey] = JsonSerializer.Serialize(creators, JsonOptions);
             NotificationSettingsChanged?.Invoke(null, EventArgs.Empty);
         }
+    }
+
+    public static string AppLanguage
+    {
+        get => ReadString(AppLanguageKey, "zh-CN");
+        set => LocalSettings.Values[AppLanguageKey] = value;
     }
 
     private static bool ReadBool(string key, bool defaultValue)

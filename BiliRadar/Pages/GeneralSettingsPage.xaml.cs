@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using BiliRadar.Helpers;
 using BiliRadar.Models;
 using BiliRadar.Services;
 using Microsoft.UI.Xaml;
@@ -56,6 +57,7 @@ public sealed partial class GeneralSettingsPage : Page
         _isLoadingSettings = false;
 
         SettingsScrollView.ScrollTo(0, 0);
+        InitLanguageSelector();
         await RefreshAccountStatusAsync();
     }
 
@@ -84,8 +86,8 @@ public sealed partial class GeneralSettingsPage : Page
             StartupInfoBar.Severity = InfoBarSeverity.Informational;
             StartupInfoBar.Message = _startupTask.State switch
             {
-                StartupTaskState.DisabledByUser => "自启已被系统设置关闭，请在 Windows 启动应用设置中重新允许。",
-                StartupTaskState.DisabledByPolicy => "自启已被系统策略禁用。",
+                StartupTaskState.DisabledByUser => LocalizationHelper.GetString("StartupDisabledByUser"),
+                StartupTaskState.DisabledByPolicy => LocalizationHelper.GetString("StartupDisabledByPolicy"),
                 _ => string.Empty,
             };
             return;
@@ -100,7 +102,7 @@ public sealed partial class GeneralSettingsPage : Page
         AutoStartSwitch.IsOn = IsRegistryStartupEnabled();
         StartupInfoBar.IsOpen = true;
         StartupInfoBar.Severity = InfoBarSeverity.Informational;
-        StartupInfoBar.Message = "当前运行方式不支持应用启动任务，已改用当前用户启动项。";
+        StartupInfoBar.Message = LocalizationHelper.GetString("StartupTaskFallback");
     }
 
     private async void AutoStartSwitch_Toggled(object sender, RoutedEventArgs e)
@@ -265,9 +267,9 @@ public sealed partial class GeneralSettingsPage : Page
         if (!_cookieStore.HasCookie)
         {
             AccountInfoBar.Severity = InfoBarSeverity.Informational;
-            AccountInfoBar.Message = "尚未登录。";
-            AccountNameText.Text = "未登录";
-            AccountDetailText.Text = "网页登录后会保存登录状态，用于刷新关注动态。";
+            AccountInfoBar.Message = LocalizationHelper.GetString("NotLoggedIn");
+            AccountNameText.Text = LocalizationHelper.GetString("NotLoggedInShort");
+            AccountDetailText.Text = LocalizationHelper.GetString("LoginStatusHint");
             AvatarPicture.ProfilePicture = null;
             AvatarPicture.Initials = "BR";
             return;
@@ -276,22 +278,22 @@ public sealed partial class GeneralSettingsPage : Page
         try
         {
             AccountInfoBar.Severity = InfoBarSeverity.Informational;
-            AccountInfoBar.Message = "正在检查登录状态...";
+            AccountInfoBar.Message = LocalizationHelper.GetString("CheckingLoginStatus");
 
             var profile = await _accountService.GetCurrentProfileAsync();
             if (profile is null)
             {
                 AccountInfoBar.Severity = InfoBarSeverity.Warning;
-                AccountInfoBar.Message = "已保存 Cookie，但登录状态无效或已过期。";
-                AccountNameText.Text = "登录状态失效";
-                AccountDetailText.Text = "请重新登录。";
+                AccountInfoBar.Message = LocalizationHelper.GetString("CookieInvalid");
+                AccountNameText.Text = LocalizationHelper.GetString("LoginStatusInvalid");
+                AccountDetailText.Text = LocalizationHelper.GetString("PleaseRelogin");
                 AvatarPicture.ProfilePicture = null;
                 AvatarPicture.Initials = "BR";
                 return;
             }
 
             AccountInfoBar.Severity = InfoBarSeverity.Success;
-            AccountInfoBar.Message = "已登录。";
+            AccountInfoBar.Message = LocalizationHelper.GetString("LoggedIn");
             AccountNameText.Text = profile.Name;
             AccountDetailText.Text = $"UID {profile.Mid}";
             AvatarPicture.Initials = string.IsNullOrWhiteSpace(profile.Name) ? "BR" : profile.Name[..1];
@@ -302,9 +304,9 @@ public sealed partial class GeneralSettingsPage : Page
         catch (Exception ex)
         {
             AccountInfoBar.Severity = InfoBarSeverity.Warning;
-            AccountInfoBar.Message = $"登录状态检查失败：{ex.Message}";
-            AccountNameText.Text = "状态未知";
-            AccountDetailText.Text = "Cookie 已保存，但暂时无法验证。";
+            AccountInfoBar.Message = LocalizationHelper.Format("LoginStatusCheckFailed", ex.Message);
+            AccountNameText.Text = LocalizationHelper.GetString("StatusUnknown");
+            AccountDetailText.Text = LocalizationHelper.GetString("CookieUnverifiable");
             AvatarPicture.ProfilePicture = null;
             AvatarPicture.Initials = "BR";
         }
@@ -317,7 +319,7 @@ public sealed partial class GeneralSettingsPage : Page
             SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
             SuggestedFileName = $"BiliRadar-config-{DateTime.Now:yyyyMMdd-HHmmss}",
         };
-        picker.FileTypeChoices.Add("JSON 配置", [".json"]);
+        picker.FileTypeChoices.Add(LocalizationHelper.GetString("FilePickerJsonLabel"), [".json"]);
 
         var result = await picker.PickSaveFileAsync();
         if (result is null)
@@ -330,11 +332,11 @@ public sealed partial class GeneralSettingsPage : Page
             var export = CreateSettingsExport();
             var json = JsonSerializer.Serialize(export, JsonOptions);
             await File.WriteAllTextAsync(result.Path, json);
-            ConfigStatusText.Text = $"已导出到：{result.Path}";
+            SetConfigStatus(LocalizationHelper.Format("ExportedTo", result.Path));
         }
         catch (Exception ex)
         {
-            ConfigStatusText.Text = $"导出失败：{ex.Message}";
+            SetConfigStatus(LocalizationHelper.Format("ExportFailed", ex.Message));
         }
     }
 
@@ -356,14 +358,14 @@ public sealed partial class GeneralSettingsPage : Page
         {
             var json = await File.ReadAllTextAsync(result.Path);
             var import = JsonSerializer.Deserialize<SettingsExport>(json, JsonOptions)
-                ?? throw new InvalidOperationException("配置文件为空或格式不正确。");
+                ?? throw new InvalidOperationException(LocalizationHelper.GetString("InvalidConfigFile"));
 
             await ApplySettingsExportAsync(import);
-            ConfigStatusText.Text = $"已导入：{result.Path}";
+            SetConfigStatus(LocalizationHelper.Format("ImportedFrom", result.Path));
         }
         catch (Exception ex)
         {
-            ConfigStatusText.Text = $"导入失败：{ex.Message}";
+            SetConfigStatus(LocalizationHelper.Format("ImportFailed", ex.Message));
         }
     }
 
@@ -489,6 +491,44 @@ public sealed partial class GeneralSettingsPage : Page
         {
             return false;
         }
+    }
+
+    private void InitLanguageSelector()
+    {
+        var current = AppSettings.AppLanguage;
+        LanguageSelectorBox.SelectedIndex = current switch
+        {
+            "zh-HK" => 1,
+            _ => 0,
+        };
+    }
+
+    private void LanguageSelectorBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_isLoadingSettings || LanguageSelectorBox.SelectedItem is not ComboBoxItem { Tag: string tag })
+        {
+            return;
+        }
+
+        if (string.Equals(AppSettings.AppLanguage, tag, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        AppSettings.AppLanguage = tag;
+        LocalizationHelper.SetLanguage(tag);
+
+        SetConfigStatus(LocalizationHelper.Format("LanguageRestartMessage", tag switch
+        {
+            "zh-HK" => "繁體中文（香港）",
+            _ => "简体中文",
+        }));
+    }
+
+    private void SetConfigStatus(string message)
+    {
+        ConfigStatusText.Text = message;
+        ConfigStatusText.Visibility = string.IsNullOrWhiteSpace(message) ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private sealed class LoginExport

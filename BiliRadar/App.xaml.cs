@@ -1,6 +1,8 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
+using BiliRadar.Helpers;
 using BiliRadar.Services;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
@@ -25,6 +27,7 @@ public partial class App : Application
 
     public App()
     {
+        LocalizationHelper.SetLanguage(AppSettings.AppLanguage);
         InitializeComponent();
         InitializeNotifications();
     }

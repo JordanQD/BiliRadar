@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using BiliRadar.Helpers;
 using BiliRadar.Models;
 using BiliRadar.Services;
 using Microsoft.UI.Xaml;
@@ -111,10 +112,10 @@ public sealed partial class NotificationSettingsPage : Page
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             MinWidth = 0,
-            PlaceholderText = "https://space.bilibili.com/123456 或 UID",
+            PlaceholderText = LocalizationHelper.GetString("CreatorLinkPlaceholder"),
             QueryIcon = new SymbolIcon(Symbol.Find),
         };
-        AutomationProperties.SetName(linkBox, "UP 主页链接或 UID");
+        AutomationProperties.SetName(linkBox, LocalizationHelper.GetString("CreatorLinkAutomationName"));
 
         // --- creator info (always visible, placeholder initially) ---
         var avatarPicture = new PersonPicture
@@ -125,13 +126,13 @@ public sealed partial class NotificationSettingsPage : Page
         };
         var creatorNameText = new TextBlock
         {
-            Text = "输入链接或 UID",
+            Text = LocalizationHelper.GetString("EnterLinkOrUid"),
             Style = (Style)Application.Current.Resources["BodyStrongTextBlockStyle"],
             TextTrimming = TextTrimming.CharacterEllipsis,
         };
         var creatorDetailText = new TextBlock
         {
-            Text = "点击查询按钮读取 UP 信息",
+            Text = LocalizationHelper.GetString("ClickQueryToFetch"),
             Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
             TextWrapping = TextWrapping.Wrap,
         };
@@ -213,8 +214,8 @@ public sealed partial class NotificationSettingsPage : Page
             HorizontalAlignment = HorizontalAlignment.Stretch,
             Spacing = dialogVerticalSpacing,
         };
-        notificationOptions.Children.Add(CreateDialogSwitchRow("视频更新通知", videoSwitch));
-        notificationOptions.Children.Add(CreateDialogSwitchRow("开播通知", liveSwitch));
+        notificationOptions.Children.Add(CreateDialogSwitchRow(LocalizationHelper.GetString("NotificationSettings.VideoNotifyCard.Header"), videoSwitch));
+        notificationOptions.Children.Add(CreateDialogSwitchRow(LocalizationHelper.GetString("NotificationSettings.LiveNotifyCard.Header"), liveSwitch));
 
         // --- content panel ---
         var contentPanel = new StackPanel
@@ -231,10 +232,10 @@ public sealed partial class NotificationSettingsPage : Page
         var dialog = new ContentDialog
         {
             XamlRoot = XamlRoot,
-            Title = "添加 UP 主",
+            Title = LocalizationHelper.GetString("AddCreatorDialogTitle"),
             Content = contentPanel,
-            PrimaryButtonText = "保存",
-            CloseButtonText = "取消",
+            PrimaryButtonText = LocalizationHelper.GetString("SaveButton"),
+            CloseButtonText = LocalizationHelper.GetString("CancelButton"),
             DefaultButton = ContentDialogButton.Primary,
             IsPrimaryButtonEnabled = false,
         };
@@ -248,8 +249,8 @@ public sealed partial class NotificationSettingsPage : Page
             dialog.IsPrimaryButtonEnabled = false;
             avatarPicture.ProfilePicture = null;
             avatarPicture.Initials = "UP";
-            creatorNameText.Text = "输入链接或 UID";
-            creatorDetailText.Text = "点击查询按钮读取 UP 信息";
+            creatorNameText.Text = LocalizationHelper.GetString("EnterLinkOrUid");
+            creatorDetailText.Text = LocalizationHelper.GetString("ClickQueryToFetch");
             DismissInfoBar();
         }
 
@@ -282,18 +283,18 @@ public sealed partial class NotificationSettingsPage : Page
             var mid = TryParseCreatorMid(linkBox.Text);
             if (mid <= 0)
             {
-                ShowError(InfoBarSeverity.Warning, "输入无效", "请输入有效的 UP 主页链接或 UID。");
+                ShowError(InfoBarSeverity.Warning, LocalizationHelper.GetString("InputInvalid"), LocalizationHelper.GetString("InputInvalidDetail"));
                 return;
             }
 
             if (CustomNotificationCreators.Any(item => item.Mid == mid))
             {
-                ShowError(InfoBarSeverity.Warning, "已存在", "这个 UP 已经在通知列表里。");
+                ShowError(InfoBarSeverity.Warning, LocalizationHelper.GetString("AlreadyExists"), LocalizationHelper.GetString("AlreadyExistsDetail"));
                 return;
             }
 
             linkBox.IsEnabled = false;
-            creatorDetailText.Text = "正在读取 UP 信息...";
+            creatorDetailText.Text = LocalizationHelper.GetString("FetchingCreatorInfo");
             DismissInfoBar();
             try
             {
@@ -308,7 +309,7 @@ public sealed partial class NotificationSettingsPage : Page
             }
             catch (Exception ex)
             {
-                ShowError(InfoBarSeverity.Error, "读取失败", ex.Message);
+                ShowError(InfoBarSeverity.Error, LocalizationHelper.GetString("FetchFailed"), ex.Message);
             }
             finally
             {
@@ -340,7 +341,7 @@ public sealed partial class NotificationSettingsPage : Page
 
             if (CustomNotificationCreators.Any(item => item.Mid == resolvedCreator.Mid))
             {
-                ShowError(InfoBarSeverity.Warning, "已存在", "这个 UP 已经在通知列表里。");
+                ShowError(InfoBarSeverity.Warning, LocalizationHelper.GetString("AlreadyExists"), LocalizationHelper.GetString("AlreadyExistsDetail"));
                 return;
             }
 
@@ -356,7 +357,7 @@ public sealed partial class NotificationSettingsPage : Page
             CustomNotificationCreators.Add(subscription);
             await SeedNotificationBaselineAsync(subscription);
             SaveCustomNotificationCreators();
-            CustomNotificationStatusText.Text = $"已添加：{subscription.Name}";
+            CustomNotificationStatusText.Text = LocalizationHelper.Format("AddedCreator", subscription.Name);
             dialog.Hide();
         };
 
@@ -390,10 +391,10 @@ public sealed partial class NotificationSettingsPage : Page
         var stateText = new TextBlock
         {
             Width = 24,
-            Text = toggleSwitch.IsOn ? "开" : "关",
+            Text = toggleSwitch.IsOn ? LocalizationHelper.GetString("On") : LocalizationHelper.GetString("Off"),
             VerticalAlignment = VerticalAlignment.Center,
         };
-        toggleSwitch.Toggled += (_, _) => stateText.Text = toggleSwitch.IsOn ? "开" : "关";
+        toggleSwitch.Toggled += (_, _) => stateText.Text = toggleSwitch.IsOn ? LocalizationHelper.GetString("On") : LocalizationHelper.GetString("Off");
         Grid.SetColumn(stateText, 1);
         row.Children.Add(stateText);
 
@@ -447,7 +448,7 @@ public sealed partial class NotificationSettingsPage : Page
 
         CustomNotificationCreators.Remove(subscription);
         SaveCustomNotificationCreators();
-        CustomNotificationStatusText.Text = $"已删除：{subscription.Name}";
+        CustomNotificationStatusText.Text = LocalizationHelper.Format("RemovedCreator", subscription.Name);
     }
 
     private void UpdateNotificationModeVisibility()

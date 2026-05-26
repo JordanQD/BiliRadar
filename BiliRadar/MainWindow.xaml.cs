@@ -9,6 +9,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using BiliRadar.Helpers;
 using BiliRadar.Models;
 using BiliRadar.Services;
 using Microsoft.UI.Windowing;
@@ -71,13 +72,13 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     private bool _isLiveSectionExpanded;
     private int _unreadCount;
     private int _followingCount;
-    private string _lastCheckedText = "尚未检查";
-    private string _followingListText = "暂无关注数据";
+    private string _lastCheckedText = LocalizationHelper.GetString("LastCheckedNotYet");
+    private string _followingListText = LocalizationHelper.GetString("NoFollowingData");
 
     public MainWindow()
     {
         InitializeComponent();
-        Title = "BiliRadar";
+        Title = LocalizationHelper.GetString("MainWindow.Title", "BiliRadar");
 
         Updates = [];
         HistoryItems = [];
@@ -87,7 +88,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         _updateMonitorService = new(new BiliWebDataProvider(_cookieStore));
         _hwnd = WindowNative.GetWindowHandle(this);
         _appWindow = AppWindow.GetFromWindowId(Microsoft.UI.Win32Interop.GetWindowIdFromWindow(_hwnd));
-        _appWindow.Title = "BiliRadar";
+        _appWindow.Title = LocalizationHelper.GetString("MainWindow.Title", "BiliRadar");
         _appWindow.Resize(new SizeInt32(WindowWidthDip, WindowMinHeightDip));
         _appWindow.Closing += AppWindow_Closing;
         Activated += MainWindow_Activated;
@@ -254,7 +255,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             }
             catch (Exception ex)
             {
-                ShowStatus($"视频动态加载失败：{ex.Message}", InfoBarSeverity.Error);
+                ShowStatus(LocalizationHelper.Format("VideoLoadFailed", ex.Message), InfoBarSeverity.Error);
             }
 
             var newRows = new List<VideoUpdateRow>();
@@ -295,7 +296,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             LastCheckedText = _updateMonitorService.LastCheckedAt.ToString("HH:mm:ss");
             if (_cookieStore.HasCookie && Updates.Count == 0 && StatusNotifications.Count == 0)
             {
-                ShowStatus("暂无视频动态。", InfoBarSeverity.Informational);
+                ShowStatus(LocalizationHelper.GetString("NoVideoUpdates"), InfoBarSeverity.Informational);
             }
 
             if (AppSettings.NotificationTargetMode == NotificationTargetMode.AllFollowing)
@@ -363,7 +364,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
 
         FollowingCount = Following.Count;
         FollowingListText = Following.Count == 0
-            ? "暂无关注数据"
+            ? LocalizationHelper.GetString("NoFollowingData")
             : string.Join(Environment.NewLine, Following.Select(item => $"{item.Name}  UID:{item.Mid}"));
         RenderLiveCreators();
     }
@@ -463,11 +464,15 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         try
         {
             await _updateMonitorService.AddToViewLaterAsync(aid);
-            NotificationService.ShowStatusNotification("已添加到稍后再看", "可以稍后在 B 站继续观看。");
+            NotificationService.ShowStatusNotification(
+                LocalizationHelper.GetString("AddedToViewLater"),
+                LocalizationHelper.GetString("AddedToViewLaterDetail"));
         }
         catch (Exception ex)
         {
-            NotificationService.ShowStatusNotification("添加到稍后再看失败", ex.Message);
+            NotificationService.ShowStatusNotification(
+                LocalizationHelper.GetString("AddToViewLaterFailed"),
+                ex.Message);
         }
     }
 
@@ -480,8 +485,8 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         _hasMoreUpdates = false;
         FollowingCount = 0;
         UnreadCount = 0;
-        FollowingListText = "暂无关注数据";
-        LastCheckedText = "尚未检查";
+        FollowingListText = LocalizationHelper.GetString("NoFollowingData");
+        LastCheckedText = LocalizationHelper.GetString("LastCheckedNotYet");
         VideoCardsPanel.Children.Clear();
         RenderLiveCreators();
     }
@@ -668,7 +673,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            ShowStatus($"加载更早内容失败：{ex.Message}", InfoBarSeverity.Error);
+            ShowStatus(LocalizationHelper.Format("LoadEarlierFailed", ex.Message), InfoBarSeverity.Error);
         }
         finally
         {
@@ -728,14 +733,14 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             HistoryEmptyPanel.Visibility = HistoryItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             if (HistoryItems.Count == 0 && StatusNotifications.Count == 0)
             {
-                ShowStatus("暂无历史记录。", InfoBarSeverity.Informational);
+                ShowStatus(LocalizationHelper.GetString("NoHistory"), InfoBarSeverity.Informational);
             }
 
             AdjustWindowSizeToContent();
         }
         catch (Exception ex)
         {
-            ShowStatus($"历史记录加载失败：{ex.Message}", InfoBarSeverity.Error);
+            ShowStatus(LocalizationHelper.Format("HistoryLoadFailed", ex.Message), InfoBarSeverity.Error);
         }
         finally
         {
@@ -788,7 +793,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            ShowStatus($"加载更早历史失败：{ex.Message}", InfoBarSeverity.Error);
+            ShowStatus(LocalizationHelper.Format("LoadEarlierHistoryFailed", ex.Message), InfoBarSeverity.Error);
         }
         finally
         {
@@ -837,14 +842,14 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             ViewLaterEmptyPanel.Visibility = ViewLaterItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             if (ViewLaterItems.Count == 0 && StatusNotifications.Count == 0)
             {
-                ShowStatus("暂无稍后再看。", InfoBarSeverity.Informational);
+                ShowStatus(LocalizationHelper.GetString("NoViewLater"), InfoBarSeverity.Informational);
             }
 
             AdjustWindowSizeToContent();
         }
         catch (Exception ex)
         {
-            ShowStatus($"稍后再看加载失败：{ex.Message}", InfoBarSeverity.Error);
+            ShowStatus(LocalizationHelper.Format("ViewLaterLoadFailed", ex.Message), InfoBarSeverity.Error);
         }
         finally
         {
@@ -892,7 +897,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            ShowStatus($"加载更多稍后再看失败：{ex.Message}", InfoBarSeverity.Error);
+            ShowStatus(LocalizationHelper.Format("LoadMoreViewLaterFailed", ex.Message), InfoBarSeverity.Error);
         }
         finally
         {
@@ -1008,9 +1013,9 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         ViewLaterCardsPanel.Children.Clear();
         HistoryEmptyPanel.Visibility = Visibility.Visible;
         ViewLaterEmptyPanel.Visibility = Visibility.Visible;
-        FollowingListText = "暂无关注数据";
-        LastCheckedText = "尚未检查";
-        ShowStatus("Cookie 已清除。", InfoBarSeverity.Informational);
+        FollowingListText = LocalizationHelper.GetString("NoFollowingData");
+        LastCheckedText = LocalizationHelper.GetString("LastCheckedNotYet");
+        ShowStatus(LocalizationHelper.GetString("CookieCleared"), InfoBarSeverity.Informational);
         AdjustWindowSizeToContent();
     }
 
@@ -1029,7 +1034,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         {
             VideoCardsPanel.Children.Add(new TextBlock
             {
-                Text = "暂无视频动态",
+                Text = LocalizationHelper.GetString("NoVideoUpdates"),
                 FontSize = 13,
                 Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
             });
@@ -1133,7 +1138,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             Tag = item,
         };
         button.Click += LiveCreatorButton_Click;
-        ToolTipService.SetToolTip(button, string.IsNullOrWhiteSpace(item.Title) ? $"打开 {item.Name} 的直播间" : item.Title);
+        ToolTipService.SetToolTip(button, string.IsNullOrWhiteSpace(item.Title) ? LocalizationHelper.Format("OpenLiveRoomTooltip", item.Name) : item.Title);
 
         var panel = new StackPanel
         {
@@ -1399,7 +1404,9 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         viewLaterButton.PointerPressed += (_, _) => SetOverlayButtonState(viewLaterButton, OverlayButtonState.Pressed);
         viewLaterButton.PointerReleased += (_, _) => SetOverlayButtonState(viewLaterButton, OverlayButtonState.Hover);
         viewLaterButton.PointerCanceled += (_, _) => SetOverlayButtonState(viewLaterButton, OverlayButtonState.Normal);
-        ToolTipService.SetToolTip(viewLaterButton, mode == ViewLaterButtonMode.Remove ? "移出稍后再看" : "添加到稍后再看");
+        ToolTipService.SetToolTip(viewLaterButton, mode == ViewLaterButtonMode.Remove
+            ? LocalizationHelper.GetString("RemoveFromViewLaterTooltip")
+            : LocalizationHelper.GetString("AddToViewLaterTooltip"));
         if (mode == ViewLaterButtonMode.Remove)
         {
             viewLaterButton.Click += RemoveFromViewLaterButton_Click;
@@ -1447,7 +1454,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             Content = CreateAvatar(item),
         };
         avatarButton.Template = CreateCircularButtonTemplate(12);
-        ToolTipService.SetToolTip(avatarButton, "打开 UP 主主页");
+        ToolTipService.SetToolTip(avatarButton, LocalizationHelper.GetString("OpenCreatorHomeTooltip"));
         avatarButton.Click += CreatorAvatarButton_Click;
         avatarButton.ContextFlyout = CreateVideoCardMenuFlyout(item, relationActionMode);
         return avatarButton;
@@ -1584,7 +1591,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         viewLaterButton.PointerPressed += (_, _) => SetOverlayButtonState(viewLaterButton, OverlayButtonState.Pressed);
         viewLaterButton.PointerReleased += (_, _) => SetOverlayButtonState(viewLaterButton, OverlayButtonState.Hover);
         viewLaterButton.PointerCanceled += (_, _) => SetOverlayButtonState(viewLaterButton, OverlayButtonState.Normal);
-        ToolTipService.SetToolTip(viewLaterButton, "添加到稍后再看");
+        ToolTipService.SetToolTip(viewLaterButton, LocalizationHelper.GetString("AddToViewLaterTooltip"));
         viewLaterButton.Click += AddToViewLaterButton_Click;
         root.Children.Add(viewLaterButton);
 
@@ -1905,7 +1912,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         if (string.IsNullOrWhiteSpace(item.Url)
             || !Uri.TryCreate(item.Url, UriKind.Absolute, out var uri))
         {
-            ShowStatus("当前视频链接无效。", InfoBarSeverity.Warning);
+            ShowStatus(LocalizationHelper.GetString("InvalidVideoLink"), InfoBarSeverity.Warning);
             return;
         }
 
@@ -1932,7 +1939,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         if (string.IsNullOrWhiteSpace(item.Url)
             || !Uri.TryCreate(item.Url, UriKind.Absolute, out var uri))
         {
-            ShowStatus("当前直播间链接无效。", InfoBarSeverity.Warning);
+            ShowStatus(LocalizationHelper.GetString("InvalidLiveRoomLink"), InfoBarSeverity.Warning);
             return;
         }
 
@@ -1943,7 +1950,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     {
         if (item.CreatorMid <= 0)
         {
-            ShowStatus("当前 UP 主主页链接无效。", InfoBarSeverity.Warning);
+            ShowStatus(LocalizationHelper.GetString("InvalidCreatorLink"), InfoBarSeverity.Warning);
             return;
         }
 
@@ -1953,7 +1960,9 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     private static void ConfigureCreatorRelationMenuItem(MenuFlyoutItem item, CreatorRelationActionMode mode)
     {
         item.Tag = mode;
-        item.Text = mode == CreatorRelationActionMode.Follow ? "关注" : "取消关注";
+        item.Text = mode == CreatorRelationActionMode.Follow
+            ? LocalizationHelper.GetString("FollowCreatorMenuItem")
+            : LocalizationHelper.GetString("UnfollowCreatorMenuItem");
         item.Icon = CreateMenuPathIcon(mode == CreatorRelationActionMode.Follow ? PersonAddIconData : PersonDeleteIconData, 24);
     }
 
@@ -2022,7 +2031,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            ShowStatus($"取消关注失败：{ex.Message}", InfoBarSeverity.Error);
+            ShowStatus(LocalizationHelper.Format("UnfollowFailed", ex.Message), InfoBarSeverity.Error);
         }
     }
 
@@ -2039,7 +2048,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            ShowStatus($"关注失败：{ex.Message}", InfoBarSeverity.Error);
+            ShowStatus(LocalizationHelper.Format("FollowFailed", ex.Message), InfoBarSeverity.Error);
         }
     }
 
@@ -2047,14 +2056,14 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     {
         await _updateMonitorService.FollowCreatorAsync(item.CreatorMid);
         AddFollowingCreator(item);
-        ShowStatus($"已关注：{item.CreatorName}", InfoBarSeverity.Success);
+        ShowStatus(LocalizationHelper.Format("Followed", item.CreatorName), InfoBarSeverity.Success);
     }
 
     private async Task UnfollowCreatorAsync(VideoUpdateRow item)
     {
         await _updateMonitorService.UnfollowCreatorAsync(item.CreatorMid);
         RemoveFollowingCreator(item.CreatorMid);
-        ShowStatus($"已取消关注：{item.CreatorName}", InfoBarSeverity.Success);
+        ShowStatus(LocalizationHelper.Format("Unfollowed", item.CreatorName), InfoBarSeverity.Success);
     }
 
     private void AddFollowingCreator(VideoUpdateRow item)
@@ -2067,7 +2076,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         Following.Add(new CreatorRow(new BiliCreator(item.CreatorMid, item.CreatorName, item.AvatarUrl)));
         FollowingCount = Following.Count;
         FollowingListText = Following.Count == 0
-            ? "暂无关注数据"
+            ? LocalizationHelper.GetString("NoFollowingData")
             : string.Join(Environment.NewLine, Following.Select(creator => $"{creator.Name}  UID:{creator.Mid}"));
     }
 
@@ -2097,11 +2106,11 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         try
         {
             await _updateMonitorService.AddToViewLaterAsync(item.Aid);
-            ShowStatus("已添加到稍后再看。", InfoBarSeverity.Success);
+            ShowStatus(LocalizationHelper.GetString("AddedToViewLaterToast"), InfoBarSeverity.Success);
         }
         catch (Exception ex)
         {
-            ShowStatus($"添加稍后再看失败：{ex.Message}", InfoBarSeverity.Error);
+            ShowStatus(LocalizationHelper.Format("AddToViewLaterFailedToast", ex.Message), InfoBarSeverity.Error);
         }
     }
 
@@ -2116,11 +2125,11 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         {
             await _updateMonitorService.RemoveFromViewLaterAsync(item.Aid);
             RemoveViewLaterCard(item);
-            ShowStatus("已移出稍后再看。", InfoBarSeverity.Success);
+            ShowStatus(LocalizationHelper.GetString("RemovedFromViewLater"), InfoBarSeverity.Success);
         }
         catch (Exception ex)
         {
-            ShowStatus($"移出稍后再看失败：{ex.Message}", InfoBarSeverity.Error);
+            ShowStatus(LocalizationHelper.Format("RemoveFromViewLaterFailed", ex.Message), InfoBarSeverity.Error);
         }
     }
 
@@ -2162,7 +2171,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             Following.Remove(creator);
             FollowingCount = Following.Count;
             FollowingListText = Following.Count == 0
-                ? "暂无关注数据"
+                ? LocalizationHelper.GetString("NoFollowingData")
                 : string.Join(Environment.NewLine, Following.Select(item => $"{item.Name}  UID:{item.Mid}"));
         }
     }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using BiliRadar.Helpers;
 using BiliRadar.Services;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
@@ -27,7 +28,7 @@ public sealed partial class WebSignInWindow : Window
 
         var hwnd = WindowNative.GetWindowHandle(this);
         _appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(hwnd));
-        _appWindow.Title = "BiliRadar 登录";
+        _appWindow.Title = LocalizationHelper.GetString("WebSignInWindow.Title", "BiliRadar 登录");
         _appWindow.Resize(new SizeInt32(1200, 720));
         ConfigureTitleBar();
 
@@ -47,7 +48,7 @@ public sealed partial class WebSignInWindow : Window
         }
         catch (Exception ex)
         {
-            ShowStatus($"登录窗口初始化失败：{ex.Message}", InfoBarSeverity.Error);
+            ShowStatus(LocalizationHelper.Format("LoginWindowInitFailed", ex.Message), InfoBarSeverity.Error);
         }
     }
 
@@ -91,10 +92,10 @@ public sealed partial class WebSignInWindow : Window
             return;
         }
 
-        ShowStatus("网页登录成功，正在换取更稳定的登录凭据...", InfoBarSeverity.Informational);
+        ShowStatus(LocalizationHelper.GetString("LoginSuccessExchanging"), InfoBarSeverity.Informational);
         await _authService.SignInWithCookiesAsync(cookiePairs);
         _isCookieSaved = true;
-        ShowStatus("登录成功，已保存登录凭据。", InfoBarSeverity.Success);
+        ShowStatus(LocalizationHelper.GetString("LoginSuccessSaved"), InfoBarSeverity.Success);
         SignInSucceeded?.Invoke(this, EventArgs.Empty);
         Close();
     }

@@ -7,7 +7,7 @@
 
     <ScrollView
         x:Name="SettingsScrollView"
-        Padding="36,32,36,16"
+        Padding="36,32,36,0"
         VerticalScrollBarVisibility="Auto"
         VerticalScrollMode="Auto">
         <VisualStateManager.VisualStateGroups>
@@ -17,7 +17,7 @@
                         <AdaptiveTrigger MinWindowWidth="640" />
                     </VisualState.StateTriggers>
                     <VisualState.Setters>
-                        <Setter Target="SettingsScrollView.Padding" Value="36,32,36,16" />
+                        <Setter Target="SettingsScrollView.Padding" Value="36,32,36,0" />
                     </VisualState.Setters>
                 </VisualState>
                 <VisualState x:Name="Narrow">
@@ -25,12 +25,13 @@
                         <AdaptiveTrigger MinWindowWidth="0" />
                     </VisualState.StateTriggers>
                     <VisualState.Setters>
-                        <Setter Target="SettingsScrollView.Padding" Value="12,16,12,16" />
+                        <Setter Target="SettingsScrollView.Padding" Value="12,16,12,0" />
                     </VisualState.Setters>
                 </VisualState>
             </VisualStateGroup>
         </VisualStateManager.VisualStateGroups>
         <StackPanel
+            Margin="0,0,0,32"
             MaxWidth="1064"
             Spacing="{StaticResource SettingsCardSpacing}">
             <StackPanel.ChildrenTransitions>
@@ -39,14 +40,17 @@
             </StackPanel.ChildrenTransitions>
 
             <TextBlock
+                x:Uid="GeneralPageTitle"
                 Margin="0,0,0,12"
                 Style="{ThemeResource TitleTextBlockStyle}"
                 Text="通用" />
 
             <TextBlock
+                x:Uid="GeneralStartupSectionHeader"
                 Style="{StaticResource SettingsSectionHeaderTextBlockStyle}"
                 Text="启动" />
             <controls:SettingsCard
+                x:Uid="GeneralAutoStartCard"
                 Description="登录 Windows 后自动启动 BiliRadar。"
                 Header="开机后自动运行">
                 <controls:SettingsCard.HeaderIcon>
@@ -54,6 +58,7 @@
                 </controls:SettingsCard.HeaderIcon>
                 <ToggleSwitch
                     x:Name="AutoStartSwitch"
+                    x:Uid="GeneralAutoStartSwitch"
                     AutomationProperties.AutomationId="AutoStartSwitch"
                     AutomationProperties.Name="开机后自动运行"
                     Toggled="AutoStartSwitch_Toggled" />
@@ -66,9 +71,11 @@
                 Severity="Informational" />
 
             <TextBlock
+                x:Uid="GeneralLaunchOptionsSectionHeader"
                 Style="{StaticResource SettingsSectionHeaderTextBlockStyle}"
                 Text="登录选项" />
             <controls:SettingsCard
+                x:Uid="GeneralRunningLaunchActionCard"
                 Description="BiliRadar 已经在后台运行时，从开始菜单再次打开后的行为。"
                 Header="重复打开应用时">
                 <controls:SettingsCard.HeaderIcon>
@@ -76,17 +83,19 @@
                 </controls:SettingsCard.HeaderIcon>
                 <ComboBox
                     x:Name="RunningLaunchActionBox"
+                    x:Uid="GeneralRunningLaunchActionBox"
                     MinWidth="160"
                     MaxWidth="300"
                     HorizontalAlignment="Stretch"
                     AutomationProperties.AutomationId="RunningLaunchActionBox"
                     AutomationProperties.Name="重复打开应用时"
                     SelectionChanged="RunningLaunchActionBox_SelectionChanged">
-                    <ComboBoxItem Content="打开设置" />
-                    <ComboBoxItem Content="打开自定义网页" />
+                    <ComboBoxItem x:Uid="GeneralRunningLaunchOpenSettingsItem" Content="打开设置" />
+                    <ComboBoxItem x:Uid="GeneralRunningLaunchOpenCustomWebPageItem" Content="打开自定义网页" />
                 </ComboBox>
             </controls:SettingsCard>
             <controls:SettingsCard
+                x:Uid="GeneralCustomLaunchWebPageCard"
                 Description="重复打开应用并选择打开网页时使用。"
                 Header="自定义网页">
                 <controls:SettingsCard.HeaderIcon>
@@ -94,6 +103,7 @@
                 </controls:SettingsCard.HeaderIcon>
                 <TextBox
                     x:Name="CustomLaunchWebPageUrlBox"
+                    x:Uid="GeneralCustomLaunchWebPageUrlBox"
                     MinWidth="200"
                     MaxWidth="400"
                     HorizontalAlignment="Stretch"
@@ -104,6 +114,7 @@
                     TextChanged="CustomLaunchWebPageUrlBox_TextChanged" />
             </controls:SettingsCard>
             <controls:SettingsCard
+                x:Uid="GeneralDefaultOpenPageCard"
                 Description="点击任务栏托盘图标打开 BiliRadar 时默认显示的页面。"
                 Header="默认打开页面">
                 <controls:SettingsCard.HeaderIcon>
@@ -111,18 +122,20 @@
                 </controls:SettingsCard.HeaderIcon>
                 <ComboBox
                     x:Name="DefaultOpenPageBox"
+                    x:Uid="GeneralDefaultOpenPageBox"
                     MinWidth="160"
                     MaxWidth="300"
                     HorizontalAlignment="Stretch"
                     AutomationProperties.AutomationId="DefaultOpenPageBox"
                     AutomationProperties.Name="默认打开页面"
                     SelectionChanged="DefaultOpenPageBox_SelectionChanged">
-                    <ComboBoxItem Content="关注" />
-                    <ComboBoxItem Content="历史" />
-                    <ComboBoxItem Content="稍后再看" />
+                    <ComboBoxItem x:Uid="GeneralDefaultOpenFollowingItem" Content="关注" />
+                    <ComboBoxItem x:Uid="GeneralDefaultOpenHistoryItem" Content="历史" />
+                    <ComboBoxItem x:Uid="GeneralDefaultOpenViewLaterItem" Content="稍后再看" />
                 </ComboBox>
             </controls:SettingsCard>
             <controls:SettingsCard
+                x:Uid="GeneralLoginStatusCard"
                 Header="Bilibili 登录状态"
                 HorizontalContentAlignment="Stretch">
                 <controls:SettingsCard.HeaderIcon>
@@ -146,10 +159,12 @@
                         Spacing="2">
                         <TextBlock
                             x:Name="AccountNameText"
+                            x:Uid="GeneralAccountNameText"
                             Style="{ThemeResource BodyStrongTextBlockStyle}"
                             Text="未登录" />
                         <TextBlock
                             x:Name="AccountDetailText"
+                            x:Uid="GeneralAccountDetailText"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             Text="网页登录后会保存登录状态，用于刷新关注动态。"
                             TextWrapping="Wrap" />
@@ -161,16 +176,19 @@
                         Spacing="8">
                         <Button
                             x:Name="SignInButton"
+                            x:Uid="GeneralSignInButton"
                             AutomationProperties.AutomationId="SignInButton"
                             Click="SignInButton_Click"
                             Content="网页登录" />
                         <Button
                             x:Name="RefreshStatusButton"
+                            x:Uid="GeneralRefreshStatusButton"
                             AutomationProperties.AutomationId="RefreshStatusButton"
                             Click="RefreshStatusButton_Click"
                             Content="刷新" />
                         <Button
                             x:Name="SignOutButton"
+                            x:Uid="GeneralSignOutButton"
                             AutomationProperties.AutomationId="SignOutButton"
                             Click="SignOutButton_Click"
                             Content="清除" />
@@ -179,6 +197,7 @@
             </controls:SettingsCard>
             <InfoBar
                 x:Name="AccountInfoBar"
+                x:Uid="GeneralAccountInfoBar"
                 Margin="0,4,0,0"
                 IsClosable="False"
                 IsOpen="True"
@@ -186,9 +205,11 @@
                 Severity="Informational" />
 
             <TextBlock
+                x:Uid="GeneralDisplaySectionHeader"
                 Style="{StaticResource SettingsSectionHeaderTextBlockStyle}"
                 Text="显示" />
             <controls:SettingsCard
+                x:Uid="GeneralLiveSectionDisplayModeCard"
                 Description="控制关注页面中正在直播区域的显示方式。"
                 Header="正在直播">
                 <controls:SettingsCard.HeaderIcon>
@@ -196,22 +217,25 @@
                 </controls:SettingsCard.HeaderIcon>
                 <ComboBox
                     x:Name="LiveSectionDisplayModeBox"
+                    x:Uid="GeneralLiveSectionDisplayModeBox"
                     MinWidth="160"
                     MaxWidth="300"
                     HorizontalAlignment="Stretch"
                     AutomationProperties.AutomationId="LiveSectionDisplayModeBox"
                     AutomationProperties.Name="正在直播"
                     SelectionChanged="LiveSectionDisplayModeBox_SelectionChanged">
-                    <ComboBoxItem Content="默认展开显示" />
-                    <ComboBoxItem Content="默认折叠显示" />
-                    <ComboBoxItem Content="不显示" />
+                    <ComboBoxItem x:Uid="GeneralLiveExpandedItem" Content="默认展开显示" />
+                    <ComboBoxItem x:Uid="GeneralLiveCollapsedItem" Content="默认折叠显示" />
+                    <ComboBoxItem x:Uid="GeneralLiveHiddenItem" Content="不显示" />
                 </ComboBox>
             </controls:SettingsCard>
 
             <TextBlock
+                x:Uid="GeneralConfigSectionHeader"
                 Style="{StaticResource SettingsSectionHeaderTextBlockStyle}"
                 Text="配置" />
             <controls:SettingsCard
+                x:Uid="GeneralExportConfigCard"
                 Description="导出当前通知、启动和登录状态配置。"
                 Header="导出配置">
                 <controls:SettingsCard.HeaderIcon>
@@ -219,11 +243,13 @@
                 </controls:SettingsCard.HeaderIcon>
                 <Button
                     x:Name="ExportConfigButton"
+                    x:Uid="GeneralExportConfigButton"
                     AutomationProperties.AutomationId="ExportConfigButton"
                     Click="ExportConfigButton_Click"
                     Content="导出" />
             </controls:SettingsCard>
             <controls:SettingsCard
+                x:Uid="GeneralImportConfigCard"
                 Description="从 JSON 配置文件恢复通知、启动和登录状态配置。"
                 Header="导入配置">
                 <controls:SettingsCard.HeaderIcon>
@@ -231,15 +257,42 @@
                 </controls:SettingsCard.HeaderIcon>
                 <Button
                     x:Name="ImportConfigButton"
+                    x:Uid="GeneralImportConfigButton"
                     AutomationProperties.AutomationId="ImportConfigButton"
                     Click="ImportConfigButton_Click"
                     Content="导入" />
             </controls:SettingsCard>
             <TextBlock
                 x:Name="ConfigStatusText"
-                Margin="1,8,0,36"
+                Margin="1,8,0,0"
                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                TextWrapping="Wrap" />
+                TextWrapping="Wrap"
+                Visibility="Collapsed" />
+
+            <TextBlock
+                x:Uid="GeneralDebugSectionHeader"
+                Style="{StaticResource SettingsSectionHeaderTextBlockStyle}"
+                Text="调试" />
+            <controls:SettingsCard
+                x:Uid="GeneralLanguageCard"
+                Description="手动切换界面显示语言。重启应用后生效。"
+                Header="界面语言">
+                <controls:SettingsCard.HeaderIcon>
+                    <FontIcon Glyph="&#xE8B1;" />
+                </controls:SettingsCard.HeaderIcon>
+                <ComboBox
+                    x:Name="LanguageSelectorBox"
+                    x:Uid="GeneralLanguageSelectorBox"
+                    MinWidth="160"
+                    MaxWidth="300"
+                    HorizontalAlignment="Stretch"
+                    AutomationProperties.AutomationId="LanguageSelectorBox"
+                    AutomationProperties.Name="界面语言"
+                    SelectionChanged="LanguageSelectorBox_SelectionChanged">
+                    <ComboBoxItem x:Uid="GeneralLanguageZhCnItem" Content="简体中文" Tag="zh-CN" />
+                    <ComboBoxItem x:Uid="GeneralLanguageZhHkItem" Content="繁體中文（香港）" Tag="zh-HK" />
+                </ComboBox>
+            </controls:SettingsCard>
         </StackPanel>
     </ScrollView>
 </Page>
