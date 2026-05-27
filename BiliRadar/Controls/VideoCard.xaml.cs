@@ -8,6 +8,7 @@ using BiliRadar.Services;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Markup;
 using Microsoft.UI.Xaml.Media;
@@ -35,8 +36,6 @@ public sealed partial class VideoCard : UserControl
     private TextBlock _titleText = null!, _descText = null!, _creatorText = null!, _timeText = null!;
     private Button _avatarBtn = null!;
     private PersonPicture _avatarPic = null!;
-    private MenuFlyout? _flyout;
-    private MenuFlyoutItem? _relItem;
     private VideoUpdateRow? _item;
 
     private bool _loaded;
@@ -53,6 +52,24 @@ public sealed partial class VideoCard : UserControl
 
     public Func<long, Task<bool>>? IsCreatorFollowedAsync { get; set; }
 
+    public FlyoutBase? CardMenuFlyout
+    {
+        get => CardBorder.ContextFlyout;
+        set
+        {
+            CardBorder.ContextFlyout = value;
+            if (_avatarBtn is not null)
+                _avatarBtn.ContextFlyout = value;
+        }
+    }
+
+    public bool TryUpdateTimeText(string tip)
+    {
+        if (_timeText is null) return false;
+        _timeText.Text = tip;
+        return true;
+    }
+
     public event EventHandler<VideoUpdateRow>? CoverTapped;
     public event EventHandler<VideoUpdateRow>? ViewLaterClicked;
     public event EventHandler<VideoUpdateRow>? CreatorAvatarClicked;
@@ -61,12 +78,10 @@ public sealed partial class VideoCard : UserControl
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         BuildTextPanel();
-        BuildFlyout();
         StyleFromResources();
         ApplyThemeBrushes();
         ApplyData();
         ApplyVLMode();
-        // Apply ShowMetaTime without going through the setter (already have refs)
         _timeText.Visibility = _showTime ? Visibility.Visible : Visibility.Collapsed;
         _creatorText.MaxWidth = _showTime ? 120 : 240;
         _loaded = true;
@@ -88,15 +103,6 @@ public sealed partial class VideoCard : UserControl
         _timeText.Foreground = GetThemeBrush("TextFillColorTertiaryBrush");
         CardBorder.Background = GetThemeBrush("CardBackgroundFillColorDefaultBrush");
         CoverFrame.Background = GetThemeBrush("CardBackgroundFillColorSecondaryBrush");
-
-        if (_flyout is not null)
-        {
-            foreach (var item in _flyout.Items)
-            {
-                if (item is MenuFlyoutItem mfi)
-                    mfi.Foreground = GetThemeBrush("TextFillColorPrimaryBrush");
-            }
-        }
     }
 
     private Brush GetThemeBrush(string key)
@@ -258,38 +264,6 @@ public sealed partial class VideoCard : UserControl
         ToolTipService.SetToolTip(ViewLaterBtn, _vlMode == ViewLaterButtonMode.Remove
             ? LocalizationHelper.GetString("RemoveFromViewLaterTooltip")
             : LocalizationHelper.GetString("AddToViewLaterTooltip"));
-    }
-
-    private void BuildFlyout()
-    {
-        _relItem = new MenuFlyoutItem { FontFamily = new FontFamily("Microsoft YaHei UI") };
-        _relItem.Click += (_, _) => { if (_item is not null && _relItem?.Tag is CreatorRelationActionMode m) CreatorRelationActionRequested?.Invoke(this, (_item, m)); };
-        _flyout = new MenuFlyout();
-        _flyout.Opening += async (_, _) =>
-        {
-            var it = _item; if (it is null || it.CreatorMid <= 0) { if (_relItem is not null) _relItem.IsEnabled = false; return; }
-            _relItem!.IsEnabled = false;
-            try { var f = IsCreatorFollowedAsync?.Invoke(it.CreatorMid) is Task<bool> t && await t; SetRelMenu(f ? CreatorRelationActionMode.Unfollow : CreatorRelationActionMode.Follow); }
-            catch { }
-            finally { _relItem.IsEnabled = true; }
-        };
-        _flyout.Items.Add(_relItem);
-        CardBorder.ContextFlyout = _flyout;
-        _avatarBtn.ContextFlyout = _flyout;
-    }
-
-    private void SetRelMenu(CreatorRelationActionMode m)
-    {
-        if (_relItem is null)
-        {
-            return;
-        }
-
-        _relItem.Tag = m;
-        _relItem.Text = m == CreatorRelationActionMode.Follow
-            ? LocalizationHelper.GetString("FollowCreatorMenuItem")
-            : LocalizationHelper.GetString("UnfollowCreatorMenuItem");
-        _relItem.Icon = MakeMenuIcon(m == CreatorRelationActionMode.Follow ? FollowIcon : UnfollowIcon);
     }
 
     private void CardBorder_Tapped(object sender, TappedRoutedEventArgs e) { if (IsInteractive(e.OriginalSource as DependencyObject)) return; if (_item is not null) { e.Handled = true; CoverTapped?.Invoke(this, _item); } }
