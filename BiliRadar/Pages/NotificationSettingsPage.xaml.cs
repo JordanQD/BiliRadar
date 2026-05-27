@@ -42,7 +42,7 @@ public sealed partial class NotificationSettingsPage : Page
     {
         _isLoadingSettings = true;
         NotificationCheckIntervalBox.Value = AppSettings.NotificationCheckIntervalMinutes;
-        NotificationTargetModeBox.SelectedIndex = AppSettings.NotificationTargetMode == NotificationTargetMode.CustomCreators ? 1 : 0;
+        NotificationTargetModeBox.SelectedIndex = (int)AppSettings.NotificationTargetMode;
         VideoNotificationSwitch.IsOn = AppSettings.VideoNotificationsEnabled;
         LiveNotificationSwitch.IsOn = AppSettings.LiveNotificationsEnabled;
         CustomNotificationCreators.Clear();
@@ -98,9 +98,7 @@ public sealed partial class NotificationSettingsPage : Page
             return;
         }
 
-        AppSettings.NotificationTargetMode = NotificationTargetModeBox.SelectedIndex == 1
-            ? NotificationTargetMode.CustomCreators
-            : NotificationTargetMode.AllFollowing;
+        AppSettings.NotificationTargetMode = (NotificationTargetMode)NotificationTargetModeBox.SelectedIndex;
         UpdateNotificationModeVisibility();
     }
 
@@ -481,12 +479,16 @@ public sealed partial class NotificationSettingsPage : Page
 
     private void UpdateNotificationModeVisibility()
     {
-        var isCustomMode = AppSettings.NotificationTargetMode == NotificationTargetMode.CustomCreators;
-        var globalVisibility = isCustomMode ? Visibility.Collapsed : Visibility.Visible;
+        var mode = AppSettings.NotificationTargetMode;
+        var showSettings = mode != NotificationTargetMode.None;
+        var showGlobal = mode == NotificationTargetMode.AllFollowing;
+        var showCustom = mode == NotificationTargetMode.CustomCreators;
 
-        GlobalVideoNotificationCard.Visibility = globalVisibility;
-        GlobalLiveNotificationCard.Visibility = globalVisibility;
-        CustomNotificationPanel.Visibility = isCustomMode ? Visibility.Visible : Visibility.Collapsed;
+        NotificationIntervalSectionHeader.Visibility = showSettings ? Visibility.Visible : Visibility.Collapsed;
+        NotificationIntervalCard.Visibility = showSettings ? Visibility.Visible : Visibility.Collapsed;
+        GlobalVideoNotificationCard.Visibility = showGlobal ? Visibility.Visible : Visibility.Collapsed;
+        GlobalLiveNotificationCard.Visibility = showGlobal ? Visibility.Visible : Visibility.Collapsed;
+        CustomNotificationPanel.Visibility = showCustom ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void SaveCustomNotificationCreators()

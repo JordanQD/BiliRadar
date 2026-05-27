@@ -86,7 +86,7 @@ public static class AppSettings
     {
         get
         {
-            var value = ReadRawInt(NotificationTargetModeKey, (int)NotificationTargetMode.AllFollowing);
+            var value = ReadRawInt(NotificationTargetModeKey, (int)NotificationTargetMode.None);
             return Enum.IsDefined(typeof(NotificationTargetMode), value)
                 ? (NotificationTargetMode)value
                 : NotificationTargetMode.AllFollowing;
@@ -307,8 +307,9 @@ public static class AppSettings
 
 public enum NotificationTargetMode
 {
-    AllFollowing = 0,
-    CustomCreators = 1,
+    None = 0,
+    AllFollowing = 1,
+    CustomCreators = 2,
 }
 
 public enum RunningLaunchAction

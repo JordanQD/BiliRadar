@@ -76,8 +76,9 @@
   <data name="NotificationCheckIntervalBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>通知檢查間隔（分鐘）</value></data>
   <data name="NotificationTargetSectionHeader.Text" xml:space="preserve"><value>通知對象</value></data>
   <data name="NotificationTargetCard.Header" xml:space="preserve"><value>通知對象</value></data>
-  <data name="NotificationTargetCard.Description" xml:space="preserve"><value>選擇監聽全部關注列表，或只監聽手動添加的 UP。</value></data>
+  <data name="NotificationTargetCard.Description" xml:space="preserve"><value>選擇通知所有關注 UP，僅通知自選 UP，或完全關閉通知。</value></data>
   <data name="NotificationTargetModeBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>通知對象</value></data>
+  <data name="NotificationTargetNoneItem.Content" xml:space="preserve"><value>不通知</value></data>
   <data name="NotificationTargetAllFollowingItem.Content" xml:space="preserve"><value>所有 UP 更新</value></data>
   <data name="NotificationTargetCustomCreatorsItem.Content" xml:space="preserve"><value>自訂 UP 通知</value></data>
   <data name="NotificationVideoNotifyCard.Header" xml:space="preserve"><value>影片更新通知</value></data>

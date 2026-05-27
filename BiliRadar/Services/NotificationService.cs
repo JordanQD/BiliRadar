@@ -23,10 +23,16 @@ public sealed class NotificationService
     private DispatcherTimer? _timer;
     private Func<Task>? _refreshAction;
     private bool _isRefreshing;
+    private DateTimeOffset _serviceStartedAt;
+
+    public DateTimeOffset ServiceStartedAt => _serviceStartedAt;
 
     public async Task TryStartAsync(Func<Task> refreshAction)
     {
         _refreshAction = refreshAction;
+        _serviceStartedAt = DateTimeOffset.Now;
+        AppSettings.VideoNotificationBaselineInitialized = false;
+        AppSettings.LiveNotificationBaselineInitialized = false;
         if (_timer is null)
         {
             _timer = new DispatcherTimer
@@ -294,6 +300,11 @@ public sealed class NotificationService
 
     private static bool IsAnyNotificationEnabled()
     {
+        if (AppSettings.NotificationTargetMode == NotificationTargetMode.None)
+        {
+            return false;
+        }
+
         if (AppSettings.NotificationTargetMode == NotificationTargetMode.CustomCreators)
         {
             return AppSettings.CustomNotificationCreators.Any(item =>
@@ -305,6 +316,11 @@ public sealed class NotificationService
 
     private static bool IsVideoNotificationEnabled()
     {
+        if (AppSettings.NotificationTargetMode == NotificationTargetMode.None)
+        {
+            return false;
+        }
+
         if (AppSettings.NotificationTargetMode == NotificationTargetMode.CustomCreators)
         {
             return AppSettings.CustomNotificationCreators.Any(item => item.VideoNotificationsEnabled);
@@ -315,6 +331,11 @@ public sealed class NotificationService
 
     private static bool IsLiveNotificationEnabled()
     {
+        if (AppSettings.NotificationTargetMode == NotificationTargetMode.None)
+        {
+            return false;
+        }
+
         if (AppSettings.NotificationTargetMode == NotificationTargetMode.CustomCreators)
         {
             return AppSettings.CustomNotificationCreators.Any(item => item.LiveNotificationsEnabled);

@@ -392,7 +392,10 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         {
         }
 
-        await _notificationService.NotifyVideoUpdatesAsync(updates);
+        var filteredUpdates = updates
+            .Where(u => u.PublishedAt > _notificationService.ServiceStartedAt)
+            .ToList();
+        await _notificationService.NotifyVideoUpdatesAsync(filteredUpdates);
 
         IReadOnlyList<BiliLiveCreator> liveCreators = [];
         try
@@ -420,9 +423,11 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         {
         }
 
-        // Time cutoff: last time the user manually opened/refreshed the Following page.
+        // Time cutoff: the later of last manual check and service startup.
         // Only videos published after this point are considered "new".
-        var cutoff = _updateMonitorService.LastCheckedAt;
+        var cutoff = _updateMonitorService.LastCheckedAt > _notificationService.ServiceStartedAt
+            ? _updateMonitorService.LastCheckedAt
+            : _notificationService.ServiceStartedAt;
 
         var subscribedMids = subscriptions
             .Where(item => item.VideoNotificationsEnabled)
