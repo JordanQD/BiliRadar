@@ -1,29 +1,34 @@
 using System;
+using System.Collections.Generic;
 using System.Windows.Input;
 using BiliRadar.Helpers;
-using H.NotifyIcon;
+using Microsoft.UI.Xaml;
 using Microsoft.Win32;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media.Imaging;
+using SystemTray.Core;
+using Windows.UI.ViewManagement;
 
 namespace BiliRadar.Services;
 
 internal sealed class TrayIconService : IDisposable
 {
+    private readonly Window _mainWindow;
     private readonly string _tooltip;
     private readonly Action _toggleAction;
     private readonly Action _openAction;
     private readonly Action _settingsAction;
     private readonly Action _exitAction;
-    private TaskbarIcon? _taskbarIcon;
+    private SystemTrayManager? _systemTrayManager;
+    private UISettings? _uiSettings;
 
     public TrayIconService(
+        Window mainWindow,
         string tooltip,
         Action toggleAction,
         Action openAction,
         Action settingsAction,
         Action exitAction)
     {
+        _mainWindow = mainWindow;
         _tooltip = tooltip;
         _toggleAction = toggleAction;
         _openAction = openAction;
@@ -33,21 +38,39 @@ internal sealed class TrayIconService : IDisposable
 
     public void SetupTrayIcon()
     {
-        if (_taskbarIcon is not null)
-        {
+        if (_systemTrayManager is not null)
             return;
-        }
 
-        _taskbarIcon = new TaskbarIcon
+        var windowHelper = new WindowHelper(_mainWindow);
+        var iconPath = GetIconPath();
+
+        var menuItems = new List<SystemTrayManager.MenuItemConfig>
         {
-            ToolTipText = _tooltip,
-            IconSource = LoadTrayIconSource(),
-            ContextFlyout = CreateContextMenu(),
-            ContextMenuMode = ContextMenuMode.PopupMenu,
-            LeftClickCommand = new DelegateCommand(_toggleAction),
-            NoLeftClickDelay = true,
+            new(LocalizationHelper.GetString("TrayOpenBiliRadar"), new DelegateCommand(_openAction)),
+            new(LocalizationHelper.GetString("TraySettings"), new DelegateCommand(_settingsAction)),
+            new("--", null, IsSeparator: true),
+            new(LocalizationHelper.GetString("TrayExit"), new DelegateCommand(_exitAction)),
         };
-        _taskbarIcon.ForceCreate();
+
+        _systemTrayManager = new SystemTrayManager(
+            windowHelper,
+            iconPath,
+            _tooltip,
+            menuItems,
+            leftClickAction: _toggleAction)
+        {
+            MinimizeToTray = true,
+            CloseButtonMinimizesToTray = true,
+        };
+
+        _uiSettings = new UISettings();
+        _uiSettings.ColorValuesChanged += OnColorValuesChanged;
+    }
+
+    public void RefreshIconForTheme()
+    {
+        if (_systemTrayManager is null) return;
+        _systemTrayManager.RefreshIcon(GetIconPath());
     }
 
     public void Destroy()
@@ -57,36 +80,25 @@ internal sealed class TrayIconService : IDisposable
 
     public void Dispose()
     {
-        _taskbarIcon?.Dispose();
-        _taskbarIcon = null;
-    }
-
-    private MenuFlyout CreateContextMenu()
-    {
-        var menu = new MenuFlyout();
-
-        menu.Items.Add(CreateMenuItem(LocalizationHelper.GetString("TrayOpenBiliRadar"), "\uE8A7", _openAction));
-        menu.Items.Add(CreateMenuItem(LocalizationHelper.GetString("TraySettings"), "\uE713", _settingsAction));
-        menu.Items.Add(new MenuFlyoutSeparator());
-        menu.Items.Add(CreateMenuItem(LocalizationHelper.GetString("TrayExit"), "\uE8BB", _exitAction));
-
-        return menu;
-    }
-
-    private static MenuFlyoutItem CreateMenuItem(string text, string glyph, Action action)
-    {
-        return new MenuFlyoutItem
+        if (_uiSettings is not null)
         {
-            Text = text,
-            Icon = new FontIcon { Glyph = glyph },
-            Command = new DelegateCommand(action),
-        };
+            _uiSettings.ColorValuesChanged -= OnColorValuesChanged;
+            _uiSettings = null;
+        }
+
+        _systemTrayManager?.Dispose();
+        _systemTrayManager = null;
     }
 
-    private static BitmapImage LoadTrayIconSource()
+    private void OnColorValuesChanged(UISettings sender, object args)
     {
-        var assetName = IsSystemUsingLightTheme() ? "TrayIconDark.ico" : "TrayIconLight.ico";
-        return new BitmapImage(new Uri($"ms-appx:///Assets/{assetName}"));
+        _mainWindow.DispatcherQueue.TryEnqueue(RefreshIconForTheme);
+    }
+
+    private static string GetIconPath()
+    {
+        var assetName = IsSystemUsingLightTheme() ? "Assets/TrayIconDark.ico" : "Assets/TrayIconLight.ico";
+        return assetName;
     }
 
     private static bool IsSystemUsingLightTheme()
@@ -107,19 +119,10 @@ internal sealed class TrayIconService : IDisposable
 
         public event EventHandler? CanExecuteChanged;
 
-        public bool CanExecute(object? parameter)
-        {
-            return true;
-        }
+        public bool CanExecute(object? parameter) => true;
 
-        public void Execute(object? parameter)
-        {
-            _execute();
-        }
+        public void Execute(object? parameter) => _execute();
 
-        public void RaiseCanExecuteChanged()
-        {
-            CanExecuteChanged?.Invoke(this, EventArgs.Empty);
-        }
+        public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
     }
 }

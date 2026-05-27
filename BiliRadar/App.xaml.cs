@@ -95,6 +95,7 @@ public partial class App : Application
         try
         {
             _trayIconService = new TrayIconService(
+                _mainWindow,
                 "BiliRadar",
                 ToggleMainWindow,
                 ShowMainWindow,

@@ -108,6 +108,8 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         ContentSelectorBar.SelectedItem = FollowingSelectorItem;
         ShowSelectedPage(FollowingSelectorItem);
         ApplyLiveSectionDisplayMode(AppSettings.LiveSectionDisplayMode);
+
+        RootGrid.ActualThemeChanged += OnRootGridActualThemeChanged;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -1259,6 +1261,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             Foreground = (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"],
             TextTrimming = TextTrimming.CharacterEllipsis,
             TextWrapping = TextWrapping.Wrap,
+            Tag = "TextFillColorPrimaryBrush",
         };
         panel.Children.Add(title);
 
@@ -1270,6 +1273,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             Foreground = (Brush)Application.Current.Resources["TextFillColorTertiaryBrush"],
             TextTrimming = TextTrimming.CharacterEllipsis,
             TextWrapping = TextWrapping.NoWrap,
+            Tag = "TextFillColorTertiaryBrush",
             Visibility = string.IsNullOrWhiteSpace(item.Description) ? Visibility.Collapsed : Visibility.Visible,
         };
         Grid.SetRow(description, 1);
@@ -1307,6 +1311,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             VerticalAlignment = VerticalAlignment.Center,
             TextTrimming = TextTrimming.CharacterEllipsis,
             TextWrapping = TextWrapping.NoWrap,
+            Tag = "TextFillColorSecondaryBrush",
         };
         Grid.SetColumn(creator, 1);
         panel.Children.Add(creator);
@@ -1345,6 +1350,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             Height = 72,
             Background = (Brush)Application.Current.Resources["CardBackgroundFillColorSecondaryBrush"],
             CornerRadius = new CornerRadius(7),
+            Tag = "CardBackgroundFillColorSecondaryBrush",
         };
 
         if (!string.IsNullOrWhiteSpace(item.CoverUrl))
@@ -2585,6 +2591,19 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         {
             timeText.Text = tip;
         }
+    }
+
+    // ── Theme-aware brush lookup ──
+
+    private void OnRootGridActualThemeChanged(FrameworkElement sender, object args)
+    {
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+        {
+            RenderVideoCards();
+            RenderLiveCreators();
+            RenderHistoryCards();
+            RenderViewLaterCards();
+        });
     }
 
 }

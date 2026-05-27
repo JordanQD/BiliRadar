@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using BiliRadar.Helpers;
 using BiliRadar.Models;
 using BiliRadar.Services;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -62,26 +63,95 @@ public sealed partial class VideoCard : UserControl
         BuildTextPanel();
         BuildFlyout();
         StyleFromResources();
+        ApplyThemeBrushes();
         ApplyData();
         ApplyVLMode();
         // Apply ShowMetaTime without going through the setter (already have refs)
         _timeText.Visibility = _showTime ? Visibility.Visible : Visibility.Collapsed;
         _creatorText.MaxWidth = _showTime ? 120 : 240;
         _loaded = true;
+
+        ActualThemeChanged += OnActualThemeChanged;
+    }
+
+    private void OnActualThemeChanged(FrameworkElement sender, object args)
+    {
+        // Defer to let the resource system commit theme changes first
+        DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, ApplyThemeBrushes);
+    }
+
+    private void ApplyThemeBrushes()
+    {
+        _titleText.Foreground = GetThemeBrush("TextFillColorPrimaryBrush");
+        _descText.Foreground = GetThemeBrush("TextFillColorTertiaryBrush");
+        _creatorText.Foreground = GetThemeBrush("TextFillColorSecondaryBrush");
+        _timeText.Foreground = GetThemeBrush("TextFillColorTertiaryBrush");
+        CardBorder.Background = GetThemeBrush("CardBackgroundFillColorDefaultBrush");
+        CoverFrame.Background = GetThemeBrush("CardBackgroundFillColorSecondaryBrush");
+
+        if (_flyout is not null)
+        {
+            foreach (var item in _flyout.Items)
+            {
+                if (item is MenuFlyoutItem mfi)
+                    mfi.Foreground = GetThemeBrush("TextFillColorPrimaryBrush");
+            }
+        }
+    }
+
+    private Brush GetThemeBrush(string key)
+    {
+        // Walk the merged dictionary chain to find XamlControlsResources,
+        // then look up the key in its theme dictionary for the current theme.
+        var themeKey = ActualTheme == ElementTheme.Light ? "Light" : "Default";
+        var result = FindThemeBrush(Application.Current.Resources, key, themeKey);
+        if (result is not null)
+            return result;
+
+        // Fallback: standard lookup (for resources outside theme dicts)
+        if (Application.Current.Resources.TryGetValue(key, out var fallback) && fallback is Brush fb)
+            return fb;
+
+        return new SolidColorBrush(Microsoft.UI.Colors.Magenta);
+    }
+
+    private static Brush? FindThemeBrush(ResourceDictionary dict, string key, string themeKey)
+    {
+        // Check this dictionary's theme dictionaries
+        if (dict.ThemeDictionaries.TryGetValue(themeKey, out var td) && td is ResourceDictionary themeRd)
+        {
+            if (themeRd.TryGetValue(key, out var value) && value is Brush b)
+                return b;
+            // Also check merged dicts within the theme dictionary
+            foreach (var merged in themeRd.MergedDictionaries)
+            {
+                if (merged.TryGetValue(key, out var mv) && mv is Brush mb)
+                    return mb;
+            }
+        }
+
+        // Recurse into merged dictionaries
+        foreach (var merged in dict.MergedDictionaries)
+        {
+            var result = FindThemeBrush(merged, key, themeKey);
+            if (result is not null)
+                return result;
+        }
+
+        return null;
     }
 
     private void BuildTextPanel()
     {
-        var app = Application.Current;
         var textPanel = new Grid { RowSpacing = 4, VerticalAlignment = VerticalAlignment.Stretch };
         textPanel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         textPanel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         textPanel.RowDefinitions.Add(new RowDefinition());
 
-        _titleText = new TextBlock { FontSize = 13, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, MaxLines = 2, TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.Wrap, Foreground = (Brush)app.Resources["TextFillColorPrimaryBrush"] };
+        _titleText = new TextBlock { FontSize = 13, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, MaxLines = 2, TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.Wrap };
         textPanel.Children.Add(_titleText);
 
-        _descText = new TextBlock { FontSize = 12, MaxLines = 1, Foreground = (Brush)app.Resources["TextFillColorTertiaryBrush"], TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.NoWrap, Visibility = Visibility.Collapsed };
+        _descText = new TextBlock { FontSize = 12, MaxLines = 1, TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.NoWrap, Visibility = Visibility.Collapsed };
         Grid.SetRow(_descText, 1);
         textPanel.Children.Add(_descText);
 
@@ -137,10 +207,10 @@ public sealed partial class VideoCard : UserControl
         ToolTipService.SetToolTip(_avatarBtn, LocalizationHelper.GetString("OpenCreatorHomeTooltip"));
         creatorRow.Children.Add(_avatarBtn);
 
-        _creatorText = new TextBlock { FontSize = 12, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Foreground = (Brush)app.Resources["TextFillColorSecondaryBrush"], MaxWidth = 120, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.NoWrap };
+        _creatorText = new TextBlock { FontSize = 12, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, MaxWidth = 120, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.NoWrap };
         creatorRow.Children.Add(_creatorText);
 
-        _timeText = new TextBlock { FontSize = 12, Foreground = (Brush)app.Resources["TextFillColorTertiaryBrush"], HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.NoWrap };
+        _timeText = new TextBlock { FontSize = 12, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.NoWrap };
         creatorRow.Children.Add(_timeText);
 
         RootGrid.Children.Insert(0, textPanel);
@@ -148,12 +218,10 @@ public sealed partial class VideoCard : UserControl
 
     private void StyleFromResources()
     {
-        CardBorder.Background = (Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"];
-        CardBorder.CornerRadius = new CornerRadius(8); // OverlayCornerRadius
-        CoverFrame.Background = (Brush)Application.Current.Resources["CardBackgroundFillColorSecondaryBrush"];
+        CardBorder.CornerRadius = new CornerRadius(8);
         CoverFrame.CornerRadius = new CornerRadius(8);
         DurationBadge.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(180, 0, 0, 0));
-        DurationBadge.CornerRadius = new CornerRadius(4); // ControlCornerRadius
+        DurationBadge.CornerRadius = new CornerRadius(4);
         DurationText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.White);
         ViewLaterBtn.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(210, 34, 34, 34));
         ViewLaterBtn.Foreground = new SolidColorBrush(Microsoft.UI.Colors.White);
