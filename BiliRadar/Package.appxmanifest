@@ -7,19 +7,18 @@
   xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
   xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  xmlns:systemai="http://schemas.microsoft.com/appx/manifest/systemai/windows10"
-  IgnorableNamespaces="uap desktop com rescap systemai">
+  IgnorableNamespaces="uap desktop com rescap">
 
   <Identity
-    Name="8b69288b-95f0-41af-a5f6-cb711db4a5ef"
-    Publisher="CN=Q"
+    Name="JordanQD.BiliRadar"
+    Publisher="CN=Jordan_QD"
     Version="1.0.0.0" />
 
   <mp:PhoneIdentity PhoneProductId="8b69288b-95f0-41af-a5f6-cb711db4a5ef" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
     <DisplayName>BiliRadar</DisplayName>
-    <PublisherDisplayName>Q</PublisherDisplayName>
+    <PublisherDisplayName>Jordan_QD</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
@@ -38,7 +37,7 @@
       EntryPoint="$targetentrypoint$">
       <uap:VisualElements
         DisplayName="BiliRadar"
-        Description="BiliRadar"
+        Description="B站更新通知"
         BackgroundColor="#000000"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">
@@ -65,6 +64,5 @@
 
   <Capabilities>
     <rescap:Capability Name="runFullTrust" />
-    <systemai:Capability Name="systemAIModels"/>
   </Capabilities>
 </Package>
