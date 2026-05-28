@@ -163,7 +163,8 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         ? Visibility.Visible
         : Visibility.Collapsed;
 
-    public bool RefreshProgressIsActive => IsLoading || _isLoadingHistory || _isLoadingViewLater;
+    public bool RefreshProgressIsActive => IsLoading || _isLoadingHistory || _isLoadingViewLater
+        || _isLoadingMoreHistory || _isLoadingMoreViewLater || _isLoadingMore;
 
     public double RefreshProgressOpacity => RefreshProgressIsActive ? 1.0 : 0.0;
 
@@ -759,6 +760,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         }
 
         _isLoadingMore = true;
+        NotifyRefreshProgressVisibilityChanged();
         try
         {
             var page = await _updateMonitorService.LoadMoreAsync();
@@ -781,6 +783,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         finally
         {
             _isLoadingMore = false;
+            NotifyRefreshProgressVisibilityChanged();
         }
     }
 
@@ -818,7 +821,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
                 row => CreateVideoCardControl(row, showMetaTime: false, relationActionMode: GetCreatorRelationActionMode(row)));
 
             if (removed > page.Items.Count / 2 && _hasMoreHistory)
-                _ = LoadMoreHistoryAsync();
+                DispatcherQueue.TryEnqueue(() => _ = LoadMoreHistoryAsync());
 
             HistoryEmptyPanel.Visibility = HistoryItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             if (HistoryItems.Count == 0 && StatusNotifications.Count == 0)
@@ -855,12 +858,13 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
 
     private async Task LoadMoreHistoryAsync()
     {
-        if (_isLoadingHistory || _isLoadingMoreHistory || !_hasMoreHistory)
+        if (_isLoadingMoreHistory || !_hasMoreHistory)
         {
             return;
         }
 
         _isLoadingMoreHistory = true;
+        NotifyRefreshProgressVisibilityChanged();
         try
         {
             var page = await _updateMonitorService.LoadMoreHistoryAsync();
@@ -888,6 +892,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         finally
         {
             _isLoadingMoreHistory = false;
+            NotifyRefreshProgressVisibilityChanged();
         }
     }
 
@@ -925,7 +930,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
                 row => CreateVideoCardControl(row, ViewLaterButtonMode.Remove, showMetaTime: false, relationActionMode: GetCreatorRelationActionMode(row)));
 
             if (removed > page.Items.Count / 2 && _hasMoreViewLater)
-                _ = LoadMoreViewLaterAsync();
+                DispatcherQueue.TryEnqueue(() => _ = LoadMoreViewLaterAsync());
 
             ViewLaterEmptyPanel.Visibility = ViewLaterItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             if (ViewLaterItems.Count == 0 && StatusNotifications.Count == 0)
@@ -962,12 +967,13 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
 
     private async Task LoadMoreViewLaterAsync()
     {
-        if (_isLoadingViewLater || _isLoadingMoreViewLater || !_hasMoreViewLater)
+        if (_isLoadingMoreViewLater || !_hasMoreViewLater)
         {
             return;
         }
 
         _isLoadingMoreViewLater = true;
+        NotifyRefreshProgressVisibilityChanged();
         try
         {
             var page = await _updateMonitorService.LoadMoreViewLaterAsync();
@@ -990,6 +996,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         finally
         {
             _isLoadingMoreViewLater = false;
+            NotifyRefreshProgressVisibilityChanged();
         }
     }
 
