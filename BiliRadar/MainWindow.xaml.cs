@@ -1290,6 +1290,18 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             Tag = item,
         };
         button.Click += LiveCreatorButton_Click;
+        var liveNotifyFlyout = new MenuFlyout();
+        var liveNotifyItem = new MenuFlyoutItem
+        {
+            FontFamily = new FontFamily("Microsoft YaHei UI"),
+            DataContext = item,
+            Visibility = Visibility.Collapsed,
+        };
+        ConfigureLiveNotificationMenuItem(liveNotifyItem);
+        liveNotifyItem.Click += LiveNotificationMenuItem_Click;
+        liveNotifyFlyout.Items.Add(liveNotifyItem);
+        liveNotifyFlyout.Opening += (_, _) => ConfigureLiveNotificationMenuItem(liveNotifyItem);
+        button.ContextFlyout = liveNotifyFlyout;
         ToolTipService.SetToolTip(button, string.IsNullOrWhiteSpace(item.Title) ? LocalizationHelper.Format("OpenLiveRoomTooltip", item.Name) : item.Title);
 
         var panel = new StackPanel
@@ -1377,12 +1389,154 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         };
         ConfigureCreatorRelationMenuItem(relationItem, relationActionMode);
         relationItem.Click += CreatorRelationMenuItem_Click;
-        flyout.Opening += async (_, _) => await RefreshCreatorRelationMenuItemAsync(relationItem);
+
+        MenuFlyoutItem? notifyItem = null;
+        if (item.CreatorMid > 0)
+        {
+            notifyItem = new MenuFlyoutItem
+            {
+                FontFamily = new FontFamily("Microsoft YaHei UI"),
+                DataContext = item,
+                Visibility = Visibility.Collapsed,
+            };
+            ConfigureNotificationListMenuItem(notifyItem);
+            notifyItem.Click += NotificationListMenuItem_Click;
+        }
+
+        flyout.Opening += async (_, _) =>
+        {
+            if (notifyItem is not null)
+            {
+                try
+                {
+                    var followed = await _updateMonitorService.IsCreatorFollowedAsync(item.CreatorMid);
+                    if (!followed)
+                    {
+                        notifyItem.Visibility = Visibility.Collapsed;
+                        notifyItem.IsEnabled = false;
+                        await RefreshCreatorRelationMenuItemAsync(relationItem);
+                        return;
+                    }
+                }
+                catch
+                {
+                    notifyItem.Visibility = Visibility.Collapsed;
+                    notifyItem.IsEnabled = false;
+                }
+
+                RefreshNotificationListMenuItem(notifyItem);
+            }
+
+            await RefreshCreatorRelationMenuItemAsync(relationItem);
+        };
         flyout.Items.Add(relationItem);
+        if (notifyItem is not null)
+            flyout.Items.Add(notifyItem);
         return flyout;
     }
 
+    private static void ConfigureNotificationListMenuItem(MenuFlyoutItem item)
+    {
+        if (item.DataContext is not VideoUpdateRow row || row.CreatorMid <= 0)
+        {
+            item.Visibility = Visibility.Collapsed;
+            return;
+        }
 
+        if (AppSettings.NotificationTargetMode != NotificationTargetMode.CustomCreators)
+        {
+            item.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        item.Visibility = Visibility.Visible;
+        var isInList = AppSettings.CustomNotificationCreators.Any(c => c.Mid == row.CreatorMid);
+        item.Text = isInList
+            ? LocalizationHelper.GetString("RemoveFromNotificationListMenuItem")
+            : LocalizationHelper.GetString("AddToNotificationListMenuItem");
+        item.Icon = isInList
+            ? new FontIcon { Glyph = "", FontSize = 16 }
+            : new FontIcon { Glyph = "", FontSize = 16 };
+        item.Tag = isInList ? "remove" : "add";
+    }
+
+    private static void RefreshNotificationListMenuItem(MenuFlyoutItem item)
+    {
+        ConfigureNotificationListMenuItem(item);
+    }
+
+    private void NotificationListMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuFlyoutItem { DataContext: VideoUpdateRow item, Tag: string action })
+            return;
+
+        if (action == "remove")
+            RemoveCreatorFromNotificationList(item.CreatorMid, item.CreatorName);
+        else
+            AddCreatorToNotificationList(item.CreatorMid, item.CreatorName, item.AvatarUrl);
+    }
+
+    private void AddCreatorToNotificationList(long mid, string name, string avatarUrl)
+    {
+        var subscriptions = AppSettings.CustomNotificationCreators.ToList();
+        if (subscriptions.Any(c => c.Mid == mid))
+            return;
+
+        subscriptions.Add(new NotificationCreatorSubscription
+        {
+            Mid = mid,
+            Name = name,
+            AvatarUrl = avatarUrl,
+            VideoNotificationsEnabled = true,
+            LiveNotificationsEnabled = true,
+        });
+        AppSettings.CustomNotificationCreators = subscriptions;
+        ShowStatus(LocalizationHelper.Format("AddedToNotificationList", name), InfoBarSeverity.Success);
+    }
+
+    private void RemoveCreatorFromNotificationList(long mid, string name)
+    {
+        var subscriptions = AppSettings.CustomNotificationCreators.ToList();
+        subscriptions.RemoveAll(c => c.Mid == mid);
+        AppSettings.CustomNotificationCreators = subscriptions;
+        ShowStatus(LocalizationHelper.Format("RemovedFromNotificationList", name), InfoBarSeverity.Success);
+    }
+
+    private static void ConfigureLiveNotificationMenuItem(MenuFlyoutItem item)
+    {
+        if (item.DataContext is not LiveCreatorRow row || row.Mid <= 0)
+        {
+            item.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        if (AppSettings.NotificationTargetMode != NotificationTargetMode.CustomCreators)
+        {
+            item.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        item.Visibility = Visibility.Visible;
+        var isInList = AppSettings.CustomNotificationCreators.Any(c => c.Mid == row.Mid);
+        item.Text = isInList
+            ? LocalizationHelper.GetString("RemoveFromNotificationListMenuItem")
+            : LocalizationHelper.GetString("AddToNotificationListMenuItem");
+        item.Icon = isInList
+            ? new FontIcon { Glyph = "", FontSize = 16 }
+            : new FontIcon { Glyph = "", FontSize = 16 };
+        item.Tag = isInList ? "remove" : "add";
+    }
+
+    private void LiveNotificationMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuFlyoutItem { DataContext: LiveCreatorRow item, Tag: string action })
+            return;
+
+        if (action == "remove")
+            RemoveCreatorFromNotificationList(item.Mid, item.Name);
+        else
+            AddCreatorToNotificationList(item.Mid, item.Name, item.AvatarUrl);
+    }
 
     private static IconElement CreateMenuPathIcon(string data, double size)
     {

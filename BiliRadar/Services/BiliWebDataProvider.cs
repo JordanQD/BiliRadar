@@ -487,6 +487,52 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
         _httpClient.Dispose();
     }
 
+    public async Task<long> ResolveCreatorMidFromVideoUrlAsync(string url, CancellationToken cancellationToken = default)
+    {
+        var bvid = ExtractBvidFromUrl(url);
+        var aid = ExtractAidFromUrl(url);
+
+        if (string.IsNullOrWhiteSpace(bvid) && aid <= 0)
+            return 0;
+
+        var queryUrl = !string.IsNullOrWhiteSpace(bvid)
+            ? $"https://api.bilibili.com/x/web-interface/view?bvid={bvid}"
+            : $"https://api.bilibili.com/x/web-interface/view?aid={aid}";
+
+        var cookie = _cookieStore.GetCookieString();
+        using var document = await SendJsonAsync(queryUrl, cookie, cancellationToken).ConfigureAwait(false);
+        EnsureBiliSuccess(document.RootElement);
+
+        if (document.RootElement.TryGetProperty("data", out var data)
+            && data.TryGetProperty("owner", out var owner))
+        {
+            return GetInt64(owner, "mid");
+        }
+
+        return 0;
+    }
+
+    public async Task<long> ResolveCreatorMidFromLiveUrlAsync(string url, CancellationToken cancellationToken = default)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(url, @"live\.bilibili\.com/(\d+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (!match.Success || !long.TryParse(match.Groups[1].Value, out var roomId) || roomId <= 0)
+            return 0;
+
+        var cookie = _cookieStore.GetCookieString();
+        using var document = await SendJsonAsync(
+            $"https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom?room_id={roomId}",
+            cookie, cancellationToken).ConfigureAwait(false);
+        EnsureBiliSuccess(document.RootElement);
+
+        if (document.RootElement.TryGetProperty("data", out var data)
+            && data.TryGetProperty("room_info", out var roomInfo))
+        {
+            return GetInt64(roomInfo, "uid");
+        }
+
+        return 0;
+    }
+
     private async Task<long> GetMyMidAsync(string cookie, CancellationToken cancellationToken)
     {
         using var document = await SendJsonAsync(NavUrl, cookie, cancellationToken).ConfigureAwait(false);

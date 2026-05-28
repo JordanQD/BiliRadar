@@ -104,10 +104,10 @@ public sealed partial class NotificationSettingsPage : Page
 
     private async void AddCreatorButton_Click(object sender, RoutedEventArgs e)
     {
-        const double dialogContentMaxWidth = 480;
+        const double dialogContentMaxWidth = 520;
         const double dialogVerticalSpacing = 12;
-        var availableDialogWidth = Math.Max(280, (XamlRoot?.Size.Width ?? dialogContentMaxWidth) - 96);
-        var dialogContentMinWidth = Math.Min(360, availableDialogWidth);
+        var availableDialogWidth = Math.Max(360, (XamlRoot?.Size.Width ?? dialogContentMaxWidth) - 96);
+        var dialogContentMinWidth = Math.Min(420, availableDialogWidth);
 
         // --- link input row ---
         var linkBox = new AutoSuggestBox
@@ -216,8 +216,8 @@ public sealed partial class NotificationSettingsPage : Page
             HorizontalAlignment = HorizontalAlignment.Stretch,
             Spacing = dialogVerticalSpacing,
         };
-        notificationOptions.Children.Add(CreateDialogSwitchRow(LocalizationHelper.GetString("NotificationSettings.VideoNotifyCard.Header"), videoSwitch));
-        notificationOptions.Children.Add(CreateDialogSwitchRow(LocalizationHelper.GetString("NotificationSettings.LiveNotifyCard.Header"), liveSwitch));
+        notificationOptions.Children.Add(CreateDialogSwitchRow(LocalizationHelper.GetString("AddCreatorDialogVideoLabel"), videoSwitch));
+        notificationOptions.Children.Add(CreateDialogSwitchRow(LocalizationHelper.GetString("AddCreatorDialogLiveLabel"), liveSwitch));
 
         // --- content panel ---
         var contentPanel = new StackPanel
@@ -279,10 +279,45 @@ public sealed partial class NotificationSettingsPage : Page
             }
         }
 
+        // --- resolve mid from video / live url ---
+        async Task<long> ResolveMidFromUrlAsync(string url)
+        {
+            try
+            {
+                if (Regex.IsMatch(url, @"(?:bilibili\.com/video/|b23\.tv/|bilibili\.com/av\d+|^BV\w+$|^av\d+$)", RegexOptions.IgnoreCase))
+                {
+                    return await DataProvider.ResolveCreatorMidFromVideoUrlAsync(url);
+                }
+
+                if (Regex.IsMatch(url, @"live\.bilibili\.com/\d+", RegexOptions.IgnoreCase))
+                {
+                    return await DataProvider.ResolveCreatorMidFromLiveUrlAsync(url);
+                }
+            }
+            catch
+            {
+            }
+
+            return 0;
+        }
+
         // --- resolve creator ---
         async Task ResolveCreatorForDialogAsync()
         {
-            var mid = TryParseCreatorMid(linkBox.Text);
+            long mid;
+            var input = linkBox.Text.Trim();
+            var isVideoOrLive = Regex.IsMatch(input, @"bilibili\.com/video/|b23\.tv/|bilibili\.com/av\d+|live\.bilibili\.com/", RegexOptions.IgnoreCase)
+                || Regex.IsMatch(input, @"^BV\w+$")
+                || Regex.IsMatch(input, @"^av\d+$", RegexOptions.IgnoreCase);
+            if (isVideoOrLive)
+            {
+                mid = await ResolveMidFromUrlAsync(input);
+            }
+            else
+            {
+                mid = TryParseCreatorMid(input);
+            }
+
             if (mid <= 0)
             {
                 ShowError(InfoBarSeverity.Warning, LocalizationHelper.GetString("InputInvalid"), LocalizationHelper.GetString("InputInvalidDetail"));
@@ -293,6 +328,19 @@ public sealed partial class NotificationSettingsPage : Page
             {
                 ShowError(InfoBarSeverity.Warning, LocalizationHelper.GetString("AlreadyExists"), LocalizationHelper.GetString("AlreadyExistsDetail"));
                 return;
+            }
+
+            try
+            {
+                var isFollowed = await UpdateMonitorService.IsCreatorFollowedAsync(mid);
+                if (!isFollowed)
+                {
+                    ShowError(InfoBarSeverity.Warning, LocalizationHelper.GetString("CreatorNotFollowed"), LocalizationHelper.GetString("CreatorNotFollowedDetail"));
+                    return;
+                }
+            }
+            catch
+            {
             }
 
             linkBox.IsEnabled = false;

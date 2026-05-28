@@ -171,8 +171,8 @@
   <data name="Off" xml:space="preserve"><value>關</value></data>
   <data name="SaveButton" xml:space="preserve"><value>保存</value></data>
   <data name="CancelButton" xml:space="preserve"><value>取消</value></data>
-  <data name="CreatorLinkPlaceholder" xml:space="preserve"><value>https://space.bilibili.com/123456 或 UID</value></data>
-  <data name="CreatorLinkAutomationName" xml:space="preserve"><value>UP 主頁連結或 UID</value></data>
+  <data name="CreatorLinkPlaceholder" xml:space="preserve"><value>空間連結、UID、AV號、AV號連結、BV號、BV號連結、直播連結</value></data>
+  <data name="CreatorLinkAutomationName" xml:space="preserve"><value>UP 空間連結、UID、AV號、BV號或直播連結</value></data>
   <data name="FilePickerJsonLabel" xml:space="preserve"><value>JSON 配置</value></data>
   <data name="NoFollowingData" xml:space="preserve"><value>暫無關注數據</value></data>
   <data name="LastCheckedNotYet" xml:space="preserve"><value>尚未檢查</value></data>
@@ -195,6 +195,14 @@
   <data name="MainWindow.Title" xml:space="preserve"><value>BiliRadar</value></data>
   <data name="SettingsWindow.Title" xml:space="preserve"><value>BiliRadar 設定</value></data>
   <data name="WebSignInWindow.Title" xml:space="preserve"><value>BiliRadar 登錄</value></data>
+  <data name="AddCreatorDialogVideoLabel" xml:space="preserve"><value>影片更新通知</value></data>
+  <data name="AddCreatorDialogLiveLabel" xml:space="preserve"><value>開播通知</value></data>
+  <data name="AddToNotificationListMenuItem" xml:space="preserve"><value>添加到通知列表</value></data>
+  <data name="RemoveFromNotificationListMenuItem" xml:space="preserve"><value>移除通知列表</value></data>
+  <data name="AddedToNotificationList" xml:space="preserve"><value>已添加到通知列表：{0}</value></data>
+  <data name="RemovedFromNotificationList" xml:space="preserve"><value>已從通知列表移除：{0}</value></data>
+  <data name="CreatorNotFollowed" xml:space="preserve"><value>該 UP 不在你的關注列表中</value></data>
+  <data name="CreatorNotFollowedDetail" xml:space="preserve"><value>僅能對已關注的 UP 添加通知。</value></data>
   <data name="SignInNotificationTitle" xml:space="preserve"><value>歡迎使用 BiliRadar</value></data>
   <data name="SignInNotificationBody" xml:space="preserve"><value>點擊登錄 Bilibili 賬號以獲取關注動態</value></data>
 </root>
