@@ -161,7 +161,10 @@ public sealed partial class VideoCard : UserControl
         Grid.SetRow(_descText, 1);
         textPanel.Children.Add(_descText);
 
-        var creatorRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 4, 0, 0) };
+        var creatorRow = new Grid { ColumnSpacing = 6, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 4, 0, 0) };
+        creatorRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        creatorRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        creatorRow.ColumnDefinitions.Add(new ColumnDefinition());
         Grid.SetRow(creatorRow, 2);
         textPanel.Children.Add(creatorRow);
 
@@ -214,9 +217,11 @@ public sealed partial class VideoCard : UserControl
         creatorRow.Children.Add(_avatarBtn);
 
         _creatorText = new TextBlock { FontSize = 12, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, MaxWidth = 120, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.NoWrap };
+        Grid.SetColumn(_creatorText, 1);
         creatorRow.Children.Add(_creatorText);
 
         _timeText = new TextBlock { FontSize = 12, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.NoWrap };
+        Grid.SetColumn(_timeText, 2);
         creatorRow.Children.Add(_timeText);
 
         RootGrid.Children.Insert(0, textPanel);

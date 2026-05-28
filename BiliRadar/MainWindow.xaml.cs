@@ -293,6 +293,8 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
                 SyncCardTimeTexts();
             }
 
+            RemoveStaleVideoCards(updates);
+
             _hasMoreUpdates = Updates.Count > 0;
             UnreadCount = Updates.Count(item => item.IsUnread);
             LastCheckedText = _updateMonitorService.LastCheckedAt.ToString("HH:mm:ss");
@@ -314,6 +316,33 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         finally
         {
             IsLoading = false;
+        }
+    }
+
+    private void RemoveStaleVideoCards(IReadOnlyList<BiliVideoUpdate> serverItems)
+    {
+        RemoveStaleItems(serverItems, Updates, VideoCardsPanel, _loadedUpdateIds);
+    }
+
+    private static void RemoveStaleItems(
+        IReadOnlyList<BiliVideoUpdate> serverItems,
+        ObservableCollection<VideoUpdateRow> collection,
+        Panel panel,
+        HashSet<string> loadedIds)
+    {
+        if (serverItems.Count == 0) return;
+        var serverIds = new HashSet<string>(serverItems.Select(u => u.Id), StringComparer.OrdinalIgnoreCase);
+        var oldestDate = serverItems.Min(u => u.PublishedAt);
+
+        for (var i = collection.Count - 1; i >= 0; i--)
+        {
+            var item = collection[i];
+            if (loadedIds.Contains(item.Id) && !serverIds.Contains(item.Id) && item.PublishedAt >= oldestDate)
+            {
+                if (i < panel.Children.Count)
+                    panel.Children.RemoveAt(i);
+                collection.RemoveAt(i);
+            }
         }
     }
 
@@ -737,6 +766,8 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
                 }
             }
 
+            RemoveStaleItems(page.Items, HistoryItems, HistoryCardsPanel, _loadedHistoryIds);
+
             HistoryEmptyPanel.Visibility = HistoryItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             if (HistoryItems.Count == 0 && StatusNotifications.Count == 0)
             {
@@ -845,6 +876,8 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
                     insertIndex++;
                 }
             }
+
+            RemoveStaleItems(page.Items, ViewLaterItems, ViewLaterCardsPanel, _loadedViewLaterIds);
 
             ViewLaterEmptyPanel.Visibility = ViewLaterItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             if (ViewLaterItems.Count == 0 && StatusNotifications.Count == 0)

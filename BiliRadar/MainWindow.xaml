@@ -134,7 +134,14 @@
                         <StackPanel
                             x:Name="LiveCreatorCardsPanel"
                             Orientation="Horizontal"
-                            Spacing="6" />
+                            Spacing="6">
+                            <StackPanel.ChildrenTransitions>
+                                <TransitionCollection>
+                                    <AddDeleteThemeTransition />
+                                    <EntranceThemeTransition FromHorizontalOffset="24" FromVerticalOffset="0" IsStaggeringEnabled="True" />
+                                </TransitionCollection>
+                            </StackPanel.ChildrenTransitions>
+                        </StackPanel>
                     </ScrollViewer>
                 </StackPanel>
                 <TextBlock
@@ -147,7 +154,14 @@
                     Text="最新视频" />
                 <StackPanel
                     x:Name="VideoCardsPanel"
-                    Spacing="10" />
+                    Spacing="10">
+                    <StackPanel.ChildrenTransitions>
+                        <TransitionCollection>
+                            <AddDeleteThemeTransition />
+                            <EntranceThemeTransition FromHorizontalOffset="0" FromVerticalOffset="24" IsStaggeringEnabled="True" />
+                        </TransitionCollection>
+                    </StackPanel.ChildrenTransitions>
+                </StackPanel>
             </StackPanel>
         </ScrollViewer>
 
@@ -165,7 +179,14 @@
                 VerticalScrollBarVisibility="Auto">
                 <StackPanel
                     x:Name="HistoryCardsPanel"
-                    Spacing="10" />
+                    Spacing="10">
+                    <StackPanel.ChildrenTransitions>
+                        <TransitionCollection>
+                            <AddDeleteThemeTransition />
+                            <EntranceThemeTransition FromHorizontalOffset="0" FromVerticalOffset="24" IsStaggeringEnabled="True" />
+                        </TransitionCollection>
+                    </StackPanel.ChildrenTransitions>
+                </StackPanel>
             </ScrollViewer>
 
             <StackPanel
@@ -209,7 +230,14 @@
                 VerticalScrollBarVisibility="Auto">
                 <StackPanel
                     x:Name="ViewLaterCardsPanel"
-                    Spacing="10" />
+                    Spacing="10">
+                    <StackPanel.ChildrenTransitions>
+                        <TransitionCollection>
+                            <AddDeleteThemeTransition />
+                            <EntranceThemeTransition FromHorizontalOffset="0" FromVerticalOffset="24" IsStaggeringEnabled="True" />
+                        </TransitionCollection>
+                    </StackPanel.ChildrenTransitions>
+                </StackPanel>
             </ScrollViewer>
 
             <StackPanel
