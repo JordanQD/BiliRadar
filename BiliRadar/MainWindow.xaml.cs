@@ -346,6 +346,73 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         }
     }
 
+    /// <summary>
+    /// Diff-based panel refresh: removes items deleted from server, inserts new items at correct positions,
+    /// and moves existing items to their server-defined order. Triggers transitions for actual changes only.
+    /// Returns the number of items removed.
+    /// </summary>
+    private static int DiffRefreshPanel(
+        IReadOnlyList<BiliVideoUpdate> serverItems,
+        ObservableCollection<VideoUpdateRow> collection,
+        Panel panel,
+        HashSet<string> loadedIds,
+        Func<VideoUpdateRow, UIElement> createCard)
+    {
+        if (serverItems.Count == 0) return 0;
+        var serverIds = new HashSet<string>(serverItems.Select(i => i.Id), StringComparer.OrdinalIgnoreCase);
+        var oldestDate = serverItems.Min(i => i.PublishedAt);
+        int removedCount = 0;
+
+        // 1. Remove stale items (deleted from server, within page-1 date range)
+        for (int i = collection.Count - 1; i >= 0; i--)
+        {
+            if (!serverIds.Contains(collection[i].Id) && collection[i].PublishedAt >= oldestDate)
+            {
+                panel.Children.RemoveAt(i);
+                collection.RemoveAt(i);
+                removedCount++;
+            }
+        }
+
+        // 2. Insert new items and move existing ones to correct server order
+        int serverIdx = 0;
+        foreach (var serverItem in serverItems)
+        {
+            var existingIdx = IndexById(collection, serverItem.Id);
+            if (existingIdx >= 0)
+            {
+                // Move to correct position if needed
+                if (existingIdx != serverIdx)
+                {
+                    collection.Move(existingIdx, serverIdx);
+                    var card = panel.Children[existingIdx];
+                    panel.Children.RemoveAt(existingIdx);
+                    panel.Children.Insert(serverIdx, card);
+                }
+            }
+            else
+            {
+                loadedIds.Add(serverItem.Id);
+                var row = new VideoUpdateRow(serverItem);
+                collection.Insert(serverIdx, row);
+                panel.Children.Insert(serverIdx, createCard(row));
+            }
+            serverIdx++;
+        }
+
+        return removedCount;
+    }
+
+    private static int IndexById(IList<VideoUpdateRow> list, string id)
+    {
+        for (int i = 0; i < list.Count; i++)
+        {
+            if (string.Equals(list[i].Id, id, StringComparison.OrdinalIgnoreCase))
+                return i;
+        }
+        return -1;
+    }
+
     private async Task RefreshOnShowAsync()
     {
         if (_refreshQueuedOnShow)
@@ -745,28 +812,13 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
 
             var page = await _updateMonitorService.RefreshHistoryAsync();
             _hasMoreHistory = page.HasMore;
-            var insertIndex = 0;
-            foreach (var item in page.Items)
-            {
-                var historyChange = AddOrUpdateHistoryItem(item, insertIndex);
-                if (historyChange.Kind == HistoryItemChangeKind.Inserted)
-                {
-                    HistoryCardsPanel.Children.Insert(insertIndex, CreateVideoCardControl(HistoryItems[insertIndex], showMetaTime: false, relationActionMode: GetCreatorRelationActionMode(HistoryItems[insertIndex])));
-                    insertIndex++;
-                }
-                else if (historyChange.Kind == HistoryItemChangeKind.Updated)
-                {
-                    if (historyChange.OldIndex >= 0 && historyChange.OldIndex < HistoryCardsPanel.Children.Count)
-                    {
-                        HistoryCardsPanel.Children.RemoveAt(historyChange.OldIndex);
-                    }
 
-                    HistoryCardsPanel.Children.Insert(insertIndex, CreateVideoCardControl(HistoryItems[insertIndex], showMetaTime: false, relationActionMode: GetCreatorRelationActionMode(HistoryItems[insertIndex])));
-                    insertIndex++;
-                }
-            }
+            int removed = DiffRefreshPanel(
+                page.Items, HistoryItems, HistoryCardsPanel, _loadedHistoryIds,
+                row => CreateVideoCardControl(row, showMetaTime: false, relationActionMode: GetCreatorRelationActionMode(row)));
 
-            RemoveStaleItems(page.Items, HistoryItems, HistoryCardsPanel, _loadedHistoryIds);
+            if (removed > page.Items.Count / 2 && _hasMoreHistory)
+                _ = LoadMoreHistoryAsync();
 
             HistoryEmptyPanel.Visibility = HistoryItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             if (HistoryItems.Count == 0 && StatusNotifications.Count == 0)
@@ -867,17 +919,13 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
 
             var page = await _updateMonitorService.RefreshViewLaterAsync();
             _hasMoreViewLater = page.HasMore;
-            var insertIndex = 0;
-            foreach (var item in page.Items)
-            {
-                if (AddViewLaterIfNew(item, insertIndex))
-                {
-                    ViewLaterCardsPanel.Children.Insert(insertIndex, CreateVideoCardControl(ViewLaterItems[insertIndex], ViewLaterButtonMode.Remove, showMetaTime: false, relationActionMode: GetCreatorRelationActionMode(ViewLaterItems[insertIndex])));
-                    insertIndex++;
-                }
-            }
 
-            RemoveStaleItems(page.Items, ViewLaterItems, ViewLaterCardsPanel, _loadedViewLaterIds);
+            int removed = DiffRefreshPanel(
+                page.Items, ViewLaterItems, ViewLaterCardsPanel, _loadedViewLaterIds,
+                row => CreateVideoCardControl(row, ViewLaterButtonMode.Remove, showMetaTime: false, relationActionMode: GetCreatorRelationActionMode(row)));
+
+            if (removed > page.Items.Count / 2 && _hasMoreViewLater)
+                _ = LoadMoreViewLaterAsync();
 
             ViewLaterEmptyPanel.Visibility = ViewLaterItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             if (ViewLaterItems.Count == 0 && StatusNotifications.Count == 0)
