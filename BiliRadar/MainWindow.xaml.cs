@@ -1157,26 +1157,10 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         card.CardMenuFlyout = CreateVideoCardMenuFlyout(item, relationActionMode);
         card.CoverTapped += (_, row) => _ = LaunchVideoAsync(row);
         card.CreatorAvatarClicked += (_, row) => _ = LaunchCreatorSpaceAsync(row);
-        card.CreatorRelationActionRequested += (_, args) => HandleCreatorRelationAction(args.Item, args.Mode);
         card.ViewLaterClicked += viewLaterButtonMode == ViewLaterButtonMode.Remove
             ? (_, row) => HandleViewLaterCardClick(row)
             : (_, row) => HandleAddToViewLaterClick(row);
         return card;
-    }
-
-    private async void HandleCreatorRelationAction(VideoUpdateRow item, CreatorRelationActionMode mode)
-    {
-        try
-        {
-            if (mode == CreatorRelationActionMode.Follow)
-                await FollowCreatorAsync(item);
-            else
-                await UnfollowCreatorAsync(item);
-        }
-        catch (Exception ex)
-        {
-            ShowStatus(LocalizationHelper.Format(mode == CreatorRelationActionMode.Follow ? "FollowFailed" : "UnfollowFailed", ex.Message), InfoBarSeverity.Error);
-        }
     }
 
     private async void HandleViewLaterCardClick(VideoUpdateRow item)

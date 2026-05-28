@@ -73,7 +73,6 @@ public sealed partial class VideoCard : UserControl
     public event EventHandler<VideoUpdateRow>? CoverTapped;
     public event EventHandler<VideoUpdateRow>? ViewLaterClicked;
     public event EventHandler<VideoUpdateRow>? CreatorAvatarClicked;
-    public event EventHandler<(VideoUpdateRow Item, CreatorRelationActionMode Mode)>? CreatorRelationActionRequested;
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {

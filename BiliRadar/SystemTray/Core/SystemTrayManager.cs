@@ -246,7 +246,7 @@ namespace SystemTray.Core
 
             public IcoIcon(string path)
             {
-                string fullPath = Path.Combine(Package.Current.InstalledLocation.Path, path);
+                string fullPath = ResolveIconPath(path);
 
                 if (!File.Exists(fullPath))
                     throw new FileNotFoundException("Icon file not found.", fullPath);
@@ -255,6 +255,18 @@ namespace SystemTray.Core
                 iconHandle = new SafeIconHandle(hIcon, true);
                 if (iconHandle.IsInvalid)
                     throw new InvalidOperationException("Cannot load .ico file.");
+            }
+
+            private static string ResolveIconPath(string path)
+            {
+                try
+                {
+                    return Path.Combine(Package.Current.InstalledLocation.Path, path);
+                }
+                catch
+                {
+                    return Path.Combine(AppContext.BaseDirectory, path);
+                }
             }
 
             public nint Handle => iconHandle.DangerousGetHandle();

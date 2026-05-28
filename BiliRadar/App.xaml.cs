@@ -92,22 +92,16 @@ public partial class App : Application
             return;
         }
 
-        try
-        {
-            _trayIconService = new TrayIconService(
-                _mainWindow,
-                "BiliRadar",
-                ToggleMainWindow,
-                ShowMainWindow,
-                ShowSettingsWindow,
-                ExitApplication);
-            _trayIconService.SetupTrayIcon();
+        _trayIconService = new TrayIconService(
+            _mainWindow,
+            "BiliRadar",
+            ToggleMainWindow,
+            ShowMainWindow,
+            ShowSettingsWindow,
+            ExitApplication);
+        _trayIconService.SetupTrayIcon();
 
-            _ = _mainWindow.StartNotificationMonitorAsync();
-        }
-        catch
-        {
-        }
+        _ = _mainWindow.StartNotificationMonitorAsync();
     }
 
     private void ShowMainWindow()
