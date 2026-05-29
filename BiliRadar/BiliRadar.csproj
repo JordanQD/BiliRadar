@@ -122,9 +122,10 @@
     <GenerateTestArtifacts>False</GenerateTestArtifacts>
     <AppxBundle>Auto</AppxBundle>
     <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
-    <AppxBundlePlatforms>x64</AppxBundlePlatforms>
-    <PackageAndDeploySatelliteResourceLanguages>zh-CN;zh-TW;zh-HK</PackageAndDeploySatelliteResourceLanguages>
+    <AppxBundlePlatforms>x64|arm64</AppxBundlePlatforms>
+    <PackageAndDeploySatelliteResourceLanguages>zh-CN;zh-HK</PackageAndDeploySatelliteResourceLanguages>
     <AppxSymbolPackageEnabled>False</AppxSymbolPackageEnabled>
+    <GenerateTemporaryStoreCertificate>True</GenerateTemporaryStoreCertificate>
   </PropertyGroup>
 
   <Target Name="FixToastActivatorExeServerManifest" AfterTargets="_GenerateAppxPackageRecipeFile">

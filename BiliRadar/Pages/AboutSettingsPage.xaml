@@ -104,6 +104,9 @@
                                 Content="Richasy/bili-kernel"
                                 NavigateUri="https://github.com/Richasy/bili-kernel" />
                             <HyperlinkButton
+                                Content="GNU General Public License v3.0"
+                                NavigateUri="https://www.gnu.org/licenses/gpl-3.0.html" />
+                            <HyperlinkButton
                                 Content="microsoft/WindowsAppSDK"
                                 NavigateUri="https://github.com/microsoft/WindowsAppSDK" />
                             <HyperlinkButton

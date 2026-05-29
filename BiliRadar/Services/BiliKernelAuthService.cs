@@ -1,3 +1,7 @@
+// Portions of this file are derived from Richasy/bili-kernel.
+// Copyright (c) Richasy.
+// Licensed under the GNU General Public License v3.0.
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
