@@ -34,22 +34,6 @@
 
     ![通知-指定UP](Figures/设置-通知-自定义.png)
 
-## 截图
-
-仓库目前还没有提交正式截图。建议补充以下图片，方便用户在 GitHub 和 Microsoft Store 页面快速了解应用：
-
-- `docs/screenshots/main.png`：主界面，展示关注、正在直播和最新视频。
-- `docs/screenshots/settings-general.png`：通用设置，展示登录、自启、默认页面等选项。
-- `docs/screenshots/settings-notification.png`：通知设置，展示通知间隔和自定义 UP 通知。
-
-添加截图后，可以把下面这段取消注释：
-
-```md
-![主界面](docs/screenshots/main.png)
-![通用设置](docs/screenshots/settings-general.png)
-![通知设置](docs/screenshots/settings-notification.png)
-```
-
 ## 使用说明
 
 首次使用需要在设置中通过网页登录 Bilibili 账号。登录后，BiliRadar 会读取与你账号相关的关注动态、历史记录、稍后再看和直播状态。
@@ -106,3 +90,10 @@ dotnet build BiliRadar.slnx -c Release -p:Platform=ARM64 --no-restore
 
 ## 参考
 
+- [Richasy/Bili.Copilot](https://github.com/Richasy/Bili.Copilot)
+- [Richasy/bili-kernel](https://github.com/Richasy/bili-kernel)
+- [microsoft/WindowsAppSDK](https://github.com/microsoft/WindowsAppSDK)
+- [microsoft/WinUI](https://github.com/microsoft/WinUI-Gallery)
+- [microsoft/microsoft-ui-xaml](https://github.com/microsoft/microsoft-ui-xaml)
+- [CommunityToolkit/Windows](https://github.com/CommunityToolkit/Windows)
+- [MEHDIMYADI/SystemTrayWinUI3](https://github.com/MEHDIMYADI/SystemTrayWinUI3)
