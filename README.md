@@ -107,6 +107,14 @@ dotnet build BiliRadar.slnx -c Release -p:Platform=ARM64 --no-restore
 
 欢迎提交 Issue 或 Pull Request。
 
+## 许可证
+
+本项目采用 **GNU General Public License v3.0（GPL-3.0）** 开源，完整条款见 [LICENSE](LICENSE)。
+
+你可以在 GPL-3.0 许可条款下自由使用、复制、修改和分发本项目的源代码；如果分发修改后的版本或基于本项目的衍生作品，也需要继续以 GPL-3.0 兼容的方式公开相应源代码。
+
+BiliRadar 使用到的第三方项目、库和服务可能适用各自的许可证或使用条款，请在使用和分发时一并遵守。
+
 ## 参考
 
 - [Richasy/Bili.Copilot](https://github.com/Richasy/Bili.Copilot)
