@@ -35,28 +35,30 @@ jobs:
           fi
 
       - name: Build and package x64
-        shell: pwsh
-        run: |
-          msbuild BiliRadar/BiliRadar.csproj `
-            /p:Configuration=Release `
-            /p:Platform=x64 `
-            /p:Version=${{ env.APP_VERSION }} `
-            /p:AppxBundle=Never `
-            /p:PackageCertificateThumbprint="" `
-            /p:GenerateTemporaryStoreCertificate=true `
-            /p:AppxPackageDir="${{ github.workspace }}\packages\x64\"
+        run: >
+          dotnet build BiliRadar/BiliRadar.csproj
+          -c Release
+          -p:Platform=x64
+          -p:Version=${{ env.APP_VERSION }}
+          -p:AppxBundle=Never
+          -p:PackageCertificateThumbprint=""
+          -p:GenerateTemporaryStoreCertificate=true
+          -p:GenerateAppxPackageOnBuild=true
+          -p:UapAppxPackageBuildMode=SideloadOnly
+          -p:AppxPackageDir="${{ github.workspace }}\packages\x64\"
 
       - name: Build and package ARM64
-        shell: pwsh
-        run: |
-          msbuild BiliRadar/BiliRadar.csproj `
-            /p:Configuration=Release `
-            /p:Platform=ARM64 `
-            /p:Version=${{ env.APP_VERSION }} `
-            /p:AppxBundle=Never `
-            /p:PackageCertificateThumbprint="" `
-            /p:GenerateTemporaryStoreCertificate=true `
-            /p:AppxPackageDir="${{ github.workspace }}\packages\arm64\"
+        run: >
+          dotnet build BiliRadar/BiliRadar.csproj
+          -c Release
+          -p:Platform=ARM64
+          -p:Version=${{ env.APP_VERSION }}
+          -p:AppxBundle=Never
+          -p:PackageCertificateThumbprint=""
+          -p:GenerateTemporaryStoreCertificate=true
+          -p:GenerateAppxPackageOnBuild=true
+          -p:UapAppxPackageBuildMode=SideloadOnly
+          -p:AppxPackageDir="${{ github.workspace }}\packages\arm64\"
 
       - name: Create AppxBundle
         shell: pwsh
