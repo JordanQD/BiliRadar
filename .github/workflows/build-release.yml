@@ -57,10 +57,16 @@ jobs:
       - name: Create AppxBundle
         shell: pwsh
         run: |
-          $x64Msix = Get-ChildItem -Path "BiliRadar/bin/x64/Release" -Recurse -Filter "*.msix" | Select-Object -First 1
-          $arm64Msix = Get-ChildItem -Path "BiliRadar/bin/ARM64/Release" -Recurse -Filter "*.msix" | Select-Object -First 1
+          $x64Msix = Get-ChildItem -Path "BiliRadar/bin" -Recurse -Filter "*.msix" |
+                     Where-Object { $_.FullName -notmatch '\\obj\\' -and $_.FullName -notmatch '\\AppPackages\\' -and $_.FullName -match 'x64' } |
+                     Select-Object -First 1
+          $arm64Msix = Get-ChildItem -Path "BiliRadar/bin" -Recurse -Filter "*.msix" |
+                       Where-Object { $_.FullName -notmatch '\\obj\\' -and $_.FullName -notmatch '\\AppPackages\\' -and $_.FullName -match 'arm64' } |
+                       Select-Object -First 1
 
           if (-not $x64Msix -or -not $arm64Msix) {
+            Write-Host "Searching for MSIX files..."
+            Get-ChildItem -Path "BiliRadar/bin" -Recurse -Filter "*.msix" | ForEach-Object { Write-Host "  $($_.FullName)" }
             Write-Error "MSIX files not found. x64: $x64Msix, ARM64: $arm64Msix"
             exit 1
           }
