@@ -54,19 +54,28 @@ jobs:
           -p:PackageCertificateThumbprint=
           -p:GenerateTemporaryStoreCertificate=true
 
+      - name: Debug - List all output
+        if: always()
+        shell: pwsh
+        run: |
+          Write-Host "=== Directory tree ==="
+          Get-ChildItem -Path . -Recurse -Depth 4 -Directory -Filter "*Release*" | ForEach-Object { Write-Host "  DIR: $($_.FullName)" }
+          Write-Host "=== All MSIX ==="
+          Get-ChildItem -Path . -Recurse -Filter "*.msix" | ForEach-Object { Write-Host "  MSIX: $($_.FullName)" }
+          Write-Host "=== All Appx ==="
+          Get-ChildItem -Path . -Recurse -Filter "*.appx" | ForEach-Object { Write-Host "  APPX: $($_.FullName)" }
+
       - name: Create AppxBundle
         shell: pwsh
         run: |
-          $x64Msix = Get-ChildItem -Path "BiliRadar/bin" -Recurse -Filter "*.msix" |
-                     Where-Object { $_.FullName -notmatch '\\obj\\' -and $_.FullName -notmatch '\\AppPackages\\' -and $_.FullName -match 'x64' } |
+          $x64Msix = Get-ChildItem -Path . -Recurse -Filter "*.msix" |
+                     Where-Object { $_.FullName -notmatch '\\obj\\' -and $_.FullName -notmatch '\\AppPackages\\' -and $_.Directory.Name -match 'x64' } |
                      Select-Object -First 1
-          $arm64Msix = Get-ChildItem -Path "BiliRadar/bin" -Recurse -Filter "*.msix" |
-                       Where-Object { $_.FullName -notmatch '\\obj\\' -and $_.FullName -notmatch '\\AppPackages\\' -and $_.FullName -match 'arm64' } |
+          $arm64Msix = Get-ChildItem -Path . -Recurse -Filter "*.msix" |
+                       Where-Object { $_.FullName -notmatch '\\obj\\' -and $_.FullName -notmatch '\\AppPackages\\' -and $_.Directory.Name -match 'arm64' } |
                        Select-Object -First 1
 
           if (-not $x64Msix -or -not $arm64Msix) {
-            Write-Host "Searching for MSIX files..."
-            Get-ChildItem -Path "BiliRadar/bin" -Recurse -Filter "*.msix" | ForEach-Object { Write-Host "  $($_.FullName)" }
             Write-Error "MSIX files not found. x64: $x64Msix, ARM64: $arm64Msix"
             exit 1
           }
@@ -74,6 +83,7 @@ jobs:
           Write-Host "x64 MSIX:  $($x64Msix.FullName)"
           Write-Host "ARM64 MSIX: $($arm64Msix.FullName)"
 
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
           New-Item -ItemType Directory -Force -Path bundle-input | Out-Null
           Copy-Item $x64Msix.FullName bundle-input/
           Copy-Item $arm64Msix.FullName bundle-input/
