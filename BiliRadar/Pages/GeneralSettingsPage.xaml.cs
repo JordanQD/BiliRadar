@@ -43,8 +43,17 @@ public sealed partial class GeneralSettingsPage : Page
     {
         _accountService = new BiliAccountService(_cookieStore);
         InitializeComponent();
+        ConfigureDebugSettingsVisibility();
         Loaded += GeneralSettingsPage_Loaded;
         Unloaded += GeneralSettingsPage_Unloaded;
+    }
+
+    private void ConfigureDebugSettingsVisibility()
+    {
+#if !DEBUG
+        DebugSectionHeader.Visibility = Visibility.Collapsed;
+        LanguageSettingsCard.Visibility = Visibility.Collapsed;
+#endif
     }
 
     private async void GeneralSettingsPage_Loaded(object sender, RoutedEventArgs e)
@@ -508,12 +517,15 @@ public sealed partial class GeneralSettingsPage : Page
 
     private void InitLanguageSelector()
     {
+        _isLoadingSettings = true;
         var current = AppSettings.AppLanguage;
         LanguageSelectorBox.SelectedIndex = current switch
         {
-            "zh-HK" => 1,
+            "zh-CN" => 1,
+            "zh-HK" => 2,
             _ => 0,
         };
+        _isLoadingSettings = false;
     }
 
     private void LanguageSelectorBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -533,6 +545,8 @@ public sealed partial class GeneralSettingsPage : Page
 
         SetConfigStatus(LocalizationHelper.Format("LanguageRestartMessage", tag switch
         {
+            AppSettings.SystemLanguage => LocalizationHelper.GetString("GeneralLanguageSystemItem.Content", "跟随系统"),
+            "zh-CN" => "简体中文",
             "zh-HK" => "繁體中文（香港）",
             _ => "简体中文",
         }));

@@ -49,7 +49,7 @@
         <desktop:Extension Category="windows.toastNotificationActivation">
           <desktop:ToastNotificationActivation ToastActivatorCLSID="04A40C26-0FAD-4D5E-BE58-DB4E3D470CE5" />
         </desktop:Extension>
-        <desktop:Extension Category="windows.startupTask" Executable="BiliRadar.exe" EntryPoint="$targetentrypoint$">
+        <desktop:Extension Category="windows.startupTask" Executable="BiliRadar.exe" EntryPoint="Windows.FullTrustApplication">
           <desktop:StartupTask TaskId="BiliRadarStartupTask" Enabled="false" DisplayName="BiliRadar" />
         </desktop:Extension>
         <com:Extension Category="windows.comServer">

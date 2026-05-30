@@ -64,8 +64,9 @@
   <data name="GeneralImportConfigButton.Content" xml:space="preserve"><value>导入</value></data>
   <data name="GeneralDebugSectionHeader.Text" xml:space="preserve"><value>调试</value></data>
   <data name="GeneralLanguageCard.Header" xml:space="preserve"><value>界面语言</value></data>
-  <data name="GeneralLanguageCard.Description" xml:space="preserve"><value>手动切换界面显示语言。重启应用后生效。</value></data>
+  <data name="GeneralLanguageCard.Description" xml:space="preserve"><value>选择跟随 Windows 语言，或手动指定界面显示语言。重启应用后生效。</value></data>
   <data name="GeneralLanguageSelectorBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>界面语言</value></data>
+  <data name="GeneralLanguageSystemItem.Content" xml:space="preserve"><value>跟随系统</value></data>
   <data name="GeneralLanguageZhCnItem.Content" xml:space="preserve"><value>简体中文</value></data>
   <data name="GeneralLanguageZhHkItem.Content" xml:space="preserve"><value>繁體中文（香港）</value></data>
 

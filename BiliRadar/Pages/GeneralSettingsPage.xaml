@@ -252,12 +252,14 @@
                 Visibility="Collapsed" />
 
             <TextBlock
+                x:Name="DebugSectionHeader"
                 x:Uid="GeneralDebugSectionHeader"
                 Style="{StaticResource SettingsSectionHeaderTextBlockStyle}"
                 Text="调试" />
             <controls:SettingsCard
+                x:Name="LanguageSettingsCard"
                 x:Uid="GeneralLanguageCard"
-                Description="手动切换界面显示语言。重启应用后生效。"
+                Description="选择跟随 Windows 语言，或手动指定界面显示语言。重启应用后生效。"
                 Header="界面语言">
                 <controls:SettingsCard.HeaderIcon>
                     <FontIcon Glyph="&#xF2B7;" />
@@ -271,6 +273,7 @@
                     AutomationProperties.AutomationId="LanguageSelectorBox"
                     AutomationProperties.Name="界面语言"
                     SelectionChanged="LanguageSelectorBox_SelectionChanged">
+                    <ComboBoxItem x:Uid="GeneralLanguageSystemItem" Content="跟随系统" Tag="system" />
                     <ComboBoxItem x:Uid="GeneralLanguageZhCnItem" Content="简体中文" Tag="zh-CN" />
                     <ComboBoxItem x:Uid="GeneralLanguageZhHkItem" Content="繁體中文（香港）" Tag="zh-HK" />
                 </ComboBox>

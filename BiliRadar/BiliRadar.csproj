@@ -13,14 +13,16 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <UseWinUI>true</UseWinUI>
 
-    <!-- Release: 最少依赖，不带 .NET / WASDK / WinUI -->
-    <WinUISDKReferences Condition="'$(Configuration)' != 'ReleaseFull'">true</WinUISDKReferences>
-    <WindowsAppSDKSelfContained Condition="'$(Configuration)' != 'ReleaseFull'">false</WindowsAppSDKSelfContained>
-    <PublishProfile Condition="'$(Configuration)' != 'ReleaseFull'">win-$(Platform).pubxml</PublishProfile>
+    <!-- Debug: framework-dependent for faster local builds. -->
+    <WinUISDKReferences Condition="'$(Configuration)' == 'Debug'">true</WinUISDKReferences>
+    <WindowsAppSDKSelfContained Condition="'$(Configuration)' == 'Debug'">false</WindowsAppSDKSelfContained>
+    <SelfContained Condition="'$(Configuration)' == 'Debug'">false</SelfContained>
 
-    <!-- ReleaseFull: 全量自包含，所有运行时和框架打进包 -->
-    <WinUISDKReferences Condition="'$(Configuration)' == 'ReleaseFull'">false</WinUISDKReferences>
-    <WindowsAppSDKSelfContained Condition="'$(Configuration)' == 'ReleaseFull'">true</WindowsAppSDKSelfContained>
+    <!-- Release / ReleaseFull: self-contained for Microsoft Store certification machines. -->
+    <WinUISDKReferences Condition="'$(Configuration)' != 'Debug'">false</WinUISDKReferences>
+    <WindowsAppSDKSelfContained Condition="'$(Configuration)' != 'Debug'">true</WindowsAppSDKSelfContained>
+    <SelfContained Condition="'$(Configuration)' != 'Debug'">true</SelfContained>
+    <PublishProfile Condition="'$(Configuration)' == 'Debug' or '$(Configuration)' == 'Release'">win-$(Platform).pubxml</PublishProfile>
     <PublishProfile Condition="'$(Configuration)' == 'ReleaseFull'">win-$(Platform)-full.pubxml</PublishProfile>
     <DefaultItemExcludes>$(DefaultItemExcludes);artifacts\**;bin\**;obj\**</DefaultItemExcludes>
     <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
@@ -105,8 +107,8 @@
 
   <!-- Publish Properties -->
   <PropertyGroup>
-    <!-- Release: 最少依赖，不裁剪（非自包含），R2R 关 -->
-    <PublishReadyToRun Condition="'$(Configuration)' == 'Release'">False</PublishReadyToRun>
+    <!-- Release: Store-ready self-contained package. -->
+    <PublishReadyToRun Condition="'$(Configuration)' == 'Release'">True</PublishReadyToRun>
     <PublishTrimmed Condition="'$(Configuration)' == 'Release'">false</PublishTrimmed>
     <!-- ReleaseFull: 全量自包含，不裁剪，R2R 开（最大兼容） -->
     <PublishReadyToRun Condition="'$(Configuration)' == 'ReleaseFull'">True</PublishReadyToRun>
@@ -128,13 +130,13 @@
     <GenerateTemporaryStoreCertificate>True</GenerateTemporaryStoreCertificate>
   </PropertyGroup>
 
-  <Target Name="FixToastActivatorExeServerManifest" AfterTargets="_GenerateAppxPackageRecipeFile">
+  <Target Name="FixGeneratedDesktopExtensionManifest" AfterTargets="_GenerateAppxPackageRecipeFile">
     <PropertyGroup>
       <_GeneratedAppxManifest>$(OutDir)AppX\AppxManifest.xml</_GeneratedAppxManifest>
     </PropertyGroup>
     <ItemGroup Condition="Exists('$(_GeneratedAppxManifest)')">
       <_GeneratedAppxManifestLine Include="$(_GeneratedAppxManifest)" />
     </ItemGroup>
-    <WriteLinesToFile Condition="Exists('$(_GeneratedAppxManifest)')" File="$(_GeneratedAppxManifest)" Lines="$([System.IO.File]::ReadAllText('$(_GeneratedAppxManifest)').Replace('$targetnametoken$.exe', 'BiliRadar.exe'))" Overwrite="true" />
+    <WriteLinesToFile Condition="Exists('$(_GeneratedAppxManifest)')" File="$(_GeneratedAppxManifest)" Lines="$([System.IO.File]::ReadAllText('$(_GeneratedAppxManifest)').Replace('$targetnametoken$.exe', 'BiliRadar.exe').Replace('EntryPoint=&quot;$targetentrypoint$&quot;', 'EntryPoint=&quot;Windows.FullTrustApplication&quot;'))" Overwrite="true" />
   </Target>
 </Project>

@@ -1,3 +1,4 @@
+using System;
 using System.Globalization;
 using Windows.ApplicationModel.Resources;
 using Windows.Globalization;
@@ -26,6 +27,12 @@ public static class LocalizationHelper
 
     public static void SetLanguage(string language)
     {
+        if (string.Equals(language, Services.AppSettings.SystemLanguage, StringComparison.OrdinalIgnoreCase))
+        {
+            ApplicationLanguages.PrimaryLanguageOverride = string.Empty;
+            return;
+        }
+
         var culture = CultureInfo.GetCultureInfo(language);
         ApplicationLanguages.PrimaryLanguageOverride = culture.Name;
         CultureInfo.CurrentUICulture = culture;

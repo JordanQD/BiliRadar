@@ -10,6 +10,8 @@ namespace BiliRadar.Services;
 
 public static class AppSettings
 {
+    public const string SystemLanguage = "system";
+
     private const int DefaultNotificationCheckIntervalMinutes = 15;
     private const string VideoNotificationsEnabledKey = "VideoNotificationsEnabled";
     private const string LiveNotificationsEnabledKey = "LiveNotificationsEnabled";
@@ -195,7 +197,7 @@ public static class AppSettings
 
     public static string AppLanguage
     {
-        get => ReadString(AppLanguageKey, "zh-CN");
+        get => ReadString(AppLanguageKey, SystemLanguage);
         set => LocalSettings.Values[AppLanguageKey] = value;
     }
 
