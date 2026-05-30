@@ -63,6 +63,7 @@ BiliRadar 依赖 Bilibili 的网页登录和公开接口行为。如果 Bilibili
 - CommunityToolkit.Mvvm
 - CommunityToolkit.WinUI
 - Microsoft.Web.WebView2
+- SystemTrayWinUI3
 
 ## 编译
 
