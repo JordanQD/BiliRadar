@@ -34,57 +34,48 @@ jobs:
             echo "APP_VERSION=0.0.0.0" >> $GITHUB_ENV
           fi
 
-      - name: Publish x64
-        run: >
-          dotnet publish BiliRadar/BiliRadar.csproj
-          -c Release
-          -p:Platform=x64
-          -p:Version=${{ env.APP_VERSION }}
-          -p:AppxBundle=Never
-          -p:PackageCertificateThumbprint=
-          -p:GenerateTemporaryStoreCertificate=true
-
-      - name: Publish ARM64
-        run: >
-          dotnet publish BiliRadar/BiliRadar.csproj
-          -c Release
-          -p:Platform=ARM64
-          -p:Version=${{ env.APP_VERSION }}
-          -p:AppxBundle=Never
-          -p:PackageCertificateThumbprint=
-          -p:GenerateTemporaryStoreCertificate=true
-
-      - name: Debug - List all output
-        if: always()
+      - name: Build and package x64
         shell: pwsh
         run: |
-          Write-Host "=== Directory tree ==="
-          Get-ChildItem -Path . -Recurse -Depth 4 -Directory -Filter "*Release*" | ForEach-Object { Write-Host "  DIR: $($_.FullName)" }
-          Write-Host "=== All MSIX ==="
-          Get-ChildItem -Path . -Recurse -Filter "*.msix" | ForEach-Object { Write-Host "  MSIX: $($_.FullName)" }
-          Write-Host "=== All Appx ==="
-          Get-ChildItem -Path . -Recurse -Filter "*.appx" | ForEach-Object { Write-Host "  APPX: $($_.FullName)" }
+          msbuild BiliRadar/BiliRadar.csproj `
+            /p:Configuration=Release `
+            /p:Platform=x64 `
+            /p:Version=${{ env.APP_VERSION }} `
+            /p:AppxBundle=Never `
+            /p:PackageCertificateThumbprint="" `
+            /p:GenerateTemporaryStoreCertificate=true `
+            /p:AppxPackageDir="${{ github.workspace }}\packages\x64\"
+
+      - name: Build and package ARM64
+        shell: pwsh
+        run: |
+          msbuild BiliRadar/BiliRadar.csproj `
+            /p:Configuration=Release `
+            /p:Platform=ARM64 `
+            /p:Version=${{ env.APP_VERSION }} `
+            /p:AppxBundle=Never `
+            /p:PackageCertificateThumbprint="" `
+            /p:GenerateTemporaryStoreCertificate=true `
+            /p:AppxPackageDir="${{ github.workspace }}\packages\arm64\"
 
       - name: Create AppxBundle
         shell: pwsh
         run: |
-          $x64Msix = Get-ChildItem -Path . -Recurse -Filter "*.msix" |
-                     Where-Object { $_.FullName -notmatch '\\obj\\' -and $_.FullName -notmatch '\\AppPackages\\' -and $_.Directory.Name -match 'x64' } |
-                     Select-Object -First 1
-          $arm64Msix = Get-ChildItem -Path . -Recurse -Filter "*.msix" |
-                       Where-Object { $_.FullName -notmatch '\\obj\\' -and $_.FullName -notmatch '\\AppPackages\\' -and $_.Directory.Name -match 'arm64' } |
-                       Select-Object -First 1
+          $x64Msix = Get-ChildItem -Path "packages/x64" -Recurse -Filter "*.msix" | Select-Object -First 1
+          $arm64Msix = Get-ChildItem -Path "packages/arm64" -Recurse -Filter "*.msix" | Select-Object -First 1
 
           if (-not $x64Msix -or -not $arm64Msix) {
-            Write-Error "MSIX files not found. x64: $x64Msix, ARM64: $arm64Msix"
+            Write-Host "=== All files under packages/ ==="
+            Get-ChildItem -Path packages -Recurse | ForEach-Object { Write-Host "  $($_.FullName)" }
+            Write-Error "MSIX not found. x64: $x64Msix, ARM64: $arm64Msix"
             exit 1
           }
 
           Write-Host "x64 MSIX:  $($x64Msix.FullName)"
           Write-Host "ARM64 MSIX: $($arm64Msix.FullName)"
 
-          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
           New-Item -ItemType Directory -Force -Path bundle-input | Out-Null
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
           Copy-Item $x64Msix.FullName bundle-input/
           Copy-Item $arm64Msix.FullName bundle-input/
 
@@ -97,11 +88,12 @@ jobs:
       - name: Export certificate
         shell: pwsh
         run: |
-          $pfx = Get-ChildItem -Path "BiliRadar" -Recurse -Filter "*_TemporaryKey.pfx" |
+          $pfx = Get-ChildItem -Path . -Recurse -Filter "*_TemporaryKey.pfx" |
                  Where-Object { $_.FullName -match '\\obj\\' } |
                  Select-Object -First 1
 
           if ($pfx) {
+            New-Item -ItemType Directory -Force -Path artifacts | Out-Null
             $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($pfx.FullName, "")
             $cerBytes = $cert.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Cert)
             [System.IO.File]::WriteAllBytes("artifacts/BiliRadar_Certificate.cer", $cerBytes)
