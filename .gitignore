@@ -56,3 +56,5 @@ Desktop.ini
 .idea/
 .vscode/
 .claude/
+/Config/Config-Debug.json
+/Config
