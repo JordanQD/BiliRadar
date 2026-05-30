@@ -41,6 +41,8 @@ jobs:
           -p:Platform=x64
           -p:Version=${{ env.APP_VERSION }}
           -p:AppxBundle=Never
+          -p:PackageCertificateThumbprint=
+          -p:GenerateTemporaryStoreCertificate=true
 
       - name: Publish ARM64
         run: >
@@ -49,6 +51,8 @@ jobs:
           -p:Platform=ARM64
           -p:Version=${{ env.APP_VERSION }}
           -p:AppxBundle=Never
+          -p:PackageCertificateThumbprint=
+          -p:GenerateTemporaryStoreCertificate=true
 
       - name: Create AppxBundle
         shell: pwsh
