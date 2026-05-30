@@ -1,0 +1,114 @@
+name: Build and Release MSIX
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore workloads
+        run: dotnet workload restore
+
+      - name: Set version from tag
+        shell: bash
+        run: |
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            VERSION="${{ github.ref_name }}"
+            VERSION="${VERSION#v}"
+            echo "APP_VERSION=${VERSION}.0" >> $GITHUB_ENV
+          else
+            echo "APP_VERSION=0.0.0.0" >> $GITHUB_ENV
+          fi
+
+      - name: Publish x64
+        run: >
+          dotnet publish BiliRadar/BiliRadar.csproj
+          -c Release
+          -p:Platform=x64
+          -p:Version=${{ env.APP_VERSION }}
+          -p:AppxBundle=Never
+
+      - name: Publish ARM64
+        run: >
+          dotnet publish BiliRadar/BiliRadar.csproj
+          -c Release
+          -p:Platform=ARM64
+          -p:Version=${{ env.APP_VERSION }}
+          -p:AppxBundle=Never
+
+      - name: Create AppxBundle
+        shell: pwsh
+        run: |
+          $x64Msix = Get-ChildItem -Path "BiliRadar/bin/x64/Release" -Recurse -Filter "*.msix" | Select-Object -First 1
+          $arm64Msix = Get-ChildItem -Path "BiliRadar/bin/ARM64/Release" -Recurse -Filter "*.msix" | Select-Object -First 1
+
+          if (-not $x64Msix -or -not $arm64Msix) {
+            Write-Error "MSIX files not found. x64: $x64Msix, ARM64: $arm64Msix"
+            exit 1
+          }
+
+          Write-Host "x64 MSIX:  $($x64Msix.FullName)"
+          Write-Host "ARM64 MSIX: $($arm64Msix.FullName)"
+
+          New-Item -ItemType Directory -Force -Path bundle-input | Out-Null
+          Copy-Item $x64Msix.FullName bundle-input/
+          Copy-Item $arm64Msix.FullName bundle-input/
+
+          $makeappx = "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\makeappx.exe"
+          & $makeappx bundle /d bundle-input /p artifacts/BiliRadar.msixbundle
+
+          Write-Host "Bundle created:"
+          Get-ChildItem artifacts/
+
+      - name: Export certificate
+        shell: pwsh
+        run: |
+          $pfx = Get-ChildItem -Path "BiliRadar" -Recurse -Filter "*_TemporaryKey.pfx" |
+                 Where-Object { $_.FullName -match '\\obj\\' } |
+                 Select-Object -First 1
+
+          if ($pfx) {
+            $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($pfx.FullName, "")
+            $cerBytes = $cert.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Cert)
+            [System.IO.File]::WriteAllBytes("artifacts/BiliRadar_Certificate.cer", $cerBytes)
+            Write-Host "Certificate exported: $($cert.Subject)"
+          } else {
+            Write-Warning "Certificate not found."
+          }
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BiliRadar-Release
+          path: artifacts/*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: BiliRadar-Release
+          path: release-assets
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          files: release-assets/*
