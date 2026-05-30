@@ -34,6 +34,15 @@ jobs:
             echo "APP_VERSION=0.0.0.0" >> $GITHUB_ENV
           fi
 
+      - name: Generate signing certificate
+        shell: pwsh
+        run: |
+          $publisher = "CN=55B82F9D-39B5-4EC7-8696-862731CE35AA"
+          $cert = New-SelfSignedCertificate -Type Custom -Subject $publisher -KeyUsage DigitalSignature -FriendlyName "BiliRadar CI" -CertStoreLocation "Cert:\CurrentUser\My" -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3", "2.5.29.19={text}")
+          $certPassword = ConvertTo-SecureString -String "password" -Force -AsPlainText
+          Export-PfxCertificate -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" -FilePath "${{ github.workspace }}\ci-cert.pfx" -Password $certPassword
+          Write-Host "Certificate generated: $($cert.Subject)  Thumbprint: $($cert.Thumbprint)"
+
       - name: Build and package x64
         run: >
           dotnet build BiliRadar/BiliRadar.csproj
@@ -41,8 +50,8 @@ jobs:
           -p:Platform=x64
           -p:Version=${{ env.APP_VERSION }}
           -p:AppxBundle=Never
-          -p:PackageCertificateThumbprint=""
-          -p:GenerateTemporaryStoreCertificate=true
+          -p:PackageCertificateKeyFile="${{ github.workspace }}\ci-cert.pfx"
+          -p:PackageCertificatePassword=password
           -p:GenerateAppxPackageOnBuild=true
           -p:UapAppxPackageBuildMode=SideloadOnly
           -p:AppxPackageDir="${{ github.workspace }}\packages\x64\"
@@ -54,8 +63,8 @@ jobs:
           -p:Platform=ARM64
           -p:Version=${{ env.APP_VERSION }}
           -p:AppxBundle=Never
-          -p:PackageCertificateThumbprint=""
-          -p:GenerateTemporaryStoreCertificate=true
+          -p:PackageCertificateKeyFile="${{ github.workspace }}\ci-cert.pfx"
+          -p:PackageCertificatePassword=password
           -p:GenerateAppxPackageOnBuild=true
           -p:UapAppxPackageBuildMode=SideloadOnly
           -p:AppxPackageDir="${{ github.workspace }}\packages\arm64\"
@@ -90,19 +99,12 @@ jobs:
       - name: Export certificate
         shell: pwsh
         run: |
-          $pfx = Get-ChildItem -Path . -Recurse -Filter "*_TemporaryKey.pfx" |
-                 Where-Object { $_.FullName -match '\\obj\\' } |
-                 Select-Object -First 1
-
-          if ($pfx) {
-            New-Item -ItemType Directory -Force -Path artifacts | Out-Null
-            $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($pfx.FullName, "")
-            $cerBytes = $cert.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Cert)
-            [System.IO.File]::WriteAllBytes("artifacts/BiliRadar_Certificate.cer", $cerBytes)
-            Write-Host "Certificate exported: $($cert.Subject)"
-          } else {
-            Write-Warning "Certificate not found."
-          }
+          $cerBytes = [System.IO.File]::ReadAllBytes("${{ github.workspace }}\ci-cert.pfx")
+          $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($cerBytes, "password")
+          $cerBytes = $cert.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Cert)
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          [System.IO.File]::WriteAllBytes("artifacts/BiliRadar_Certificate.cer", $cerBytes)
+          Write-Host "Certificate exported: $($cert.Subject)"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
