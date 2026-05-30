@@ -38,9 +38,10 @@ jobs:
         shell: pwsh
         run: |
           $publisher = "CN=55B82F9D-39B5-4EC7-8696-862731CE35AA"
-          $cert = New-SelfSignedCertificate -Type Custom -Subject $publisher -KeyUsage DigitalSignature -FriendlyName "BiliRadar CI" -CertStoreLocation "Cert:\CurrentUser\My" -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3", "2.5.29.19={text}")
+          $cert = New-SelfSignedCertificate -Type Custom -Subject $publisher -KeyAlgorithm RSA -KeyLength 2048 -KeyUsage DigitalSignature -KeyExportPolicy Exportable -FriendlyName "BiliRadar CI" -CertStoreLocation "Cert:\CurrentUser\My" -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3", "2.5.29.19={text}")
           $certPassword = ConvertTo-SecureString -String "password" -Force -AsPlainText
           Export-PfxCertificate -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" -FilePath "${{ github.workspace }}\ci-cert.pfx" -Password $certPassword
+          "CERT_THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
           Write-Host "Certificate generated: $($cert.Subject)  Thumbprint: $($cert.Thumbprint)"
 
       - name: Build and package x64
@@ -50,8 +51,7 @@ jobs:
           -p:Platform=x64
           -p:Version=${{ env.APP_VERSION }}
           -p:AppxBundle=Never
-          -p:PackageCertificateKeyFile="${{ github.workspace }}\ci-cert.pfx"
-          -p:PackageCertificatePassword=password
+          -p:PackageCertificateThumbprint=$env:CERT_THUMBPRINT
           -p:GenerateAppxPackageOnBuild=true
           -p:UapAppxPackageBuildMode=SideloadOnly
           -p:AppxPackageDir="${{ github.workspace }}\packages\x64\"
@@ -63,8 +63,7 @@ jobs:
           -p:Platform=ARM64
           -p:Version=${{ env.APP_VERSION }}
           -p:AppxBundle=Never
-          -p:PackageCertificateKeyFile="${{ github.workspace }}\ci-cert.pfx"
-          -p:PackageCertificatePassword=password
+          -p:PackageCertificateThumbprint=$env:CERT_THUMBPRINT
           -p:GenerateAppxPackageOnBuild=true
           -p:UapAppxPackageBuildMode=SideloadOnly
           -p:AppxPackageDir="${{ github.workspace }}\packages\arm64\"
@@ -90,8 +89,31 @@ jobs:
           Copy-Item $x64Msix.FullName bundle-input/
           Copy-Item $arm64Msix.FullName bundle-input/
 
-          $makeappx = "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\makeappx.exe"
-          & $makeappx bundle /d bundle-input /p artifacts/BiliRadar.msixbundle
+          $windowsKitsBin = "${env:ProgramFiles(x86)}\Windows Kits\10\bin"
+          $makeappx = Get-ChildItem -Path $windowsKitsBin -Recurse -Filter makeappx.exe |
+            Where-Object { $_.FullName -match '\\x64\\makeappx\.exe$' } |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+          $signtool = Get-ChildItem -Path $windowsKitsBin -Recurse -Filter signtool.exe |
+            Where-Object { $_.FullName -match '\\x64\\signtool\.exe$' } |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+
+          if (-not $makeappx -or -not $signtool) {
+            Write-Host "=== Windows SDK tools under $windowsKitsBin ==="
+            Get-ChildItem -Path $windowsKitsBin -Recurse -Include makeappx.exe,signtool.exe -ErrorAction SilentlyContinue |
+              ForEach-Object { Write-Host "  $($_.FullName)" }
+            Write-Error "Required Windows SDK tools were not found. makeappx: $makeappx, signtool: $signtool"
+            exit 1
+          }
+
+          Write-Host "makeappx: $($makeappx.FullName)"
+          Write-Host "signtool: $($signtool.FullName)"
+          & $($makeappx.FullName) bundle /d bundle-input /p artifacts/BiliRadar.msixbundle
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          & $($signtool.FullName) sign /fd SHA256 /f "${{ github.workspace }}\ci-cert.pfx" /p password artifacts/BiliRadar.msixbundle
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
           Write-Host "Bundle created:"
           Get-ChildItem artifacts/
@@ -114,6 +136,7 @@ jobs:
 
   release:
     needs: build
+    if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
     steps:
       - name: Download artifacts
