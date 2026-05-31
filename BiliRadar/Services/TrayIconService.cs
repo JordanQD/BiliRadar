@@ -1,9 +1,9 @@
-using System;
-using System.Collections.Generic;
-using System.Windows.Input;
 using BiliRadar.Helpers;
 using Microsoft.UI.Xaml;
 using Microsoft.Win32;
+using System;
+using System.Collections.Generic;
+using System.Windows.Input;
 using SystemTray.Core;
 using Windows.UI.ViewManagement;
 

@@ -2,12 +2,12 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
-using System.Windows.Input;
-using System.Runtime.InteropServices;
-using Windows.Foundation;
-using SystemTray.Core;
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Windows.Input;
+using SystemTray.Core;
+using Windows.Foundation;
 
 // -----------------------------------------------------------------------------
 // SystemTray for WinUI 3
@@ -205,7 +205,7 @@ namespace SystemTray.UI
             window.AppWindow.Hide();
             IsVisible = false;
 
-            MenuClosed?.Invoke(this, EventArgs.Empty); 
+            MenuClosed?.Invoke(this, EventArgs.Empty);
 
             if (sender is MenuFlyoutItem x && x.DataContext is Item menuItem)
             {

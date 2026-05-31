@@ -1,9 +1,9 @@
+using BiliRadar.Models;
 using System;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using BiliRadar.Models;
 
 namespace BiliRadar.Services;
 

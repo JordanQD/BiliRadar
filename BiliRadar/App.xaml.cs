@@ -1,13 +1,12 @@
-using System;
-using System.Globalization;
-using System.IO;
-using System.Threading.Tasks;
 using BiliRadar.Helpers;
 using BiliRadar.Services;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.Windows.AppNotifications;
 using Microsoft.Windows.AppNotifications.Builder;
+using System;
+using System.IO;
+using System.Threading.Tasks;
 using Windows.ApplicationModel;
 using AppActivationArguments = Microsoft.Windows.AppLifecycle.AppActivationArguments;
 using AppInstance = Microsoft.Windows.AppLifecycle.AppInstance;

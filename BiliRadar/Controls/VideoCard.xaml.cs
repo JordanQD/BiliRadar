@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Concurrent;
-using System.Net.Http;
-using System.Threading.Tasks;
 using BiliRadar.Helpers;
 using BiliRadar.Models;
 using BiliRadar.Services;
@@ -13,7 +9,11 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Markup;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
+using System;
+using System.Collections.Concurrent;
+using System.Net.Http;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Threading.Tasks;
 using Windows.Storage.Streams;
 
 namespace BiliRadar.Controls;

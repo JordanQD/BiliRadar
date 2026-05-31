@@ -1,13 +1,13 @@
+using BiliRadar.Helpers;
+using BiliRadar.Models;
+using Microsoft.UI.Xaml;
+using Microsoft.Windows.AppNotifications;
+using Microsoft.Windows.AppNotifications.Builder;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading.Tasks;
-using BiliRadar.Models;
-using BiliRadar.Helpers;
-using Microsoft.UI.Xaml;
-using Microsoft.Windows.AppNotifications;
-using Microsoft.Windows.AppNotifications.Builder;
 using Windows.System;
 
 namespace BiliRadar.Services;

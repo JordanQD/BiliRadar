@@ -1,7 +1,7 @@
+using Microsoft.UI.Windowing;
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
-using Microsoft.UI.Windowing;
 
 namespace BiliRadar.Helpers;
 

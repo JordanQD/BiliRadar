@@ -1,5 +1,5 @@
-using System;
 using Microsoft.UI.Xaml.Media.Imaging;
+using System;
 
 namespace BiliRadar.Models;
 

@@ -1,9 +1,9 @@
 namespace BiliRadar.Models;
 
-using System;
-using System.Text.Json.Serialization;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
+using System;
+using System.Text.Json.Serialization;
 
 public sealed class NotificationCreatorSubscription
 {

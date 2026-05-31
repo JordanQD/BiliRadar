@@ -1,10 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using BiliRadar.Helpers;
 using BiliRadar.Models;
 using BiliRadar.Services;
@@ -14,6 +7,13 @@ using Microsoft.UI.Xaml.Markup;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.Win32;
 using Microsoft.Windows.Storage.Pickers;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Windows.ApplicationModel;
 
 namespace BiliRadar.Pages;
