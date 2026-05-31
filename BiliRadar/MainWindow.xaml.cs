@@ -33,8 +33,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     private const string PersonAddIconData = "M10 2C12.7614 2 15 4.23858 15 7C15 9.76142 12.7614 12 10 12C7.23858 12 5 9.76142 5 7C5 4.23858 7.23858 2 10 2ZM10 3.5C8.067 3.5 6.5 5.067 6.5 7C6.5 8.933 8.067 10.5 10 10.5C11.933 10.5 13.5 8.933 13.5 7C13.5 5.067 11.933 3.5 10 3.5ZM4.25 14H11.25C11.6642 14 12 14.3358 12 14.75C12 15.1642 11.6642 15.5 11.25 15.5H4.25C3.83579 15.5 3.5 15.8358 3.5 16.25V17.16C3.5 17.82 3.79 18.44 4.29 18.86C5.54 19.94 7.44 20.5 10 20.5C10.58 20.5 11.13 20.47 11.65 20.41C12.0615 20.3626 12.4337 20.6579 12.4811 21.0694C12.5285 21.4808 12.2332 21.853 11.8218 21.9004C11.2493 21.9664 10.642 22 10 22C7.11 22 4.87 21.34 3.31 20C2.48 19.29 2 18.25 2 17.16V16.25C2 15.0074 3.00736 14 4.25 14ZM18 12C18.4142 12 18.75 12.3358 18.75 12.75V16.25H22.25C22.6642 16.25 23 16.5858 23 17C23 17.4142 22.6642 17.75 22.25 17.75H18.75V21.25C18.75 21.6642 18.4142 22 18 22C17.5858 22 17.25 21.6642 17.25 21.25V17.75H13.75C13.3358 17.75 13 17.4142 13 17C13 16.5858 13.3358 16.25 13.75 16.25H17.25V12.75C17.25 12.3358 17.5858 12 18 12Z";
     private const string PersonDeleteIconData = "M17.5 12C20.5375661 12 23 14.4624339 23 17.5C23 20.5375661 20.5375661 23 17.5 23C14.4624339 23 12 20.5375661 12 17.5C12 14.4624339 14.4624339 12 17.5 12ZM12.0222607 13.9993086C11.7255613 14.4626083 11.4860296 14.9660345 11.3136172 15.4996352L4.25354153 15.499921C3.83932796 15.499921 3.50354153 15.8357075 3.50354153 16.249921L3.50354153 17.1572408C3.50354153 17.8128951 3.78953221 18.4359296 4.28670709 18.8633654C5.5447918 19.9450082 7.44080155 20.5010712 10 20.5010712C10.598839 20.5010712 11.1614445 20.4706245 11.6881394 20.4101192C11.9370538 20.9102887 12.2508544 21.3740111 12.6170965 21.7904935C11.8149076 21.9312924 10.9419626 22.0010712 10 22.0010712C7.11050247 22.0010712 4.87168436 21.3444691 3.30881727 20.0007885C2.48019625 19.2883988 2.00354153 18.2500002 2.00354153 17.1572408L2.00354153 16.249921C2.00354153 15.0072804 3.01090084 13.999921 4.25354153 13.999921L12.0222607 13.9993086ZM15.0930472 14.9662824L15.0237993 15.0241379L14.9659438 15.0933858C14.8478223 15.2638954 14.8478223 15.4914871 14.9659438 15.6619968L15.0237993 15.7312446L16.7933527 17.5006913L15.0263884 19.2674911L14.968533 19.3367389C14.8504114 19.5072486 14.8504114 19.7348403 14.968533 19.9053499L15.0263884 19.9745978L15.0956363 20.0324533C15.2661459 20.1505748 15.4937377 20.1505748 15.6642473 20.0324533L15.7334952 19.9745978L17.5003527 18.2076913L19.2693951 19.9768405L19.338643 20.0346959C19.5091526 20.1528175 19.7367444 20.1528175 19.907254 20.0346959L19.9765019 19.9768405L20.0343574 19.9075926C20.1524789 19.737083 20.1524789 19.5094912 20.0343574 19.3389816L19.9765019 19.2697337L18.2073527 17.5006913L19.9792686 15.7312918L20.0371241 15.6620439C20.1552456 15.4915343 20.1552456 15.2639425 20.0371241 15.0934329L19.9792686 15.024185L19.9100208 14.9663296C19.7395111 14.848208 19.5119194 14.848208 19.3414098 14.9663296L19.2721619 15.024185L17.5003527 16.7936913L15.7309061 15.0241379L15.6616582 14.9662824C15.5155071 14.8650354 15.3274181 14.8505715 15.1692847 14.9228908L15.0930472 14.9662824ZM10 2.0046246C12.7614237 2.0046246 15 4.24320085 15 7.0046246C15 9.76604835 12.7614237 12.0046246 10 12.0046246C7.23857625 12.0046246 5 9.76604835 5 7.0046246C5 4.24320085 7.23857625 2.0046246 10 2.0046246ZM10 3.5046246C8.06700338 3.5046246 6.5 5.07162798 6.5 7.0046246C6.5 8.93762123 8.06700338 10.5046246 10 10.5046246C11.9329966 10.5046246 13.5 8.93762123 13.5 7.0046246C13.5 5.07162798 11.9329966 3.5046246 10 3.5046246Z";
     private const int WindowWidthDip = 420;
-    private const int WindowMinHeightDip = 100;
-    private const int WindowMaxHeightDip = 760;
+    private const int WindowHeightDip = 607;
     private const int WindowRightMarginDip = 12;
     private const int WindowBottomMarginDip = 12;
     private const double WindowMaxWorkAreaHeightRatio = 0.75;
@@ -56,6 +55,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     private readonly nint _hwnd;
     private bool _allowClose;
     private bool _isDisposed;
+    private bool _isShowingSkeleton;
     private bool _isLoading;
     private bool _refreshQueuedOnShow;
     private bool _isLoadingMore;
@@ -70,12 +70,13 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     private bool _hasMoreHistory = true;
     private bool _hasMoreViewLater = true;
     private bool _isLiveSectionExpanded;
+    private int _liveSectionAnimationVersion;
     private int _unreadCount;
     private int _followingCount;
     private string _lastCheckedText = LocalizationHelper.GetString("LastCheckedNotYet");
     private string _followingListText = LocalizationHelper.GetString("NoFollowingData");
 
-    public MainWindow()
+    public MainWindow(MainWindowSnapshot? snapshot = null)
     {
         InitializeComponent();
         Title = LocalizationHelper.GetString("MainWindow.Title", "BiliRadar");
@@ -90,7 +91,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         _appWindow = AppWindow.GetFromWindowId(Microsoft.UI.Win32Interop.GetWindowIdFromWindow(_hwnd));
         _appWindow.Title = LocalizationHelper.GetString("MainWindow.Title", "BiliRadar");
         WindowIconHelper.ApplyTo(_appWindow, _hwnd);
-        _appWindow.Resize(new SizeInt32(WindowWidthDip, WindowMinHeightDip));
+        _appWindow.Resize(new SizeInt32(WindowWidthDip, WindowHeightDip));
         _appWindow.Closing += AppWindow_Closing;
         Activated += MainWindow_Activated;
 
@@ -108,6 +109,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         ContentSelectorBar.SelectedItem = FollowingSelectorItem;
         ShowSelectedPage(FollowingSelectorItem);
         ApplyLiveSectionDisplayMode(AppSettings.LiveSectionDisplayMode);
+        InitializeFirstFrame(snapshot);
 
         RootGrid.ActualThemeChanged += OnRootGridActualThemeChanged;
     }
@@ -217,6 +219,13 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         DisposeAndClose();
     }
 
+    public MainWindowSnapshot CreateSnapshot()
+    {
+        return new MainWindowSnapshot(
+            Updates.Select(item => item.ToModel()).ToList(),
+            LiveCreators.Select(item => item.ToModel()).ToList());
+    }
+
     public async Task RefreshAsync()
     {
         if (IsLoading)
@@ -248,6 +257,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
                 ShowStatus(LocalizationHelper.Format("VideoLoadFailed", ex.Message), InfoBarSeverity.Error);
             }
 
+            ClearSkeletonVideoCards();
             var newRows = new List<VideoUpdateRow>();
             foreach (var update in updates.OrderByDescending(item => item.PublishedAt))
             {
@@ -991,6 +1001,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
 
     private void RenderVideoCards()
     {
+        _isShowingSkeleton = false;
         VideoCardsPanel.Children.Clear();
         if (Updates.Count == 0)
         {
@@ -1059,6 +1070,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
 
     private void RenderLiveCreators()
     {
+        ApplyLiveSectionExpandedStateImmediately(_isLiveSectionExpanded);
         LiveCreatorCardsPanel.Children.Clear();
         foreach (var item in LiveCreators)
         {
@@ -1077,7 +1089,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             LatestVideosHeader.Visibility = Visibility.Visible;
             if (hasLiveCreators)
             {
-                ApplyLiveSectionExpandedState(_isLiveSectionExpanded);
+                ApplyLiveSectionExpandedStateImmediately(_isLiveSectionExpanded);
             }
         }
     }
@@ -1097,7 +1109,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             if (LiveCreators.Count > 0)
             {
                 LiveCreatorsSection.Visibility = Visibility.Visible;
-                ApplyLiveSectionExpandedState(_isLiveSectionExpanded);
+                ApplyLiveSectionExpandedStateImmediately(_isLiveSectionExpanded);
             }
         }
     }
@@ -1108,16 +1120,22 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         await ApplyLiveSectionExpandedStateAsync(_isLiveSectionExpanded);
     }
 
-    private void ApplyLiveSectionExpandedState(bool expanded)
+    private void ApplyLiveSectionExpandedStateImmediately(bool expanded)
     {
-        _ = ApplyLiveSectionExpandedStateAsync(expanded);
+        _liveSectionAnimationVersion++;
+        LiveCardsScrollViewer.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+        LiveCardsScrollViewer.Opacity = expanded ? 1 : 0;
+        LiveSectionChevronCollapsed.Visibility = expanded ? Visibility.Collapsed : Visibility.Visible;
+        LiveSectionChevronExpanded.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private async Task ApplyLiveSectionExpandedStateAsync(bool expanded)
     {
+        var animationVersion = ++_liveSectionAnimationVersion;
         if (expanded)
         {
             LiveCardsScrollViewer.Visibility = Visibility.Visible;
+            LiveCardsScrollViewer.Opacity = 1;
             await AnimationBuilder.Create()
                 .Opacity(from: 0, to: 1, duration: TimeSpan.FromMilliseconds(200))
                 .Translation(Axis.Y, from: -10, to: 0, duration: TimeSpan.FromMilliseconds(200))
@@ -1129,7 +1147,18 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
                 .Opacity(from: 1, to: 0, duration: TimeSpan.FromMilliseconds(150))
                 .Translation(Axis.Y, from: 0, to: -10, duration: TimeSpan.FromMilliseconds(150))
                 .StartAsync(LiveCardsScrollViewer);
+            if (animationVersion != _liveSectionAnimationVersion)
+            {
+                return;
+            }
+
+            LiveCardsScrollViewer.Opacity = 0;
             LiveCardsScrollViewer.Visibility = Visibility.Collapsed;
+        }
+
+        if (animationVersion != _liveSectionAnimationVersion)
+        {
+            return;
         }
 
         LiveSectionChevronCollapsed.Visibility = expanded ? Visibility.Collapsed : Visibility.Visible;
@@ -1588,6 +1617,76 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         });
     }
 
+    private void InitializeFirstFrame(MainWindowSnapshot? snapshot)
+    {
+        if (snapshot is null || snapshot.Updates.Count == 0)
+        {
+            RenderSkeletonVideoCards();
+            return;
+        }
+
+        foreach (var update in snapshot.Updates.OrderByDescending(item => item.PublishedAt))
+        {
+            if (_loadedUpdateIds.Add(update.Id))
+            {
+                Updates.Add(new VideoUpdateRow(update));
+            }
+        }
+
+        foreach (var creator in snapshot.LiveCreators)
+        {
+            LiveCreators.Add(new LiveCreatorRow(creator));
+        }
+
+        UnreadCount = Updates.Count(item => item.IsUnread);
+        RenderVideoCards();
+        RenderLiveCreators();
+    }
+
+    private void RenderSkeletonVideoCards()
+    {
+        _isShowingSkeleton = true;
+        VideoCardsPanel.Children.Clear();
+        for (var index = 0; index < 4; index++)
+        {
+            var row = new Grid
+            {
+                Height = 92,
+                ColumnSpacing = 12,
+                Opacity = 0.55,
+            };
+            row.ColumnDefinitions.Add(new ColumnDefinition());
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(128) });
+            row.Children.Add(new Border
+            {
+                Height = 64,
+                CornerRadius = new CornerRadius(8),
+                Background = (Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"],
+            });
+            var cover = new Border
+            {
+                Width = 128,
+                Height = 72,
+                CornerRadius = new CornerRadius(8),
+                Background = (Brush)Application.Current.Resources["CardBackgroundFillColorSecondaryBrush"],
+            };
+            Grid.SetColumn(cover, 1);
+            row.Children.Add(cover);
+            VideoCardsPanel.Children.Add(row);
+        }
+    }
+
+    private void ClearSkeletonVideoCards()
+    {
+        if (!_isShowingSkeleton)
+        {
+            return;
+        }
+
+        _isShowingSkeleton = false;
+        VideoCardsPanel.Children.Clear();
+    }
+
     private static void CacheRoundedImage(string url, ImageSource image)
     {
         if (!RoundedImageCache.TryAdd(url, image))
@@ -1626,12 +1725,6 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         ViewLaterItems.Clear();
         Following.Clear();
         LiveCreators.Clear();
-        RoundedImageCache.Clear();
-        while (RoundedImageCacheOrder.TryDequeue(out _))
-        {
-        }
-
-        VideoCard.ClearImageCache();
         _updateMonitorService.Dispose();
         Content = null;
         Close();
@@ -2111,23 +2204,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
 
     private void AdjustWindowSizeToContent()
     {
-        RootGrid.UpdateLayout();
-        MainContainer.Measure(new Windows.Foundation.Size(WindowWidthDip, double.PositiveInfinity));
-        var contentHeight = (int)Math.Ceiling(MainContainer.DesiredSize.Height);
-        var finalHeightDip = Math.Min(Math.Max(contentHeight, WindowMinHeightDip), GetAdaptiveWindowMaxHeightDip());
-        PositionWindowBottomRight(WindowWidthDip, finalHeightDip, WindowRightMarginDip, WindowBottomMarginDip);
-    }
-
-    private static int GetAdaptiveWindowMaxHeightDip()
-    {
-        if (!TryGetDisplayAreaAtCursor(out var displayArea) || displayArea is null)
-        {
-            return WindowMaxHeightDip;
-        }
-
-        var dpiScale = GetDpiScale(displayArea);
-        var workAreaHeightDip = ScaleToDip(displayArea.WorkArea.Height, dpiScale);
-        return (int)Math.Floor(workAreaHeightDip * WindowMaxWorkAreaHeightRatio);
+        PositionWindowBottomRight(WindowWidthDip, WindowHeightDip, WindowRightMarginDip, WindowBottomMarginDip);
     }
 
     private void PositionWindowBottomRight(int widthDip, int heightDip, int rightMarginDip, int bottomMarginDip)

@@ -5,8 +5,11 @@ namespace BiliRadar.Models;
 
 public sealed class VideoUpdateRow
 {
+    private readonly BiliVideoUpdate _source;
+
     public VideoUpdateRow(BiliVideoUpdate update)
     {
+        _source = update;
         Id = update.Id;
         Aid = update.Aid;
         CreatorMid = update.CreatorMid;
@@ -71,6 +74,11 @@ public sealed class VideoUpdateRow
     public BitmapImage? CoverImage { get; }
 
     public BitmapImage? AvatarImage { get; }
+
+    public BiliVideoUpdate ToModel()
+    {
+        return _source with { Tip = Tip };
+    }
 
     private static BitmapImage? CreateImage(string url)
     {

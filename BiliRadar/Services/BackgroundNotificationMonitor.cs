@@ -12,6 +12,8 @@ internal sealed class BackgroundNotificationMonitor : IDisposable
     private readonly BiliWebDataProvider _dataProvider;
     private readonly UpdateMonitorService _updateMonitorService;
     private readonly NotificationService _notificationService = new();
+    private readonly object _snapshotLock = new();
+    private MainWindowSnapshot? _snapshot;
 
     public BackgroundNotificationMonitor(CookieStore cookieStore)
     {
@@ -22,6 +24,14 @@ internal sealed class BackgroundNotificationMonitor : IDisposable
     public Task StartAsync()
     {
         return _notificationService.TryStartAsync(RefreshNotificationDataAsync);
+    }
+
+    public MainWindowSnapshot? GetSnapshot()
+    {
+        lock (_snapshotLock)
+        {
+            return _snapshot;
+        }
     }
 
     public async Task HandleActivationAsync(NotificationService.NotificationActivationRequest request)
@@ -76,6 +86,7 @@ internal sealed class BackgroundNotificationMonitor : IDisposable
         }
 
         await _notificationService.NotifyLiveStartsAsync(liveCreators);
+        SaveSnapshot(updates, liveCreators);
     }
 
     private async Task RefreshCustomNotificationDataAsync()
@@ -121,6 +132,19 @@ internal sealed class BackgroundNotificationMonitor : IDisposable
             .ToList();
 
         await _notificationService.NotifyLiveStartsAsync(liveCreators);
+        SaveSnapshot(allUpdates, allLiveCreators);
+    }
+
+    private void SaveSnapshot(
+        IReadOnlyList<BiliVideoUpdate> updates,
+        IReadOnlyList<BiliLiveCreator> liveCreators)
+    {
+        lock (_snapshotLock)
+        {
+            _snapshot = new MainWindowSnapshot(
+                updates.OrderByDescending(update => update.PublishedAt).ToList(),
+                liveCreators.ToList());
+        }
     }
 
     private async Task AddToViewLaterFromNotificationAsync(long aid)

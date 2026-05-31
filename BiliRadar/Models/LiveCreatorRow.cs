@@ -23,4 +23,9 @@ public sealed class LiveCreatorRow
     public string Title { get; }
 
     public string Url { get; }
+
+    public BiliLiveCreator ToModel()
+    {
+        return new BiliLiveCreator(Mid, RoomId, Name, AvatarUrl, Title, Url);
+    }
 }

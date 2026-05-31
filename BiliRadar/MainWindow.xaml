@@ -12,7 +12,7 @@
     <Grid
         x:Name="RootGrid"
         Width="420"
-        MinHeight="100"
+        Height="607"
         Background="{ThemeResource LayerOnAcrylicFillColorDefaultBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />

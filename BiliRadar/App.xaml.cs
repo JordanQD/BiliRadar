@@ -1,4 +1,5 @@
 using BiliRadar.Helpers;
+using BiliRadar.Models;
 using BiliRadar.Services;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
@@ -29,6 +30,7 @@ public partial class App : Application
     private BackgroundNotificationMonitor? _backgroundNotificationMonitor;
     private AppNotificationManager? _notificationManager;
     private NotificationService.NotificationActivationRequest? _pendingNotificationRequest;
+    private MainWindowSnapshot? _mainWindowSnapshot;
     private readonly CookieStore _cookieStore = new();
     private readonly DispatcherQueue _dispatcherQueue;
     private bool _isExiting;
@@ -121,7 +123,7 @@ public partial class App : Application
             return _mainWindow;
         }
 
-        _mainWindow = new MainWindow();
+        _mainWindow = new MainWindow(_mainWindowSnapshot ?? _backgroundNotificationMonitor?.GetSnapshot());
         _mainWindow.HideRequested += HideMainWindow;
         return _mainWindow;
     }
@@ -147,6 +149,7 @@ public partial class App : Application
 
         var window = _mainWindow;
         _mainWindow = null;
+        _mainWindowSnapshot = window?.CreateSnapshot();
         window?.CloseForRecycle();
         _dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, CollectReleasedWindowResources);
     }
