@@ -71,6 +71,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     private bool _hasMoreViewLater = true;
     private bool _isLiveSectionExpanded;
     private int _liveSectionAnimationVersion;
+    private int _previousSelectedPageIndex = -1;
     private int _unreadCount;
     private int _followingCount;
     private string _lastCheckedText = LocalizationHelper.GetString("LastCheckedNotYet");
@@ -561,7 +562,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
 
     private async void ContentSelectorBar_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
     {
-        ShowSelectedPage(sender.SelectedItem);
+        ShowSelectedPage(sender.SelectedItem, animate: true);
         if (sender.SelectedItem == HistorySelectorItem)
         {
             await RefreshHistoryAsync();
@@ -576,17 +577,50 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         }
     }
 
-    private void ShowSelectedPage(SelectorBarItem? selectedItem)
+    private void ShowSelectedPage(SelectorBarItem? selectedItem, bool animate = false)
     {
+        var selectedPage = GetSelectedPage(selectedItem);
+        var selectedPageIndex = ContentSelectorBar.Items.IndexOf(selectedItem);
+        var previousSelectedPageIndex = _previousSelectedPageIndex;
+
         FollowingPagePanel.Visibility = selectedItem == FollowingSelectorItem ? Visibility.Visible : Visibility.Collapsed;
         HistoryPagePanel.Visibility = selectedItem == HistorySelectorItem ? Visibility.Visible : Visibility.Collapsed;
         ViewLaterPagePanel.Visibility = selectedItem == ViewLaterSelectorItem ? Visibility.Visible : Visibility.Collapsed;
+        _previousSelectedPageIndex = selectedPageIndex;
         ResetCurrentPageScrollPosition();
 
         if (selectedItem == FollowingSelectorItem)
         {
             ApplyLiveSectionDisplayMode(AppSettings.LiveSectionDisplayMode);
         }
+
+        if (animate && selectedPage != null && previousSelectedPageIndex >= 0 && selectedPageIndex != previousSelectedPageIndex)
+        {
+            AnimateSelectedPage(selectedPage, selectedPageIndex > previousSelectedPageIndex);
+        }
+    }
+
+    private FrameworkElement? GetSelectedPage(SelectorBarItem? selectedItem)
+    {
+        if (selectedItem == FollowingSelectorItem)
+        {
+            return VideoScrollViewer;
+        }
+
+        if (selectedItem == HistorySelectorItem)
+        {
+            return HistoryPagePanel;
+        }
+
+        return selectedItem == ViewLaterSelectorItem ? ViewLaterPagePanel : null;
+    }
+
+    private static void AnimateSelectedPage(FrameworkElement page, bool entersFromRight)
+    {
+        AnimationBuilder.Create()
+            .Opacity(from: 0, to: 1, duration: TimeSpan.FromMilliseconds(180), easingType: EasingType.Cubic, easingMode: EasingMode.EaseOut)
+            .Translation(Axis.X, from: entersFromRight ? 24 : -24, to: 0, duration: TimeSpan.FromMilliseconds(180), easingType: EasingType.Cubic, easingMode: EasingMode.EaseOut)
+            .Start(page);
     }
 
     private void ResetCurrentPageScrollPosition()
