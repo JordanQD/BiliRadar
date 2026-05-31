@@ -12,7 +12,7 @@
   <Identity
     Name="JordanQD.BiliRadar"
     Publisher="CN=55B82F9D-39B5-4EC7-8696-862731CE35AA"
-    Version="1.0.0.0" />
+    Version="1.0.1.0" />
 
   <mp:PhoneIdentity PhoneProductId="59dbd284-4ed9-4c90-a34b-cb873318bcb5" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 

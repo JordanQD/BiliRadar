@@ -89,6 +89,14 @@ dotnet build BiliRadar.slnx -c Release -p:Platform=x64 --no-restore
 dotnet build BiliRadar.slnx -c Release -p:Platform=ARM64 --no-restore
 ```
 
+生成用于 Partner Center 的 Microsoft Store 上传包：
+
+```powershell
+.\scripts\Build-StorePackage.ps1
+```
+
+脚本会读取 `Package.appxmanifest` 中的版本，生成未签名的 x64 + ARM64 自包含 `.msixbundle`。Microsoft Store 要求四段版本号的最后一段保持为 `0`，例如 `1.0.1.0`。
+
 ## 贡献
 
 欢迎提交 Issue 或 Pull Request。

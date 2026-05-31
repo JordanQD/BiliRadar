@@ -2,15 +2,15 @@
 
 从 [GitHub Releases](../../releases) 下载最新版本的 `BiliRadar.msixbundle` 和 `BiliRadar_Certificate.cer`。
 
-## 第一步：安装证书
+## 第一步：安装证书（如果以前已经安装过，可以跳过此步）
+
+> 此步骤需要管理员权限。证书用于签名 MSIX 包，使 Windows 信任该应用。
 
 双击 `BiliRadar_Certificate.cer`，选择"安装证书" → "本地计算机" → "将所有证书放入下列存储" → 浏览 → "受信任的根证书颁发机构" → 完成。
 
 1. 安装证书
 
     ![安装证书-1](Figures/安装-证书安装-1.png)
-
-> 此步骤需要管理员权限。证书用于签名 MSIX 包，使 Windows 信任该应用。
 
 2. 选择证书存储位置：本地计算机
 

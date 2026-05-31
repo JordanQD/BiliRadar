@@ -29,6 +29,10 @@ jobs:
           if [[ "${{ github.ref_type }}" == "tag" ]]; then
             VERSION="${{ github.ref_name }}"
             VERSION="${VERSION#v}"
+            if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "Release tags must use vMAJOR.MINOR.PATCH, for example v1.0.1."
+              exit 1
+            fi
             echo "APP_VERSION=${VERSION}.0" >> $GITHUB_ENV
           else
             echo "APP_VERSION=0.0.0.0" >> $GITHUB_ENV
@@ -59,6 +63,7 @@ jobs:
           -p:Platform=x64
           -p:Version=${{ env.APP_VERSION }}
           -p:AppxBundle=Never
+          -p:AppxAutoIncrementPackageRevision=false
           -p:PackageCertificateThumbprint=$env:CERT_THUMBPRINT
           -p:GenerateAppxPackageOnBuild=true
           -p:UapAppxPackageBuildMode=SideloadOnly
@@ -71,6 +76,7 @@ jobs:
           -p:Platform=ARM64
           -p:Version=${{ env.APP_VERSION }}
           -p:AppxBundle=Never
+          -p:AppxAutoIncrementPackageRevision=false
           -p:PackageCertificateThumbprint=$env:CERT_THUMBPRINT
           -p:GenerateAppxPackageOnBuild=true
           -p:UapAppxPackageBuildMode=SideloadOnly
