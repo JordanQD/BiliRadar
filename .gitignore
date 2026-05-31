@@ -33,6 +33,7 @@ Package.StoreAssociation.xml
 *.msixsym
 *.cer
 *.pfx
+.signing/
 
 # Test and coverage output
 TestResults/
