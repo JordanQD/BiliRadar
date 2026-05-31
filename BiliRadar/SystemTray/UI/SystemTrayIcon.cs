@@ -124,8 +124,17 @@ namespace SystemTray.UI
         private void Dispose(bool disposing)
         {
             Hide();
+            windowHelper.Message -= ProcessMessage;
             if (icon != null && !keepIconAlive)
+            {
                 icon.Dispose();
+                icon = null;
+            }
+
+            if (disposing)
+            {
+                ContextMenu.Dispose();
+            }
         }
 
         public void Dispose()

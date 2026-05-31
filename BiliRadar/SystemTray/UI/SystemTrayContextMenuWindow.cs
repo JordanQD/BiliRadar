@@ -20,7 +20,7 @@ using Windows.Foundation;
 
 namespace SystemTray.UI
 {
-    internal class SystemTrayContextMenuWindow
+    internal class SystemTrayContextMenuWindow : IDisposable
     {
         private const uint WM_WININICHANGE = 0x001A;
         private const uint SPI_GETWORKAREA = 0x0030;
@@ -31,6 +31,7 @@ namespace SystemTray.UI
 
         private Window window;
         private WindowHelper helper;
+        private bool isDisposing;
 
         public SystemTrayContextMenuWindow(params Item[] menuItems)
         {
@@ -125,6 +126,11 @@ namespace SystemTray.UI
 
         private void OnWindowClosing(AppWindow sender, AppWindowClosingEventArgs args)
         {
+            if (isDisposing)
+            {
+                return;
+            }
+
             args.Cancel = true;
             window.AppWindow.Hide();
             IsVisible = false;
@@ -253,6 +259,16 @@ namespace SystemTray.UI
         }
 
         public sealed record Item(string Text, ICommand? Command);
+
+        public void Dispose()
+        {
+            isDisposing = true;
+            helper.Message -= ProcessMessage;
+            helper.Dispose();
+            window.Activated -= OnWindowActivated;
+            window.AppWindow.Closing -= OnWindowClosing;
+            window.Close();
+        }
 
         static unsafe Rect GetPrimaryWorkArea()
         {

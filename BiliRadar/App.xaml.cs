@@ -5,7 +5,9 @@ using Microsoft.UI.Xaml;
 using Microsoft.Windows.AppNotifications;
 using Microsoft.Windows.AppNotifications.Builder;
 using System;
+using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Windows.ApplicationModel;
 using AppActivationArguments = Microsoft.Windows.AppLifecycle.AppActivationArguments;
@@ -20,9 +22,11 @@ public partial class App : Application
     private const string SignInAction = "signIn";
 
     private MainWindow? _mainWindow;
+    private TrayHostWindow? _trayHostWindow;
     private SettingsWindow? _settingsWindow;
     private WebSignInWindow? _signInWindow;
     private TrayIconService? _trayIconService;
+    private BackgroundNotificationMonitor? _backgroundNotificationMonitor;
     private AppNotificationManager? _notificationManager;
     private NotificationService.NotificationActivationRequest? _pendingNotificationRequest;
     private readonly CookieStore _cookieStore = new();
@@ -48,13 +52,10 @@ public partial class App : Application
 
         AppInstance.GetCurrent().Activated += AppInstance_Activated;
 
-        _mainWindow = new MainWindow();
-        _mainWindow.HideRequested += HideMainWindow;
-
-        _mainWindow.InitializeHidden();
+        _trayHostWindow = new TrayHostWindow();
+        _trayHostWindow.InitializeHidden();
         HandleActivation(activatedArgs, isRedirectedActivation: false);
-        HandlePendingNotificationRequest();
-        _mainWindow.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, InitializeTrayAndData);
+        _trayHostWindow.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, InitializeTrayAndData);
 
         if (!_cookieStore.HasCookie)
         {
@@ -76,47 +77,58 @@ public partial class App : Application
 
     private void AppInstance_Activated(object? sender, AppActivationArguments args)
     {
-        if (_mainWindow is null)
-        {
-            return;
-        }
-
-        _mainWindow.DispatcherQueue.TryEnqueue(() => HandleActivation(args, isRedirectedActivation: true));
+        _dispatcherQueue.TryEnqueue(() => HandleActivation(args, isRedirectedActivation: true));
     }
 
     private void InitializeTrayAndData()
     {
-        if (_mainWindow is null)
+        if (_trayHostWindow is null)
         {
             return;
         }
 
-        _trayIconService = new TrayIconService(
-            _mainWindow,
-            "BiliRadar",
-            ToggleMainWindow,
-            ShowMainWindow,
-            ShowSettingsWindow,
-            ExitApplication);
-        _trayIconService.SetupTrayIcon();
+        if (_trayIconService is null)
+        {
+            _trayIconService = new TrayIconService(
+                _trayHostWindow,
+                "BiliRadar",
+                ToggleMainWindow,
+                ShowMainWindow,
+                ShowSettingsWindow,
+                ExitApplication);
+            _trayIconService.SetupTrayIcon();
+        }
 
-        _ = _mainWindow.StartNotificationMonitorAsync();
+        if (_backgroundNotificationMonitor is null)
+        {
+            _backgroundNotificationMonitor = new BackgroundNotificationMonitor(_cookieStore);
+            _ = _backgroundNotificationMonitor.StartAsync();
+            HandlePendingNotificationRequest();
+        }
     }
 
     private void ShowMainWindow()
     {
-        _mainWindow?.ShowDefaultOpenPage();
-        _mainWindow?.ShowWindow();
+        var window = EnsureMainWindow();
+        window.ShowDefaultOpenPage();
+        window.ShowWindow();
+    }
+
+    private MainWindow EnsureMainWindow()
+    {
+        if (_mainWindow is not null)
+        {
+            return _mainWindow;
+        }
+
+        _mainWindow = new MainWindow();
+        _mainWindow.HideRequested += HideMainWindow;
+        return _mainWindow;
     }
 
     private void ToggleMainWindow()
     {
-        if (_mainWindow is null)
-        {
-            return;
-        }
-
-        if (_mainWindow.IsVisible)
+        if (_mainWindow?.IsVisible == true)
         {
             HideMainWindow();
         }
@@ -133,8 +145,25 @@ public partial class App : Application
             return;
         }
 
-        _mainWindow?.HideWindow();
+        var window = _mainWindow;
+        _mainWindow = null;
+        window?.CloseForRecycle();
+        _dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, CollectReleasedWindowResources);
     }
+
+    private static void CollectReleasedWindowResources()
+    {
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
+        using var process = Process.GetCurrentProcess();
+        SetProcessWorkingSetSize(process.Handle, new nint(-1), new nint(-1));
+    }
+
+    [DllImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetProcessWorkingSetSize(nint process, nint minimumWorkingSetSize, nint maximumWorkingSetSize);
 
     private void ShowSettingsWindow()
     {
@@ -151,9 +180,9 @@ public partial class App : Application
     {
         if (AppSettings.RunningLaunchAction == RunningLaunchAction.OpenCustomWebPage)
         {
-            if (_mainWindow is not null)
+            if (Uri.TryCreate(AppSettings.CustomLaunchWebPageUrl, UriKind.Absolute, out var uri))
             {
-                await _mainWindow.LaunchCustomWebPageUriAsync();
+                await NotificationService.LaunchUriAsync(uri);
             }
 
             return;
@@ -167,11 +196,16 @@ public partial class App : Application
         _isExiting = true;
         _trayIconService?.Destroy();
         _trayIconService = null;
+        _backgroundNotificationMonitor?.Dispose();
+        _backgroundNotificationMonitor = null;
         _notificationManager?.Unregister();
         _notificationManager = null;
         _settingsWindow?.Close();
         _settingsWindow = null;
         _mainWindow?.CloseForExit();
+        _mainWindow = null;
+        _trayHostWindow?.Close();
+        _trayHostWindow = null;
         Exit();
     }
 
@@ -242,26 +276,26 @@ public partial class App : Application
             return;
         }
 
-        var window = _mainWindow;
-        if (window is null)
+        var monitor = _backgroundNotificationMonitor;
+        if (monitor is null)
         {
             _pendingNotificationRequest = request;
             return;
         }
 
-        window.DispatcherQueue.TryEnqueue(async () => await window.HandleNotificationActivationAsync(request));
+        _dispatcherQueue.TryEnqueue(async () => await monitor.HandleActivationAsync(request));
     }
 
     private void HandlePendingNotificationRequest()
     {
-        if (_pendingNotificationRequest is null || _mainWindow is null)
+        if (_pendingNotificationRequest is null || _backgroundNotificationMonitor is null)
         {
             return;
         }
 
         var request = _pendingNotificationRequest;
         _pendingNotificationRequest = null;
-        _mainWindow.DispatcherQueue.TryEnqueue(async () => await _mainWindow.HandleNotificationActivationAsync(request));
+        _dispatcherQueue.TryEnqueue(async () => await _backgroundNotificationMonitor.HandleActivationAsync(request));
     }
 
     private static bool IsPackaged()
@@ -309,7 +343,7 @@ public partial class App : Application
 
     private async void OnSignInSucceeded(object? sender, EventArgs e)
     {
-        if (_trayIconService is null)
+        if (_trayIconService is null || _backgroundNotificationMonitor is null)
         {
             InitializeTrayAndData();
         }

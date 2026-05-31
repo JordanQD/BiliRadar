@@ -40,20 +40,22 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     private const double WindowMaxWorkAreaHeightRatio = 0.75;
     private const int DefaultDpi = 96;
     private const int ImageLoadMaxAttemptCount = 3;
+    private const int MaxCachedRoundedImages = 48;
     private static readonly TimeSpan TransientStatusDuration = TimeSpan.FromSeconds(3);
     private const uint MdtEffectiveDpi = 0;
     private static readonly TimeSpan ImageLoadRetryDelay = TimeSpan.FromMilliseconds(450);
     private static readonly HttpClient ImageHttpClient = CreateImageHttpClient();
     private static readonly ConcurrentDictionary<string, ImageSource> RoundedImageCache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly ConcurrentQueue<string> RoundedImageCacheOrder = new();
     private readonly CookieStore _cookieStore = new();
     private readonly UpdateMonitorService _updateMonitorService;
-    private readonly NotificationService _notificationService = new();
     private readonly HashSet<string> _loadedUpdateIds = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _loadedHistoryIds = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _loadedViewLaterIds = new(StringComparer.OrdinalIgnoreCase);
     private readonly AppWindow _appWindow;
     private readonly nint _hwnd;
     private bool _allowClose;
+    private bool _isDisposed;
     private bool _isLoading;
     private bool _refreshQueuedOnShow;
     private bool _isLoadingMore;
@@ -180,6 +182,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         _isShowingWindow = true;
         try
         {
+            SystemBackdrop ??= new DesktopAcrylicBackdrop();
             AdjustWindowSizeToContent();
             Activate();
             ResetCurrentPageScrollPosition();
@@ -200,33 +203,18 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     {
         ShowWindowNative(_hwnd, SwHide);
         _appWindow.Hide();
+        SystemBackdrop = null;
         _isVisible = false;
     }
 
     public void CloseForExit()
     {
-        _allowClose = true;
-        _notificationService.Stop();
-        Close();
+        DisposeAndClose();
     }
 
-    public Task StartNotificationMonitorAsync()
+    public void CloseForRecycle()
     {
-        return _notificationService.TryStartAsync(RefreshNotificationDataAsync);
-    }
-
-    public async Task HandleNotificationActivationAsync(NotificationService.NotificationActivationRequest request)
-    {
-        if (string.Equals(request.Action, NotificationService.WatchLaterAction, StringComparison.OrdinalIgnoreCase))
-        {
-            await AddToViewLaterFromNotificationAsync(request.Aid);
-            return;
-        }
-
-        if (request.Uri is not null)
-        {
-            await NotificationService.LaunchUriAsync(request.Uri);
-        }
+        DisposeAndClose();
     }
 
     public async Task RefreshAsync()
@@ -303,10 +291,6 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
                 ShowStatus(LocalizationHelper.GetString("NoVideoUpdates"), InfoBarSeverity.Informational);
             }
 
-            if (AppSettings.NotificationTargetMode == NotificationTargetMode.AllFollowing)
-            {
-                _ = _notificationService.NotifyVideoUpdatesAsync(updates, showNotifications: false);
-            }
             AdjustWindowSizeToContent();
         }
         catch (Exception ex)
@@ -450,10 +434,6 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
                 LiveCreators.Add(new LiveCreatorRow(creator));
             }
 
-            if (AppSettings.NotificationTargetMode == NotificationTargetMode.AllFollowing)
-            {
-                _ = _notificationService.NotifyLiveStartsAsync(liveCreators, showNotifications: false);
-            }
         }
         catch
         {
@@ -465,118 +445,6 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             ? LocalizationHelper.GetString("NoFollowingData")
             : string.Join(Environment.NewLine, Following.Select(item => $"{item.Name}  UID:{item.Mid}"));
         RenderLiveCreators();
-    }
-
-    private async Task RefreshNotificationDataAsync()
-    {
-        if (!_cookieStore.HasCookie)
-        {
-            return;
-        }
-
-        if (AppSettings.NotificationTargetMode == NotificationTargetMode.CustomCreators)
-        {
-            await RefreshCustomNotificationDataAsync();
-            return;
-        }
-
-        IReadOnlyList<BiliVideoUpdate> updates = [];
-        try
-        {
-            updates = await _updateMonitorService.GetRecentVideoUpdatesForNotificationAsync();
-        }
-        catch
-        {
-        }
-
-        var filteredUpdates = updates
-            .Where(u => u.PublishedAt > _notificationService.ServiceStartedAt)
-            .ToList();
-        await _notificationService.NotifyVideoUpdatesAsync(filteredUpdates);
-
-        IReadOnlyList<BiliLiveCreator> liveCreators = [];
-        try
-        {
-            liveCreators = await _updateMonitorService.GetFollowingLiveCreatorsAsync();
-        }
-        catch
-        {
-        }
-
-        await _notificationService.NotifyLiveStartsAsync(liveCreators);
-    }
-
-    private async Task RefreshCustomNotificationDataAsync()
-    {
-        var subscriptions = AppSettings.CustomNotificationCreators;
-
-        // Use the real-time following feed (same as AllFollowing mode).
-        IReadOnlyList<BiliVideoUpdate> allUpdates = [];
-        try
-        {
-            allUpdates = await _updateMonitorService.GetRecentVideoUpdatesForNotificationAsync();
-        }
-        catch
-        {
-        }
-
-        // Time cutoff: the later of last manual check and service startup.
-        // Only videos published after this point are considered "new".
-        var cutoff = _updateMonitorService.LastCheckedAt > _notificationService.ServiceStartedAt
-            ? _updateMonitorService.LastCheckedAt
-            : _notificationService.ServiceStartedAt;
-
-        var subscribedMids = subscriptions
-            .Where(item => item.VideoNotificationsEnabled)
-            .Select(item => item.Mid)
-            .ToHashSet();
-        var videoUpdates = allUpdates
-            .Where(u => u.PublishedAt > cutoff && subscribedMids.Contains(u.CreatorMid))
-            .ToList();
-
-        await _notificationService.NotifyVideoUpdatesAsync(videoUpdates);
-
-        // Live: use the following live list (same API as AllFollowing mode), filter by custom MIDs.
-        IReadOnlyList<BiliLiveCreator> allLiveCreators = [];
-        try
-        {
-            allLiveCreators = await _updateMonitorService.GetFollowingLiveCreatorsAsync();
-        }
-        catch
-        {
-        }
-
-        var subscribedLiveMids = subscriptions
-            .Where(item => item.LiveNotificationsEnabled)
-            .Select(item => item.Mid)
-            .ToHashSet();
-        var liveCreators = allLiveCreators
-            .Where(lc => subscribedLiveMids.Contains(lc.Mid))
-            .ToList();
-
-        await _notificationService.NotifyLiveStartsAsync(liveCreators);
-    }
-
-    private async Task AddToViewLaterFromNotificationAsync(long aid)
-    {
-        if (aid <= 0)
-        {
-            return;
-        }
-
-        try
-        {
-            await _updateMonitorService.AddToViewLaterAsync(aid);
-            NotificationService.ShowStatusNotification(
-                LocalizationHelper.GetString("AddedToViewLater"),
-                LocalizationHelper.GetString("AddedToViewLaterDetail"));
-        }
-        catch (Exception ex)
-        {
-            NotificationService.ShowStatusNotification(
-                LocalizationHelper.GetString("AddToViewLaterFailed"),
-                ex.Message);
-        }
     }
 
     private void ClearSignedOutData()
@@ -1700,7 +1568,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
 
                 var bitmap = new BitmapImage();
                 await bitmap.SetSourceAsync(stream);
-                RoundedImageCache[uri.AbsoluteUri] = bitmap;
+                CacheRoundedImage(uri.AbsoluteUri, bitmap);
                 imageBrush.ImageSource = bitmap;
             }
             catch
@@ -1715,9 +1583,79 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         imageBrush.DispatcherQueue.TryEnqueue(() =>
         {
             var bitmap = new BitmapImage(uri);
-            RoundedImageCache[uri.AbsoluteUri] = bitmap;
+            CacheRoundedImage(uri.AbsoluteUri, bitmap);
             imageBrush.ImageSource = bitmap;
         });
+    }
+
+    private static void CacheRoundedImage(string url, ImageSource image)
+    {
+        if (!RoundedImageCache.TryAdd(url, image))
+        {
+            RoundedImageCache[url] = image;
+            return;
+        }
+
+        RoundedImageCacheOrder.Enqueue(url);
+        while (RoundedImageCache.Count > MaxCachedRoundedImages
+            && RoundedImageCacheOrder.TryDequeue(out var oldestUrl))
+        {
+            RoundedImageCache.TryRemove(oldestUrl, out _);
+        }
+    }
+
+    private void DisposeAndClose()
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        _isDisposed = true;
+        _allowClose = true;
+        Activated -= MainWindow_Activated;
+        _appWindow.Closing -= AppWindow_Closing;
+        RootGrid.ActualThemeChanged -= OnRootGridActualThemeChanged;
+        StopStatusNotificationTimers();
+        DisposeVideoCards(VideoCardsPanel);
+        DisposeVideoCards(HistoryCardsPanel);
+        DisposeVideoCards(ViewLaterCardsPanel);
+        LiveCreatorCardsPanel.Children.Clear();
+        Updates.Clear();
+        HistoryItems.Clear();
+        ViewLaterItems.Clear();
+        Following.Clear();
+        LiveCreators.Clear();
+        RoundedImageCache.Clear();
+        while (RoundedImageCacheOrder.TryDequeue(out _))
+        {
+        }
+
+        VideoCard.ClearImageCache();
+        _updateMonitorService.Dispose();
+        Content = null;
+        Close();
+    }
+
+    private static void DisposeVideoCards(Panel panel)
+    {
+        foreach (var card in panel.Children.OfType<VideoCard>())
+        {
+            card.Dispose();
+        }
+
+        panel.Children.Clear();
+    }
+
+    private void StopStatusNotificationTimers()
+    {
+        foreach (var notification in StatusNotifications)
+        {
+            notification.AutoDismissTimer?.Stop();
+            notification.AutoDismissTimer = null;
+        }
+
+        StatusNotifications.Clear();
     }
 
     private static HttpClient CreateImageHttpClient()

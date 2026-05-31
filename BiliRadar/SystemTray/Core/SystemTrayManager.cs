@@ -101,10 +101,10 @@ namespace SystemTray.Core
             };
 
             BuildMenuItems(menuItems);
-            contextMenuWindow = new SystemTrayContextMenuWindow(this.menuItems);
 
             SystemTrayIcon.RightClick += (_, e) =>
             {
+                contextMenuWindow ??= new SystemTrayContextMenuWindow(this.menuItems);
                 if (double.IsInfinity(e.Rect.X) || double.IsInfinity(e.Rect.Y))
                 {
                     var mousePos = GetMousePosition();
@@ -189,8 +189,17 @@ namespace SystemTray.Core
 
         public void Dispose()
         {
+            if (windowHelper.AppWindow != null)
+            {
+                windowHelper.AppWindow.Changed -= AppWindow_Changed;
+            }
+
             SystemTrayIcon?.Dispose();
             SystemTrayIcon = null!;
+            contextMenuWindow?.Dispose();
+            contextMenuWindow = null;
+            windowHelper.CloseButtonPressed -= OnWindowCloseButtonPressed;
+            windowHelper.Dispose();
         }
 
         private static Point GetMousePosition()

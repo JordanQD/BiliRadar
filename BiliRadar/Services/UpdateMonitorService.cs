@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace BiliRadar.Services;
 
-public sealed class UpdateMonitorService
+public sealed class UpdateMonitorService : IDisposable
 {
     private readonly IBiliDataProvider _dataProvider;
 
@@ -103,5 +103,13 @@ public sealed class UpdateMonitorService
     public Task<bool> IsCreatorFollowedAsync(long mid, CancellationToken cancellationToken = default)
     {
         return _dataProvider.IsCreatorFollowedAsync(mid, cancellationToken);
+    }
+
+    public void Dispose()
+    {
+        if (_dataProvider is IDisposable disposable)
+        {
+            disposable.Dispose();
+        }
     }
 }
