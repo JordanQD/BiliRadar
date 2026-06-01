@@ -12,7 +12,6 @@
     <Grid
         x:Name="RootGrid"
         Width="420"
-        Height="607"
         Background="{ThemeResource LayerOnAcrylicFillColorDefaultBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -74,7 +73,6 @@
             x:Name="VideoScrollViewer"
             Grid.Row="2"
             MinHeight="500"
-            MaxHeight="560"
             Padding="10,0,10,0"
             ViewChanged="VideoScrollViewer_ViewChanged"
             VerticalScrollBarVisibility="Auto">
@@ -173,7 +171,6 @@
             <ScrollViewer
                 x:Name="HistoryScrollViewer"
                 MinHeight="500"
-                MaxHeight="560"
                 Padding="10,0,10,0"
                 ViewChanged="HistoryScrollViewer_ViewChanged"
                 VerticalScrollBarVisibility="Auto">
@@ -224,7 +221,6 @@
             <ScrollViewer
                 x:Name="ViewLaterScrollViewer"
                 MinHeight="500"
-                MaxHeight="560"
                 Padding="10,0,10,0"
                 ViewChanged="ViewLaterScrollViewer_ViewChanged"
                 VerticalScrollBarVisibility="Auto">
