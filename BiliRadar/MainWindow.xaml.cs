@@ -1203,10 +1203,13 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     {
         var button = new Button
         {
-            Width = 60,
+            Width = 68,
+            Height = 92,
             MinWidth = 0,
-            Padding = new Thickness(4, 4, 4, 2),
+            Padding = new Thickness(4, 4, 4, 8),
             HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            VerticalContentAlignment = VerticalAlignment.Top,
             Style = (Style)Application.Current.Resources["SubtleButtonStyle"],
             Tag = item,
         };
@@ -1229,6 +1232,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         {
             Spacing = 4,
             HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Top,
         };
 
         var avatarHost = new Grid
@@ -1244,14 +1248,17 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         panel.Children.Add(new TextBlock
         {
             Text = item.Name,
-            Width = 54,
+            Width = 60,
+            Height = 32,
             FontSize = 11,
+            LineHeight = 16,
             HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Top,
             TextAlignment = TextAlignment.Center,
             Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
-            MaxLines = 1,
+            MaxLines = 2,
             TextTrimming = TextTrimming.CharacterEllipsis,
-            TextWrapping = TextWrapping.NoWrap,
+            TextWrapping = TextWrapping.Wrap,
         });
 
         button.Content = panel;

@@ -123,14 +123,16 @@
                     </Button>
                     <ScrollViewer
                         x:Name="LiveCardsScrollViewer"
-                        Height="88"
+                        Height="104"
                         HorizontalScrollBarVisibility="Auto"
                         HorizontalScrollMode="Enabled"
+                        VerticalContentAlignment="Top"
                         VerticalScrollBarVisibility="Disabled"
                         VerticalScrollMode="Disabled"
                         ZoomMode="Disabled">
                         <StackPanel
                             x:Name="LiveCreatorCardsPanel"
+                            VerticalAlignment="Top"
                             Orientation="Horizontal"
                             Spacing="6">
                             <StackPanel.ChildrenTransitions>
