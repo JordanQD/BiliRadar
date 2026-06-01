@@ -1,9 +1,9 @@
 # BiliRadar
 
-一个使用 **WinUI 3 原生开发**的 B 站动态雷达，放在 Windows 任务栏托盘里。  
+一个使用 **WinUI 3 原生开发**的 B 站任务栏托盘动态雷达。  
 用于查看关注 UP 的最新视频、直播状态、历史记录、稍后再看，并在后台提醒视频更新和开播。
 
-![主界面](Figures/主界面.png)
+<img src="Figures/主界面.png" alt="主界面" width="400" />
 
 > BiliRadar 不是哔哩哔哩官方应用，与哔哩哔哩没有从属、赞助或背书关系。
 
@@ -13,26 +13,27 @@
 
 - 直播状态：显示正在直播的 UP，可在设置中选择展开、折叠或隐藏。
 
-    ![关注&直播](Figures/关注.png)
+    <img src="Figures/关注.png" alt="关注&直播" width="400" />
 
 - 历史记录：查看最近看过的视频。
 
-    ![历史记录](Figures/历史.png)
+    <img src="Figures/历史.png" alt="历史记录" width="400" />
 
 - 稍后再看：查看稍后再看列表，并支持从应用内添加或移除。
 
-    ![稍后再看](Figures/稍后再看.png)
+    <img src="Figures/稍后再看.png" alt="稍后再看" width="400" />
 
 - 开机自启：可选择登录 Windows 后自动运行。
 - 配置导入导出：导出或恢复通知、启动、登录状态等配置。
 - 托盘驻留：从任务栏托盘快速打开主界面或设置。
-    ![设置-通用](Figures/设置-通用.png)
+
+    <img src="Figures/设置-通用.png" alt="设置-通用" width="560" />
 
 - 桌面通知：支持视频更新通知和开播通知，可只关注指定 UP 的视频更新或开播提醒。
 
-    ![通知-所有](Figures/设置-通知-所有.png)
+    <img src="Figures/设置-通知-所有.png" alt="通知-所有" width="560" />
 
-    ![通知-指定UP](Figures/设置-通知-自定义.png)
+    <img src="Figures/设置-通知-自定义.png" alt="通知-指定UP" width="560" />
 
 ## 安装
 
