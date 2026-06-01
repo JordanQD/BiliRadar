@@ -1191,7 +1191,7 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
             return GetInt32(value, "count");
         }
 
-        return value.TryGetInt32(out var count) ? count : 0;
+        return TryGetInt32(value, out var count) ? count : 0;
     }
 
     private static bool TryGetPublishedAt(JsonElement author, out DateTimeOffset publishedAt)
@@ -1199,7 +1199,7 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
         publishedAt = default;
         if (author.ValueKind != JsonValueKind.Object
             || !author.TryGetProperty("pub_ts", out var value)
-            || !value.TryGetInt64(out var timestamp)
+            || !TryGetInt64(value, out var timestamp)
             || timestamp <= 0)
         {
             return false;
@@ -1207,6 +1207,38 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
 
         publishedAt = DateTimeOffset.FromUnixTimeSeconds(timestamp).ToLocalTime();
         return true;
+    }
+
+    private static bool TryGetInt32(JsonElement value, out int number)
+    {
+        if (value.ValueKind == JsonValueKind.Number)
+        {
+            return value.TryGetInt32(out number);
+        }
+
+        if (value.ValueKind == JsonValueKind.String)
+        {
+            return int.TryParse(value.GetString(), out number);
+        }
+
+        number = 0;
+        return false;
+    }
+
+    private static bool TryGetInt64(JsonElement value, out long number)
+    {
+        if (value.ValueKind == JsonValueKind.Number)
+        {
+            return value.TryGetInt64(out number);
+        }
+
+        if (value.ValueKind == JsonValueKind.String)
+        {
+            return long.TryParse(value.GetString(), out number);
+        }
+
+        number = 0;
+        return false;
     }
 
     private static string FormatRelativeTime(DateTimeOffset time)
