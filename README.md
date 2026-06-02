@@ -7,7 +7,7 @@
 	<img src="https://get.microsoft.com/images/zh-cn%20dark.svg" width="200"/>
 </a>
 
-<img src="Figures/主界面.png" alt="主界面" width="400" />
+<img src="./docs/assets/主界面.png" alt="主界面" width="400" />
 
 > BiliRadar 不是哔哩哔哩官方应用，与哔哩哔哩没有从属、赞助或背书关系。
 
@@ -17,31 +17,31 @@
 
 - 直播状态：显示正在直播的 UP，可在设置中选择展开、折叠或隐藏。
 
-    <img src="Figures/关注.png" alt="关注&直播" width="400" />
+    <img src="./docs/assets/关注.png" alt="关注&直播" width="400" />
 
 - 历史记录：查看最近看过的视频。
 
-    <img src="Figures/历史.png" alt="历史记录" width="400" />
+    <img src="./docs/assets/历史.png" alt="历史记录" width="400" />
 
 - 稍后再看：查看稍后再看列表，并支持从应用内添加或移除。
 
-    <img src="Figures/稍后再看.png" alt="稍后再看" width="400" />
+    <img src="./docs/assets/稍后再看.png" alt="稍后再看" width="400" />
 
 - 开机自启：可选择登录 Windows 后自动运行。
 - 配置导入导出：导出或恢复通知、启动、登录状态等配置。
 - 托盘驻留：从任务栏托盘快速打开主界面或设置。
 
-    <img src="Figures/设置-通用.png" alt="设置-通用" width="560" />
+    <img src="./docs/assets/设置-通用.png" alt="设置-通用" width="560" />
 
 - 桌面通知：支持视频更新通知和开播通知，可只关注指定 UP 的视频更新或开播提醒。
 
-    <img src="Figures/设置-通知-所有.png" alt="通知-所有" width="560" />
+    <img src="./docs/assets/设置-通知-所有.png" alt="通知-所有" width="560" />
 
-    <img src="Figures/设置-通知-自定义.png" alt="通知-指定UP" width="560" />
+    <img src="./docs/assets/设置-通知-自定义.png" alt="通知-指定UP" width="560" />
 
 ## 安装
 
-详见 [安装教程](INSTALL.md)。
+详见 [安装教程](./docs/INSTALL.md)。
 
 ## 使用说明
 
@@ -55,7 +55,7 @@ BiliRadar 依赖 Bilibili 的网页登录和公开接口行为。如果 Bilibili
 
 配置导出文件可能包含登录 Cookie 和其他本地设置，请不要随意分享导出的配置文件。
 
-更完整的隐私说明见 [PRIVACY.md](PRIVACY.md)。
+更完整的隐私说明见 [PRIVACY.md](./docs/PRIVACY.md)。
 
 ## 开发环境
 

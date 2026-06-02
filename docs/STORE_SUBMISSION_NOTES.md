@@ -2,13 +2,13 @@
 
 ## Store description
 
-BiliRadar is packaged as a self-contained app for Microsoft Store distribution and does not require users to install the .NET Desktop Runtime separately.
+BiliRadar is packaged as an MSIX app for Microsoft Store distribution. Microsoft Store installs and services its declared Windows App SDK framework dependency, while the app carries its required .NET runtime.
 
 This app connects to Bilibili and requires the user's own Bilibili account for subscription, watch-later, and notification-related features.
 
 ## Notes for certification
 
-BiliRadar can be launched without installing any external .NET runtime. The Store package is built from the `Release` configuration with self-contained .NET and Windows App SDK runtime settings enabled.
+BiliRadar is built from the `Release` configuration with a shared Windows App SDK framework dependency and a self-contained .NET runtime. This reduces the Store package footprint while keeping the app runnable on machines that do not already have the required .NET runtime installed.
 
 BiliRadar requires the user to sign in with a Bilibili account before its primary functionality can be tested. The app reads the signed-in user's Bilibili subscriptions, watch-later list, and related update information to provide monitoring and notifications.
 
