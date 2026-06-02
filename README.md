@@ -3,6 +3,16 @@
 一个使用 **WinUI 3 原生开发**的 B 站任务栏托盘动态雷达。  
 用于查看关注 UP 的最新视频、直播状态、历史记录、稍后再看，并在后台提醒视频更新和开播。
 
+<script type="module" src="https://get.microsoft.com/badge/ms-store-badge.bundled.js"></script>
+<ms-store-badge
+	productid="9MX8LLSP816P"
+	window-mode="full"
+	theme="auto"
+	size="large"
+	language="zh-cn"
+	animation="on">
+</ms-store-badge>
+
 <img src="Figures/主界面.png" alt="主界面" width="400" />
 
 > BiliRadar 不是哔哩哔哩官方应用，与哔哩哔哩没有从属、赞助或背书关系。
