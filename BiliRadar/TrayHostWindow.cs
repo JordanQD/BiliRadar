@@ -15,6 +15,11 @@ internal sealed class TrayHostWindow : Window
         _appWindow.IsShownInSwitchers = false;
     }
 
+    public void InitializeVisible()
+    {
+        Activate();
+    }
+
     public void InitializeHidden()
     {
         Activate();

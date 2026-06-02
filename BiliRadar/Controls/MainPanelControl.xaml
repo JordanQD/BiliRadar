@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="BiliRadar.Controls.MainPanelControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:models="using:BiliRadar.Models">
+    <Grid Width="420">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ProgressBar
+            Grid.Row="0"
+            Height="3"
+            Margin="0"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Top"
+            IsIndeterminate="{x:Bind Session.RefreshProgressIsActive, Mode=OneWay}"
+            Opacity="{x:Bind Session.RefreshProgressOpacity, Mode=OneWay}"
+            ShowError="False"
+            ShowPaused="False"
+            Value="0" />
+
+        <Grid
+            Grid.Row="1"
+            Padding="8,2,12,4"
+            ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <SelectorBar
+                x:Name="ContentSelectorBar"
+                SelectionChanged="ContentSelectorBar_SelectionChanged">
+                <SelectorBarItem
+                    x:Name="FollowingSelectorItem"
+                    x:Uid="MainFollowingSelectorItem"
+                    Icon="Contact"
+                    IsSelected="True"
+                    Text="关注" />
+                <SelectorBarItem
+                    x:Name="HistorySelectorItem"
+                    x:Uid="MainHistorySelectorItem"
+                    Icon="Clock"
+                    Text="历史" />
+                <SelectorBarItem
+                    x:Name="ViewLaterSelectorItem"
+                    x:Uid="MainViewLaterSelectorItem"
+                    Icon="Favorite"
+                    Text="稍后再看" />
+            </SelectorBar>
+
+            <Button
+                Grid.Column="1"
+                Width="34"
+                Height="34"
+                Padding="0"
+                Click="OpenBrowserButton_Click"
+                Style="{StaticResource SubtleButtonStyle}">
+                <FontIcon FontSize="15" Glyph="&#xE774;" />
+            </Button>
+        </Grid>
+
+        <Frame
+            x:Name="ContentFrame"
+            Grid.Row="2"
+            CacheSize="3"
+            IsNavigationStackEnabled="False" />
+
+        <ItemsControl
+            x:Name="StatusItemsControl"
+            Grid.Row="3"
+            Margin="12,8,12,12"
+            VerticalAlignment="Bottom"
+            ItemsSource="{x:Bind Session.StatusNotifications, Mode=OneWay}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Spacing="8" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="models:StatusNotification">
+                    <InfoBar
+                        IsClosable="True"
+                        IsOpen="True"
+                        CloseButtonClick="StatusNotificationInfoBar_CloseButtonClick"
+                        Message="{x:Bind Message}"
+                        Severity="{x:Bind Severity}" />
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </Grid>
+</UserControl>

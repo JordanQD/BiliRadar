@@ -1,8 +1,10 @@
 using BiliRadar.Helpers;
+using BiliRadar.Controls;
 using BiliRadar.Models;
 using BiliRadar.Services;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.Windows.AppNotifications;
 using Microsoft.Windows.AppNotifications.Builder;
 using System;
@@ -26,7 +28,11 @@ public partial class App : Application
     private TrayHostWindow? _trayHostWindow;
     private SettingsWindow? _settingsWindow;
     private WebSignInWindow? _signInWindow;
+#if USE_WINUIEX_FLYOUT
+    private TrayFlyoutService? _trayFlyoutService;
+#else
     private TrayIconService? _trayIconService;
+#endif
     private BackgroundNotificationMonitor? _backgroundNotificationMonitor;
     private AppNotificationManager? _notificationManager;
     private NotificationService.NotificationActivationRequest? _pendingNotificationRequest;
@@ -56,9 +62,14 @@ public partial class App : Application
         AppInstance.GetCurrent().Activated += AppInstance_Activated;
 
         _trayHostWindow = new TrayHostWindow();
+#if USE_WINUIEX_FLYOUT
+        _trayHostWindow.InitializeVisible();
+        InitializeTrayAndData();
+#else
         _trayHostWindow.InitializeHidden();
-        HandleActivation(activatedArgs, isRedirectedActivation: false);
         _trayHostWindow.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, InitializeTrayAndData);
+#endif
+        HandleActivation(activatedArgs, isRedirectedActivation: false);
 
         if (!_cookieStore.HasCookie)
         {
@@ -90,6 +101,18 @@ public partial class App : Application
             return;
         }
 
+#if USE_WINUIEX_FLYOUT
+        if (_trayFlyoutService is null)
+        {
+            var panel = new MainPanelControl(_mainWindowSnapshot ?? _backgroundNotificationMonitor?.GetSnapshot());
+            _trayFlyoutService = new TrayFlyoutService(
+                _trayHostWindow,
+                () => { },
+                ShowSettingsWindow,
+                ExitApplication);
+            _trayFlyoutService.SetFlyoutContent(panel);
+        }
+#else
         if (_trayIconService is null)
         {
             _trayIconService = new TrayIconService(
@@ -101,6 +124,7 @@ public partial class App : Application
                 ExitApplication);
             _trayIconService.SetupTrayIcon();
         }
+#endif
 
         if (_backgroundNotificationMonitor is null)
         {
@@ -238,8 +262,13 @@ public partial class App : Application
     {
         _isExiting = true;
         CancelPendingMainWindowHide();
+#if USE_WINUIEX_FLYOUT
+        _trayFlyoutService?.Dispose();
+        _trayFlyoutService = null;
+#else
         _trayIconService?.Destroy();
         _trayIconService = null;
+#endif
         _backgroundNotificationMonitor?.Dispose();
         _backgroundNotificationMonitor = null;
         _notificationManager?.Unregister();
@@ -387,10 +416,17 @@ public partial class App : Application
 
     private async void OnSignInSucceeded(object? sender, EventArgs e)
     {
+#if !USE_WINUIEX_FLYOUT
         if (_trayIconService is null || _backgroundNotificationMonitor is null)
         {
             InitializeTrayAndData();
         }
+#else
+        if (_backgroundNotificationMonitor is null)
+        {
+            InitializeTrayAndData();
+        }
+#endif
 
         if (_mainWindow is not null)
         {
