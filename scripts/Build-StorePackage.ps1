@@ -54,7 +54,9 @@ New-Item -ItemType Directory -Force -Path $bundleInput | Out-Null
 
 $buildProperties = @(
     "-c", "Release",
+    "-t:Rebuild",
     "-p:Version=$Version",
+    "-p:UseProductionPackageIdentity=true",
     "-p:AppxBundle=Never",
     "-p:GenerateAppxPackageOnBuild=true",
     "-p:AppxPackageSigningEnabled=false",

@@ -29,6 +29,9 @@
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Configurations>Debug;Release;ReleaseFull</Configurations>
+    <UseProductionPackageIdentity Condition="'$(UseProductionPackageIdentity)' == ''">false</UseProductionPackageIdentity>
+    <OutputPath Condition="'$(UseProductionPackageIdentity)' != 'true'">bin\dev\$(Platform)\$(Configuration)\</OutputPath>
+    <IntermediateOutputPath Condition="'$(UseProductionPackageIdentity)' != 'true'">obj\dev\$(Platform)\$(Configuration)\</IntermediateOutputPath>
   </PropertyGroup>
 
   <ItemGroup>
@@ -134,10 +137,12 @@
   <Target Name="FixGeneratedDesktopExtensionManifest" AfterTargets="_GenerateAppxPackageRecipeFile">
     <PropertyGroup>
       <_GeneratedAppxManifest>$(OutDir)AppX\AppxManifest.xml</_GeneratedAppxManifest>
+      <_GeneratedPackageIdentityName Condition="'$(UseProductionPackageIdentity)' != 'true'">JordanQD.BiliRadar.Dev</_GeneratedPackageIdentityName>
+      <_GeneratedPackageIdentityName Condition="'$(_GeneratedPackageIdentityName)' == ''">JordanQD.BiliRadar</_GeneratedPackageIdentityName>
     </PropertyGroup>
     <ItemGroup Condition="Exists('$(_GeneratedAppxManifest)')">
       <_GeneratedAppxManifestLine Include="$(_GeneratedAppxManifest)" />
     </ItemGroup>
-    <WriteLinesToFile Condition="Exists('$(_GeneratedAppxManifest)')" File="$(_GeneratedAppxManifest)" Lines="$([System.IO.File]::ReadAllText('$(_GeneratedAppxManifest)').Replace('$targetnametoken$.exe', 'BiliRadar.exe').Replace('EntryPoint=&quot;$targetentrypoint$&quot;', 'EntryPoint=&quot;Windows.FullTrustApplication&quot;'))" Overwrite="true" />
+    <WriteLinesToFile Condition="Exists('$(_GeneratedAppxManifest)')" File="$(_GeneratedAppxManifest)" Lines="$([System.IO.File]::ReadAllText('$(_GeneratedAppxManifest)').Replace('Name=&quot;JordanQD.BiliRadar.Dev&quot;', 'Name=&quot;$(_GeneratedPackageIdentityName)&quot;').Replace('Name=&quot;JordanQD.BiliRadar&quot;', 'Name=&quot;$(_GeneratedPackageIdentityName)&quot;').Replace('$targetnametoken$.exe', 'BiliRadar.exe').Replace('EntryPoint=&quot;$targetentrypoint$&quot;', 'EntryPoint=&quot;Windows.FullTrustApplication&quot;'))" Overwrite="true" />
   </Target>
 </Project>
