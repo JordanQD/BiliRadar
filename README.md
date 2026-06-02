@@ -3,7 +3,7 @@
 一个使用 **WinUI 3 原生开发**的 B 站任务栏托盘动态雷达。  
 用于查看关注 UP 的最新视频、直播状态、历史记录、稍后再看，并在后台提醒视频更新和开播。
 
-<a href="https://get.microsoft.com/installer/download/9MX8LLSP816P?referrer=appbadge" target="_self" >
+<a href="https://apps.microsoft.com/detail/9MX8LLSP816P" target="_self" >
 	<img src="https://get.microsoft.com/images/zh-cn%20dark.svg" width="200"/>
 </a>
 

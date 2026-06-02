@@ -38,6 +38,15 @@ jobs:
             echo "APP_VERSION=0.0.0.0" >> $GITHUB_ENV
           fi
 
+      - name: Set package manifest version
+        shell: pwsh
+        run: |
+          $manifestPath = "BiliRadar/Package.appxmanifest"
+          [xml]$manifest = Get-Content -Raw -LiteralPath $manifestPath
+          $manifest.Package.Identity.Version = $env:APP_VERSION
+          $manifest.Save((Resolve-Path -LiteralPath $manifestPath))
+          Write-Host "Package manifest version: $($manifest.Package.Identity.Version)"
+
       - name: Import signing certificate
         shell: pwsh
         env:
@@ -127,7 +136,7 @@ jobs:
 
           Write-Host "makeappx: $($makeappx.FullName)"
           Write-Host "signtool: $($signtool.FullName)"
-          & $($makeappx.FullName) bundle /d bundle-input /p artifacts/BiliRadar.msixbundle
+          & $($makeappx.FullName) bundle /d bundle-input /p artifacts/BiliRadar.msixbundle /bv $env:APP_VERSION
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
           & $($signtool.FullName) sign /fd SHA256 /f "${{ github.workspace }}\ci-cert.pfx" /p $env:PFX_PASSWORD artifacts/BiliRadar.msixbundle

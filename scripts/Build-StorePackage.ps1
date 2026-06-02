@@ -10,7 +10,9 @@ $projectFile = Join-Path $projectDir "BiliRadar.csproj"
 $manifestPath = Join-Path $projectDir "Package.appxmanifest"
 $artifactsRoot = Join-Path $projectDir "artifacts"
 
-[xml]$manifest = Get-Content -Raw -LiteralPath $manifestPath
+$originalManifestBytes = [System.IO.File]::ReadAllBytes($manifestPath)
+$originalManifestContent = Get-Content -Raw -LiteralPath $manifestPath
+[xml]$manifest = $originalManifestContent
 $manifestNamespace = New-Object System.Xml.XmlNamespaceManager($manifest.NameTable)
 $manifestNamespace.AddNamespace("appx", "http://schemas.microsoft.com/appx/manifest/foundation/windows10")
 $identity = $manifest.SelectSingleNode("/appx:Package/appx:Identity", $manifestNamespace)
@@ -26,6 +28,12 @@ if ($parsedVersion.Build -lt 0 -or $parsedVersion.Revision -lt 0) {
 
 if ($parsedVersion.Revision -ne 0) {
     throw "Microsoft Store reserves the fourth version component. Use a version ending in .0, for example 1.0.1.0."
+}
+
+$manifestVersionUpdated = $identity.Version -ne $Version
+if ($manifestVersionUpdated) {
+    $identity.Version = $Version
+    $manifest.Save($manifestPath)
 }
 
 $stagingRoot = Join-Path $artifactsRoot "store-upload-$Version"
@@ -76,6 +84,9 @@ try {
 }
 finally {
     Pop-Location
+    if ($manifestVersionUpdated) {
+        [System.IO.File]::WriteAllBytes($manifestPath, $originalManifestBytes)
+    }
 }
 
 $x64Msix = Get-ChildItem -LiteralPath (Join-Path $stagingRoot "x64") -Recurse -Filter "*.msix" |
@@ -101,7 +112,7 @@ if (-not $makeAppx) {
 }
 
 $bundlePath = Join-Path $submissionRoot "BiliRadar_${Version}_x64_arm64.msixbundle"
-& $makeAppx.FullName bundle /d $bundleInput /p $bundlePath /o
+& $makeAppx.FullName bundle /d $bundleInput /p $bundlePath /bv $Version /o
 if ($LASTEXITCODE -ne 0) {
     throw "MakeAppx failed to create the Store bundle."
 }
