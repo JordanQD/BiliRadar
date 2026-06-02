@@ -33,6 +33,7 @@ public partial class App : Application
     private MainWindowSnapshot? _mainWindowSnapshot;
     private readonly CookieStore _cookieStore = new();
     private readonly DispatcherQueue _dispatcherQueue;
+    private DispatcherQueueTimer? _pendingMainWindowHideTimer;
     private bool _isExiting;
 
     public App()
@@ -111,6 +112,7 @@ public partial class App : Application
 
     private void ShowMainWindow()
     {
+        CancelPendingMainWindowHide();
         var window = EnsureMainWindow();
         window.ShowDefaultOpenPage();
         window.ShowWindow();
@@ -124,7 +126,7 @@ public partial class App : Application
         }
 
         _mainWindow = new MainWindow(_mainWindowSnapshot ?? _backgroundNotificationMonitor?.GetSnapshot());
-        _mainWindow.HideRequested += HideMainWindow;
+        _mainWindow.HideRequested += RequestHideMainWindow;
         return _mainWindow;
     }
 
@@ -132,6 +134,7 @@ public partial class App : Application
     {
         if (_mainWindow?.IsVisible == true)
         {
+            CancelPendingMainWindowHide();
             HideMainWindow();
         }
         else
@@ -140,12 +143,49 @@ public partial class App : Application
         }
     }
 
+    private void RequestHideMainWindow()
+    {
+        if (_isExiting || _mainWindow is null)
+        {
+            return;
+        }
+
+        CancelPendingMainWindowHide();
+
+        var timer = _dispatcherQueue.CreateTimer();
+        timer.Interval = TimeSpan.FromMilliseconds(200);
+        timer.IsRepeating = false;
+        timer.Tick += PendingMainWindowHideTimer_Tick;
+        _pendingMainWindowHideTimer = timer;
+        timer.Start();
+    }
+
+    private void PendingMainWindowHideTimer_Tick(DispatcherQueueTimer sender, object args)
+    {
+        CancelPendingMainWindowHide();
+        HideMainWindow();
+    }
+
+    private void CancelPendingMainWindowHide()
+    {
+        if (_pendingMainWindowHideTimer is null)
+        {
+            return;
+        }
+
+        _pendingMainWindowHideTimer.Stop();
+        _pendingMainWindowHideTimer.Tick -= PendingMainWindowHideTimer_Tick;
+        _pendingMainWindowHideTimer = null;
+    }
+
     private void HideMainWindow()
     {
         if (_isExiting)
         {
             return;
         }
+
+        CancelPendingMainWindowHide();
 
         var window = _mainWindow;
         _mainWindow = null;
@@ -197,6 +237,7 @@ public partial class App : Application
     private void ExitApplication()
     {
         _isExiting = true;
+        CancelPendingMainWindowHide();
         _trayIconService?.Destroy();
         _trayIconService = null;
         _backgroundNotificationMonitor?.Dispose();
