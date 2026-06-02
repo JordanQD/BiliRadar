@@ -18,6 +18,54 @@
                     </Border>
                 </Button>
                 <Button x:Name="ViewLaterBtn" Width="28" Height="28" MinWidth="0" Margin="5" Padding="0" HorizontalAlignment="Right" VerticalAlignment="Top" Click="ViewLaterBtn_Click">
+                    <Button.Resources>
+                        <ResourceDictionary>
+                            <ResourceDictionary.ThemeDictionaries>
+                                <ResourceDictionary x:Key="Light">
+                                    <StaticResource x:Key="ButtonBackground" ResourceKey="OverlayButtonBackgroundBrush" />
+                                    <StaticResource x:Key="ButtonBackgroundPointerOver" ResourceKey="OverlayButtonBackgroundPointerOverBrush" />
+                                    <StaticResource x:Key="ButtonBackgroundPressed" ResourceKey="OverlayButtonBackgroundPressedBrush" />
+                                    <StaticResource x:Key="ButtonBackgroundDisabled" ResourceKey="OverlayButtonBackgroundDisabledBrush" />
+                                    <StaticResource x:Key="ButtonForeground" ResourceKey="OverlayButtonForegroundBrush" />
+                                    <StaticResource x:Key="ButtonForegroundPointerOver" ResourceKey="OverlayButtonForegroundPointerOverBrush" />
+                                    <StaticResource x:Key="ButtonForegroundPressed" ResourceKey="OverlayButtonForegroundPressedBrush" />
+                                    <StaticResource x:Key="ButtonForegroundDisabled" ResourceKey="OverlayButtonForegroundDisabledBrush" />
+                                    <StaticResource x:Key="ButtonBorderBrush" ResourceKey="OverlayButtonBorderBrush" />
+                                    <StaticResource x:Key="ButtonBorderBrushPointerOver" ResourceKey="OverlayButtonBorderPointerOverBrush" />
+                                    <StaticResource x:Key="ButtonBorderBrushPressed" ResourceKey="OverlayButtonBorderPressedBrush" />
+                                    <StaticResource x:Key="ButtonBorderBrushDisabled" ResourceKey="OverlayButtonBorderDisabledBrush" />
+                                </ResourceDictionary>
+                                <ResourceDictionary x:Key="Dark">
+                                    <StaticResource x:Key="ButtonBackground" ResourceKey="OverlayButtonBackgroundBrush" />
+                                    <StaticResource x:Key="ButtonBackgroundPointerOver" ResourceKey="OverlayButtonBackgroundPointerOverBrush" />
+                                    <StaticResource x:Key="ButtonBackgroundPressed" ResourceKey="OverlayButtonBackgroundPressedBrush" />
+                                    <StaticResource x:Key="ButtonBackgroundDisabled" ResourceKey="OverlayButtonBackgroundDisabledBrush" />
+                                    <StaticResource x:Key="ButtonForeground" ResourceKey="OverlayButtonForegroundBrush" />
+                                    <StaticResource x:Key="ButtonForegroundPointerOver" ResourceKey="OverlayButtonForegroundPointerOverBrush" />
+                                    <StaticResource x:Key="ButtonForegroundPressed" ResourceKey="OverlayButtonForegroundPressedBrush" />
+                                    <StaticResource x:Key="ButtonForegroundDisabled" ResourceKey="OverlayButtonForegroundDisabledBrush" />
+                                    <StaticResource x:Key="ButtonBorderBrush" ResourceKey="OverlayButtonBorderBrush" />
+                                    <StaticResource x:Key="ButtonBorderBrushPointerOver" ResourceKey="OverlayButtonBorderPointerOverBrush" />
+                                    <StaticResource x:Key="ButtonBorderBrushPressed" ResourceKey="OverlayButtonBorderPressedBrush" />
+                                    <StaticResource x:Key="ButtonBorderBrushDisabled" ResourceKey="OverlayButtonBorderDisabledBrush" />
+                                </ResourceDictionary>
+                                <ResourceDictionary x:Key="HighContrast">
+                                    <StaticResource x:Key="ButtonBackground" ResourceKey="OverlayButtonBackgroundBrush" />
+                                    <StaticResource x:Key="ButtonBackgroundPointerOver" ResourceKey="OverlayButtonBackgroundPointerOverBrush" />
+                                    <StaticResource x:Key="ButtonBackgroundPressed" ResourceKey="OverlayButtonBackgroundPressedBrush" />
+                                    <StaticResource x:Key="ButtonBackgroundDisabled" ResourceKey="OverlayButtonBackgroundDisabledBrush" />
+                                    <StaticResource x:Key="ButtonForeground" ResourceKey="OverlayButtonForegroundBrush" />
+                                    <StaticResource x:Key="ButtonForegroundPointerOver" ResourceKey="OverlayButtonForegroundPointerOverBrush" />
+                                    <StaticResource x:Key="ButtonForegroundPressed" ResourceKey="OverlayButtonForegroundPressedBrush" />
+                                    <StaticResource x:Key="ButtonForegroundDisabled" ResourceKey="OverlayButtonForegroundDisabledBrush" />
+                                    <StaticResource x:Key="ButtonBorderBrush" ResourceKey="OverlayButtonBorderBrush" />
+                                    <StaticResource x:Key="ButtonBorderBrushPointerOver" ResourceKey="OverlayButtonBorderPointerOverBrush" />
+                                    <StaticResource x:Key="ButtonBorderBrushPressed" ResourceKey="OverlayButtonBorderPressedBrush" />
+                                    <StaticResource x:Key="ButtonBorderBrushDisabled" ResourceKey="OverlayButtonBorderDisabledBrush" />
+                                </ResourceDictionary>
+                            </ResourceDictionary.ThemeDictionaries>
+                        </ResourceDictionary>
+                    </Button.Resources>
                     <FontIcon x:Name="ViewLaterIcon" FontSize="15" Glyph="&#xE710;" />
                 </Button>
                 <Border x:Name="DurationBadge" Margin="5" Padding="4,1" HorizontalAlignment="Right" VerticalAlignment="Bottom" CornerRadius="4">

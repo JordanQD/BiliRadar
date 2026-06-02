@@ -17,6 +17,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Net.Http;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.WindowsRuntime;
@@ -71,6 +72,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     private bool _hasMoreViewLater = true;
     private bool _isLiveSectionExpanded;
     private int _liveSectionAnimationVersion;
+    private int _liveCreatorsSectionVisibilityVersion;
     private int _previousSelectedPageIndex = -1;
     private int _unreadCount;
     private int _followingCount;
@@ -1108,20 +1110,77 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         SyncLiveCreatorCards();
 
         var hasLiveCreators = LiveCreators.Count > 0;
+        var visibilityVersion = ++_liveCreatorsSectionVisibilityVersion;
         if (AppSettings.LiveSectionDisplayMode == LiveSectionDisplayMode.Hidden)
         {
             LiveCreatorsSection.Visibility = Visibility.Collapsed;
+            LiveCreatorsSection.Opacity = 1;
+            LiveCreatorsSection.Translation = Vector3.Zero;
             LatestVideosHeader.Visibility = Visibility.Collapsed;
         }
         else
         {
-            LiveCreatorsSection.Visibility = hasLiveCreators ? Visibility.Visible : Visibility.Collapsed;
             LatestVideosHeader.Visibility = Visibility.Visible;
             if (hasLiveCreators)
             {
                 ApplyLiveSectionExpandedStateImmediately(_isLiveSectionExpanded);
+                if (LiveCreatorsSection.Visibility != Visibility.Visible)
+                {
+                    _ = ShowLiveCreatorsSectionAsync(visibilityVersion);
+                }
+                else
+                {
+                    LiveCreatorsSection.Opacity = 1;
+                    LiveCreatorsSection.Translation = Vector3.Zero;
+                }
+            }
+            else if (LiveCreatorsSection.Visibility == Visibility.Visible)
+            {
+                _ = HideLiveCreatorsSectionAsync(visibilityVersion);
+            }
+            else
+            {
+                LiveCreatorsSection.Opacity = 1;
+                LiveCreatorsSection.Translation = Vector3.Zero;
+                LiveCreatorsSection.Visibility = Visibility.Collapsed;
             }
         }
+    }
+
+    private async Task ShowLiveCreatorsSectionAsync(int visibilityVersion)
+    {
+        LiveCreatorsSection.Visibility = Visibility.Visible;
+        await AnimationBuilder.Create()
+            .Opacity(from: 0, to: 1, duration: TimeSpan.FromMilliseconds(180), easingType: EasingType.Cubic, easingMode: EasingMode.EaseOut)
+            .Translation(Axis.Y, from: -8, to: 0, duration: TimeSpan.FromMilliseconds(180), easingType: EasingType.Cubic, easingMode: EasingMode.EaseOut)
+            .StartAsync(LiveCreatorsSection);
+
+        if (visibilityVersion != _liveCreatorsSectionVisibilityVersion || LiveCreators.Count == 0)
+        {
+            return;
+        }
+
+        LiveCreatorsSection.Opacity = 1;
+        LiveCreatorsSection.Translation = Vector3.Zero;
+    }
+
+    private async Task HideLiveCreatorsSectionAsync(int visibilityVersion)
+    {
+        await AnimationBuilder.Create()
+            .Opacity(from: 1, to: 0, duration: TimeSpan.FromMilliseconds(180), easingType: EasingType.Cubic, easingMode: EasingMode.EaseIn)
+            .Translation(Axis.Y, from: 0, to: -8, duration: TimeSpan.FromMilliseconds(180), easingType: EasingType.Cubic, easingMode: EasingMode.EaseIn)
+            .StartAsync(LiveCreatorsSection);
+
+        if (visibilityVersion != _liveCreatorsSectionVisibilityVersion || LiveCreators.Count > 0)
+        {
+            LiveCreatorsSection.Opacity = 1;
+            LiveCreatorsSection.Translation = Vector3.Zero;
+            return;
+        }
+
+        LiveCreatorsSection.Visibility = Visibility.Collapsed;
+        LiveCreatorsSection.Opacity = 1;
+        LiveCreatorsSection.Translation = Vector3.Zero;
     }
 
     private void SyncLiveCreatorCards()
@@ -1175,6 +1234,9 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
 
     private void ApplyLiveSectionDisplayMode(LiveSectionDisplayMode mode)
     {
+        _liveCreatorsSectionVisibilityVersion++;
+        LiveCreatorsSection.Opacity = 1;
+        LiveCreatorsSection.Translation = Vector3.Zero;
         if (mode == LiveSectionDisplayMode.Hidden)
         {
             _isLiveSectionExpanded = false;

@@ -238,9 +238,6 @@ public sealed partial class VideoCard : UserControl, IDisposable
         DurationBadge.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(180, 0, 0, 0));
         DurationBadge.CornerRadius = new CornerRadius(4);
         DurationText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.White);
-        ViewLaterBtn.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(210, 34, 34, 34));
-        ViewLaterBtn.Foreground = new SolidColorBrush(Microsoft.UI.Colors.White);
-        ViewLaterBtn.BorderBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(80, 255, 255, 255));
         CoverBtn.Style = (Style)Application.Current.Resources["SubtleButtonStyle"];
     }
 

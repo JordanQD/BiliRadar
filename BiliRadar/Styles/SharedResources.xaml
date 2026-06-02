@@ -3,22 +3,59 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!-- ============================================================
-         Overlay button brushes — sit on top of cover images,
-         consistently dark-translucent regardless of app theme.
+         Overlay button brushes — sit on top of cover images.
          ============================================================ -->
 
-    <SolidColorBrush x:Key="OverlayButtonBackgroundBrush" Color="#D2222222" />
-    <SolidColorBrush x:Key="OverlayButtonBackgroundPointerOverBrush" Color="#EE5C5C5C" />
-    <SolidColorBrush x:Key="OverlayButtonBackgroundPressedBrush" Color="#FF484848" />
-    <SolidColorBrush x:Key="OverlayButtonBackgroundDisabledBrush" Color="#60000000" />
+    <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+            <SolidColorBrush x:Key="OverlayButtonBackgroundBrush" Color="#99FFFFFF" />
+            <SolidColorBrush x:Key="OverlayButtonBackgroundPointerOverBrush" Color="#E6FFFFFF" />
+            <SolidColorBrush x:Key="OverlayButtonBackgroundPressedBrush" Color="#FFFFFFFF" />
+            <SolidColorBrush x:Key="OverlayButtonBackgroundDisabledBrush" Color="#66FFFFFF" />
 
-    <SolidColorBrush x:Key="OverlayButtonForegroundBrush" Color="#FFFFFF" />
-    <SolidColorBrush x:Key="OverlayButtonForegroundPointerOverBrush" Color="#FFFFFF" />
-    <SolidColorBrush x:Key="OverlayButtonForegroundPressedBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="OverlayButtonForegroundBrush" Color="#D9000000" />
+            <SolidColorBrush x:Key="OverlayButtonForegroundPointerOverBrush" Color="#E6000000" />
+            <SolidColorBrush x:Key="OverlayButtonForegroundPressedBrush" Color="#FF000000" />
+            <SolidColorBrush x:Key="OverlayButtonForegroundDisabledBrush" Color="#66000000" />
 
-    <SolidColorBrush x:Key="OverlayButtonBorderBrush" Color="#50FFFFFF" />
-    <SolidColorBrush x:Key="OverlayButtonBorderPointerOverBrush" Color="#87FFFFFF" />
-    <SolidColorBrush x:Key="OverlayButtonBorderPressedBrush" Color="#B4FFFFFF" />
+            <SolidColorBrush x:Key="OverlayButtonBorderBrush" Color="#33000000" />
+            <SolidColorBrush x:Key="OverlayButtonBorderPointerOverBrush" Color="#66000000" />
+            <SolidColorBrush x:Key="OverlayButtonBorderPressedBrush" Color="#80000000" />
+            <SolidColorBrush x:Key="OverlayButtonBorderDisabledBrush" Color="#1A000000" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+            <SolidColorBrush x:Key="OverlayButtonBackgroundBrush" Color="#995C5C5C" />
+            <SolidColorBrush x:Key="OverlayButtonBackgroundPointerOverBrush" Color="#E6222222" />
+            <SolidColorBrush x:Key="OverlayButtonBackgroundPressedBrush" Color="#FF181818" />
+            <SolidColorBrush x:Key="OverlayButtonBackgroundDisabledBrush" Color="#66303030" />
+
+            <SolidColorBrush x:Key="OverlayButtonForegroundBrush" Color="#F2FFFFFF" />
+            <SolidColorBrush x:Key="OverlayButtonForegroundPointerOverBrush" Color="#FFFFFFFF" />
+            <SolidColorBrush x:Key="OverlayButtonForegroundPressedBrush" Color="#FFFFFFFF" />
+            <SolidColorBrush x:Key="OverlayButtonForegroundDisabledBrush" Color="#66FFFFFF" />
+
+            <SolidColorBrush x:Key="OverlayButtonBorderBrush" Color="#50FFFFFF" />
+            <SolidColorBrush x:Key="OverlayButtonBorderPointerOverBrush" Color="#87FFFFFF" />
+            <SolidColorBrush x:Key="OverlayButtonBorderPressedBrush" Color="#B4FFFFFF" />
+            <SolidColorBrush x:Key="OverlayButtonBorderDisabledBrush" Color="#26FFFFFF" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="HighContrast">
+            <StaticResource x:Key="OverlayButtonBackgroundBrush" ResourceKey="SystemColorButtonFaceColorBrush" />
+            <StaticResource x:Key="OverlayButtonBackgroundPointerOverBrush" ResourceKey="SystemColorHighlightColorBrush" />
+            <StaticResource x:Key="OverlayButtonBackgroundPressedBrush" ResourceKey="SystemColorHighlightColorBrush" />
+            <StaticResource x:Key="OverlayButtonBackgroundDisabledBrush" ResourceKey="SystemColorButtonFaceColorBrush" />
+
+            <StaticResource x:Key="OverlayButtonForegroundBrush" ResourceKey="SystemColorButtonTextColorBrush" />
+            <StaticResource x:Key="OverlayButtonForegroundPointerOverBrush" ResourceKey="SystemColorHighlightTextColorBrush" />
+            <StaticResource x:Key="OverlayButtonForegroundPressedBrush" ResourceKey="SystemColorHighlightTextColorBrush" />
+            <StaticResource x:Key="OverlayButtonForegroundDisabledBrush" ResourceKey="SystemColorGrayTextColorBrush" />
+
+            <StaticResource x:Key="OverlayButtonBorderBrush" ResourceKey="SystemColorButtonTextColorBrush" />
+            <StaticResource x:Key="OverlayButtonBorderPointerOverBrush" ResourceKey="SystemColorHighlightTextColorBrush" />
+            <StaticResource x:Key="OverlayButtonBorderPressedBrush" ResourceKey="SystemColorHighlightTextColorBrush" />
+            <StaticResource x:Key="OverlayButtonBorderDisabledBrush" ResourceKey="SystemColorGrayTextColorBrush" />
+        </ResourceDictionary>
+    </ResourceDictionary.ThemeDictionaries>
 
     <!-- ============================================================
          Duration badge — always dark, on top of cover images.
