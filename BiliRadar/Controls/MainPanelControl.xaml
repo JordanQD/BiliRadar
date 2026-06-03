@@ -40,7 +40,6 @@
                     x:Name="FollowingSelectorItem"
                     x:Uid="MainFollowingSelectorItem"
                     Icon="Contact"
-                    IsSelected="True"
                     Text="关注" />
                 <SelectorBarItem
                     x:Name="HistorySelectorItem"
@@ -68,7 +67,7 @@
         <Frame
             x:Name="ContentFrame"
             Grid.Row="2"
-            CacheSize="3"
+            CacheSize="0"
             IsNavigationStackEnabled="False" />
 
         <ItemsControl

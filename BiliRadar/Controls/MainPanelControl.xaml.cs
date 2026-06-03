@@ -7,7 +7,9 @@ using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -18,8 +20,10 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
     private int _previousSelectedPageIndex = -1;
     private readonly HashSet<IDisposable> _initializedPages = [];
     private CancellationTokenSource? _flyoutCts;
+    private CancellationTokenSource? _pageSwitchCleanupCts;
     private bool _isFlyoutOpen;
     private bool _isDisposed;
+    private bool _isSettingDefaultPage;
 
     public MainPanelSession Session { get; }
 
@@ -47,7 +51,13 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
             DefaultOpenPage.ViewLater => ViewLaterSelectorItem,
             _ => FollowingSelectorItem,
         };
+
+        _isSettingDefaultPage = true;
         ContentSelectorBar.SelectedItem = selectedItem;
+        selectedItem.IsSelected = true;
+        _isSettingDefaultPage = false;
+
+        NavigateToSelectedPage(resetScrollPosition: false);
     }
 
     private void OnContentFrameNavigated(object sender, NavigationEventArgs e)
@@ -104,6 +114,9 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
         _flyoutCts?.Cancel();
         _flyoutCts?.Dispose();
         _flyoutCts = null;
+        _pageSwitchCleanupCts?.Cancel();
+        _pageSwitchCleanupCts?.Dispose();
+        _pageSwitchCleanupCts = null;
         ContentFrame.Navigated -= OnContentFrameNavigated;
         foreach (var page in _initializedPages)
         {
@@ -117,7 +130,22 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
 
     private void ContentSelectorBar_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
     {
-        var currentIndex = sender.Items.IndexOf(sender.SelectedItem);
+        if (_isSettingDefaultPage)
+        {
+            return;
+        }
+
+        NavigateToSelectedPage(resetScrollPosition: true);
+    }
+
+    private void NavigateToSelectedPage(bool resetScrollPosition)
+    {
+        var currentIndex = ContentSelectorBar.Items.IndexOf(ContentSelectorBar.SelectedItem);
+        if (currentIndex < 0)
+        {
+            currentIndex = 0;
+        }
+
         var pageType = currentIndex switch
         {
             0 => typeof(FollowingPage),
@@ -127,7 +155,9 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
 
         if (ContentFrame.Content?.GetType() == pageType)
         {
-            ResetPageScrollPosition();
+            if (resetScrollPosition)
+                ResetPageScrollPosition();
+
             if (_isFlyoutOpen && ContentFrame.Content is IMainPanelPage existingPage)
                 _ = existingPage.ActivateAsync(_flyoutCts?.Token ?? CancellationToken.None);
             _previousSelectedPageIndex = currentIndex;
@@ -138,17 +168,69 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
             ? SlideNavigationTransitionEffect.FromRight
             : SlideNavigationTransitionEffect.FromLeft;
 
+        DisposeCurrentPage();
+
         ContentFrame.Navigate(
             pageType,
             null,
             new SlideNavigationTransitionInfo { Effect = effect });
 
         _previousSelectedPageIndex = currentIndex;
-        ResetPageScrollPosition();
+        if (resetScrollPosition)
+            ResetPageScrollPosition();
 
         if (_isFlyoutOpen && ContentFrame.Content is IMainPanelPage newPage)
             _ = newPage.ActivateAsync(_flyoutCts?.Token ?? CancellationToken.None);
+
+        SchedulePageSwitchCleanup();
     }
+
+    private void DisposeCurrentPage()
+    {
+        if (ContentFrame.Content is IDisposable disposablePage)
+        {
+            disposablePage.Dispose();
+            _initializedPages.Remove(disposablePage);
+        }
+    }
+
+    private void SchedulePageSwitchCleanup()
+    {
+        _pageSwitchCleanupCts?.Cancel();
+        _pageSwitchCleanupCts?.Dispose();
+        _pageSwitchCleanupCts = new CancellationTokenSource();
+        var token = _pageSwitchCleanupCts.Token;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2), token);
+                DispatcherQueue.TryEnqueue(
+                    Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
+                    CollectReleasedPageResources);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }, token);
+    }
+
+    private static void CollectReleasedPageResources()
+    {
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
+        using var process = Process.GetCurrentProcess();
+        SetProcessWorkingSetSize(process.Handle, new IntPtr(-1), new IntPtr(-1));
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool SetProcessWorkingSetSize(
+        IntPtr process,
+        IntPtr minimumWorkingSetSize,
+        IntPtr maximumWorkingSetSize);
 
     private void ResetPageScrollPosition()
     {

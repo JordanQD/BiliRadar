@@ -3,102 +3,133 @@
     x:Class="BiliRadar.Pages.FollowingPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    NavigationCacheMode="Required">
+    xmlns:controls="using:BiliRadar.Controls">
 
-    <Grid>
-        <ScrollViewer
-            x:Name="VideoScrollViewer"
-            MinHeight="500"
-            Padding="10,0,10,0"
-            ViewChanged="VideoScrollViewer_ViewChanged"
-            VerticalScrollBarVisibility="Auto">
-            <StackPanel>
+    <Grid MinHeight="500">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel
+            x:Name="LiveCreatorsSection"
+            Grid.Row="0"
+            Margin="10,4,10,10"
+            Spacing="6"
+            Visibility="Collapsed">
+            <Button
+                x:Name="LiveSectionToggleButton"
+                Padding="0"
+                BorderThickness="0"
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Stretch"
+                Click="LiveSectionToggleButton_Click"
+                Style="{StaticResource SubtleButtonStyle}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock
+                        x:Uid="MainLiveSectionHeader"
+                        Grid.Column="0"
+                        FontSize="12"
+                        FontWeight="SemiBold"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Text="正在直播" />
+                    <Grid
+                        Grid.Column="1"
+                        Width="16"
+                        Height="16"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center">
+                        <FontIcon
+                            x:Name="LiveSectionChevronCollapsed"
+                            FontSize="10"
+                            Glyph="&#xE76C;"
+                            Visibility="Visible" />
+                        <FontIcon
+                            x:Name="LiveSectionChevronExpanded"
+                            FontSize="10"
+                            Glyph="&#xE70D;"
+                            Visibility="Collapsed" />
+                    </Grid>
+                </Grid>
+            </Button>
+            <ScrollViewer
+                x:Name="LiveCardsScrollViewer"
+                Height="104"
+                HorizontalScrollBarVisibility="Auto"
+                HorizontalScrollMode="Enabled"
+                VerticalContentAlignment="Top"
+                VerticalScrollBarVisibility="Disabled"
+                VerticalScrollMode="Disabled"
+                ZoomMode="Disabled">
                 <StackPanel
-                    x:Name="LiveCreatorsSection"
-                    Margin="0,4,0,10"
-                    Spacing="6"
-                    Visibility="Collapsed">
-                    <Button
-                        x:Name="LiveSectionToggleButton"
-                        Padding="0"
-                        BorderThickness="0"
-                        HorizontalAlignment="Stretch"
-                        HorizontalContentAlignment="Stretch"
-                        Click="LiveSectionToggleButton_Click"
-                        Style="{StaticResource SubtleButtonStyle}">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock
-                                x:Uid="MainLiveSectionHeader"
-                                Grid.Column="0"
-                                FontSize="12"
-                                FontWeight="SemiBold"
-                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Text="正在直播" />
-                            <Grid
-                                Grid.Column="1"
-                                Width="16"
-                                Height="16"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center">
-                                <FontIcon
-                                    x:Name="LiveSectionChevronCollapsed"
-                                    FontSize="10"
-                                    Glyph="&#xE76C;"
-                                    Visibility="Visible" />
-                                <FontIcon
-                                    x:Name="LiveSectionChevronExpanded"
-                                    FontSize="10"
-                                    Glyph="&#xE70D;"
-                                    Visibility="Collapsed" />
-                            </Grid>
-                        </Grid>
-                    </Button>
-                    <ScrollViewer
-                        x:Name="LiveCardsScrollViewer"
-                        Height="104"
-                        HorizontalScrollBarVisibility="Auto"
-                        HorizontalScrollMode="Enabled"
-                        VerticalContentAlignment="Top"
-                        VerticalScrollBarVisibility="Disabled"
-                        VerticalScrollMode="Disabled"
-                        ZoomMode="Disabled">
-                        <StackPanel
-                            x:Name="LiveCreatorCardsPanel"
-                            VerticalAlignment="Top"
-                            Orientation="Horizontal"
-                            Spacing="6">
-                            <StackPanel.ChildrenTransitions>
-                                <TransitionCollection>
-                                    <AddDeleteThemeTransition />
-                                    <EntranceThemeTransition FromHorizontalOffset="24" FromVerticalOffset="0" IsStaggeringEnabled="True" />
-                                </TransitionCollection>
-                            </StackPanel.ChildrenTransitions>
-                        </StackPanel>
-                    </ScrollViewer>
-                </StackPanel>
-                <TextBlock
-                    x:Name="LatestVideosHeader"
-                    x:Uid="MainLatestVideosHeader"
-                    Margin="0,0,0,6"
-                    FontSize="12"
-                    FontWeight="SemiBold"
-                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    Text="最新视频" />
-                <StackPanel
-                    x:Name="VideoCardsPanel"
-                    Spacing="10">
+                    x:Name="LiveCreatorCardsPanel"
+                    VerticalAlignment="Top"
+                    Orientation="Horizontal"
+                    Spacing="6">
                     <StackPanel.ChildrenTransitions>
                         <TransitionCollection>
                             <AddDeleteThemeTransition />
-                            <EntranceThemeTransition FromHorizontalOffset="0" FromVerticalOffset="24" IsStaggeringEnabled="True" />
+                            <EntranceThemeTransition FromHorizontalOffset="24" FromVerticalOffset="0" IsStaggeringEnabled="True" />
                         </TransitionCollection>
                     </StackPanel.ChildrenTransitions>
                 </StackPanel>
-            </StackPanel>
-        </ScrollViewer>
+            </ScrollViewer>
+        </StackPanel>
+
+        <TextBlock
+            x:Name="LatestVideosHeader"
+            x:Uid="MainLatestVideosHeader"
+            Grid.Row="1"
+            Margin="10,0,10,6"
+            FontSize="12"
+            FontWeight="SemiBold"
+            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+            Text="最新视频" />
+
+        <Grid Grid.Row="2">
+            <ListView
+                x:Name="UpdatesListView"
+                Padding="10,0,10,0"
+                HorizontalContentAlignment="Stretch"
+                Loaded="UpdatesListView_Loaded"
+                ScrollViewer.VerticalScrollBarVisibility="Auto"
+                SelectionMode="None">
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="Margin" Value="0,0,0,10" />
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="UseSystemFocusVisuals" Value="False" />
+                    </Style>
+                </ListView.ItemContainerStyle>
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <controls:VideoCard
+                            Item="{Binding}"
+                            Loaded="UpdateVideoCard_Loaded"
+                            CoverTapped="VideoCard_CoverTapped"
+                            CreatorAvatarClicked="VideoCard_CreatorAvatarClicked"
+                            ShowMetaTime="True"
+                            ViewLaterButtonMode="Add"
+                            ViewLaterClicked="VideoCard_ViewLaterClicked" />
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+
+            <TextBlock
+                x:Name="UpdatesEmptyText"
+                Margin="18,24"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                FontSize="13"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Text="暂无视频更新"
+                Visibility="Collapsed" />
+        </Grid>
     </Grid>
 </Page>

@@ -42,11 +42,49 @@ public sealed partial class VideoCard : UserControl, IDisposable
     private VideoUpdateRow? _item;
 
     private bool _loaded;
+    private bool _themeEventSubscribed;
     private bool _isDisposed;
+    private int _imageLoadVersion;
+    private Func<VideoUpdateRow, FlyoutBase?>? _cardMenuFlyoutFactory;
 
-    public VideoCard() { InitializeComponent(); Loaded += OnLoaded; }
+    public VideoCard()
+    {
+        InitializeComponent();
+        Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
+    }
 
-    public VideoUpdateRow? Item { get => _item; set { _item = value; if (_loaded) ApplyData(); } }
+    public static readonly DependencyProperty ItemProperty =
+        DependencyProperty.Register(
+            nameof(Item),
+            typeof(object),
+            typeof(VideoCard),
+            new PropertyMetadata(null, OnItemPropertyChanged));
+
+    public object? Item
+    {
+        get => GetValue(ItemProperty);
+        set => SetValue(ItemProperty, value);
+    }
+
+    private static void OnItemPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is VideoCard card)
+        {
+            card.SetItem(e.NewValue as VideoUpdateRow);
+        }
+    }
+
+    private void SetItem(VideoUpdateRow? item)
+    {
+        _imageLoadVersion++;
+        _item = item;
+        if (_loaded)
+        {
+            ReleaseCurrentImages();
+            ApplyData();
+        }
+    }
 
     private ViewLaterButtonMode _vlMode = ViewLaterButtonMode.Add;
     public ViewLaterButtonMode ViewLaterButtonMode { get => _vlMode; set { _vlMode = value; if (_loaded) ApplyVLMode(); } }
@@ -67,6 +105,16 @@ public sealed partial class VideoCard : UserControl, IDisposable
         }
     }
 
+    public Func<VideoUpdateRow, FlyoutBase?>? CardMenuFlyoutFactory
+    {
+        get => _cardMenuFlyoutFactory;
+        set
+        {
+            _cardMenuFlyoutFactory = value;
+            ApplyCardMenuFlyout();
+        }
+    }
+
     public bool TryUpdateTimeText(string tip)
     {
         if (_timeText is null) return false;
@@ -80,16 +128,35 @@ public sealed partial class VideoCard : UserControl, IDisposable
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        BuildTextPanel();
-        StyleFromResources();
+        if (!_loaded)
+        {
+            BuildTextPanel();
+            StyleFromResources();
+            _loaded = true;
+        }
+
         ApplyThemeBrushes();
         ApplyData();
         ApplyVLMode();
-        _timeText.Visibility = _showTime ? Visibility.Visible : Visibility.Collapsed;
-        _creatorText.MaxWidth = _showTime ? 120 : 240;
-        _loaded = true;
+        if (_timeText is not null)
+        {
+            _timeText.Visibility = _showTime ? Visibility.Visible : Visibility.Collapsed;
+            _creatorText.MaxWidth = _showTime ? 120 : 240;
+        }
 
-        ActualThemeChanged += OnActualThemeChanged;
+        if (!_themeEventSubscribed)
+        {
+            ActualThemeChanged += OnActualThemeChanged;
+            _themeEventSubscribed = true;
+        }
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        if (_isDisposed) return;
+        _imageLoadVersion++;
+        ReleaseCurrentImages();
+        CardMenuFlyout = null;
     }
 
     private void OnActualThemeChanged(FrameworkElement sender, object args)
@@ -244,6 +311,7 @@ public sealed partial class VideoCard : UserControl, IDisposable
     private void ApplyData()
     {
         var item = _item; if (item is null) return;
+        ApplyCardMenuFlyout();
         _titleText.Text = item.Title;
         _creatorText.Text = item.CreatorName;
         _timeText.Text = item.Tip;
@@ -256,10 +324,19 @@ public sealed partial class VideoCard : UserControl, IDisposable
             DurationBadge.Visibility = Visibility.Collapsed;
         else { DurationBadge.Visibility = Visibility.Visible; DurationText.Text = item.DurationText; }
 
-        if (!string.IsNullOrWhiteSpace(item.CoverUrl)) _ = LoadImg(CoverImage, item.CoverUrl);
-        if (!string.IsNullOrWhiteSpace(item.AvatarUrl)) _ = LoadAvatar(_avatarPic, item.AvatarUrl);
+        var imageLoadVersion = _imageLoadVersion;
+        if (!string.IsNullOrWhiteSpace(item.CoverUrl))
+            _ = LoadImg(CoverImage, item.CoverUrl, () => imageLoadVersion == _imageLoadVersion && _item?.CoverUrl == item.CoverUrl);
+        if (!string.IsNullOrWhiteSpace(item.AvatarUrl))
+            _ = LoadAvatar(_avatarPic, item.AvatarUrl, () => imageLoadVersion == _imageLoadVersion && _item?.AvatarUrl == item.AvatarUrl);
 
         ApplyVLMode();
+    }
+
+    private void ApplyCardMenuFlyout()
+    {
+        if (_item is null || _cardMenuFlyoutFactory is null) return;
+        CardMenuFlyout = _cardMenuFlyoutFactory(_item);
     }
 
     private void ApplyVLMode()
@@ -279,11 +356,11 @@ public sealed partial class VideoCard : UserControl, IDisposable
     private static bool IsInteractive(DependencyObject? s) { while (s is not null) { if (s is Button or MenuFlyoutItem) return true; s = VisualTreeHelper.GetParent(s); } return false; }
 
     // ── Image loading ──
-    private static async Task LoadImg(Image img, string url)
+    private static async Task LoadImg(Image img, string url, Func<bool>? isCurrent = null)
     {
         var generation = ImgCacheGeneration;
         if (!Uri.TryCreate(url, UriKind.Absolute, out var u)) return;
-        if (ImgCache.TryGetValue(u.AbsoluteUri, out var c)) { img.DispatcherQueue.TryEnqueue(() => img.Source = c); return; }
+        if (ImgCache.TryGetValue(u.AbsoluteUri, out var c)) { img.DispatcherQueue.TryEnqueue(() => { if (isCurrent?.Invoke() != false) img.Source = c; }); return; }
         for (int i = 1; i <= MaxRetries; i++)
             try
             {
@@ -292,10 +369,10 @@ public sealed partial class VideoCard : UserControl, IDisposable
                 r.Headers.TryAddWithoutValidation("Referer", "https://www.bilibili.com/");
                 using var res = await Http.SendAsync(r); res.EnsureSuccessStatusCode();
                 var b = await res.Content.ReadAsByteArrayAsync();
-                img.DispatcherQueue.TryEnqueue(async () => { if (generation != ImgCacheGeneration) return; try { using var s = new InMemoryRandomAccessStream(); await s.WriteAsync(b.AsBuffer()); s.Seek(0); var bmp = new BitmapImage(); await bmp.SetSourceAsync(s); CacheImage(u.AbsoluteUri, bmp); img.Source = bmp; } catch { var bmp = new BitmapImage(u); CacheImage(u.AbsoluteUri, bmp); img.Source = bmp; } });
+                img.DispatcherQueue.TryEnqueue(async () => { if (generation != ImgCacheGeneration || isCurrent?.Invoke() == false) return; try { using var s = new InMemoryRandomAccessStream(); await s.WriteAsync(b.AsBuffer()); s.Seek(0); var bmp = new BitmapImage(); await bmp.SetSourceAsync(s); if (isCurrent?.Invoke() == false) return; CacheImage(u.AbsoluteUri, bmp); img.Source = bmp; } catch { if (isCurrent?.Invoke() == false) return; var bmp = new BitmapImage(u); CacheImage(u.AbsoluteUri, bmp); img.Source = bmp; } });
                 return;
             }
-            catch { if (i == MaxRetries) img.DispatcherQueue.TryEnqueue(() => { if (generation != ImgCacheGeneration) return; var bmp = new BitmapImage(u); CacheImage(u.AbsoluteUri, bmp); img.Source = bmp; }); else await Task.Delay(RetryDelay * i); }
+            catch { if (i == MaxRetries) img.DispatcherQueue.TryEnqueue(() => { if (generation != ImgCacheGeneration || isCurrent?.Invoke() == false) return; var bmp = new BitmapImage(u); CacheImage(u.AbsoluteUri, bmp); img.Source = bmp; }); else await Task.Delay(RetryDelay * i); }
     }
 
     private static async Task LoadImgBrush(ImageBrush br, string url)
@@ -317,11 +394,11 @@ public sealed partial class VideoCard : UserControl, IDisposable
             catch { if (i == MaxRetries) br.DispatcherQueue.TryEnqueue(() => { if (generation != ImgCacheGeneration) return; var bmp = new BitmapImage(u); CacheImage(u.AbsoluteUri, bmp); br.ImageSource = bmp; }); else await Task.Delay(RetryDelay * i); }
     }
 
-    private static async Task LoadAvatar(PersonPicture personPic, string url)
+    private static async Task LoadAvatar(PersonPicture personPic, string url, Func<bool>? isCurrent = null)
     {
         var generation = ImgCacheGeneration;
         if (!Uri.TryCreate(url, UriKind.Absolute, out var u)) return;
-        if (ImgCache.TryGetValue(u.AbsoluteUri, out var c)) { personPic.DispatcherQueue.TryEnqueue(() => personPic.ProfilePicture = c); return; }
+        if (ImgCache.TryGetValue(u.AbsoluteUri, out var c)) { personPic.DispatcherQueue.TryEnqueue(() => { if (isCurrent?.Invoke() != false) personPic.ProfilePicture = c; }); return; }
         for (int i = 1; i <= MaxRetries; i++)
             try
             {
@@ -330,10 +407,10 @@ public sealed partial class VideoCard : UserControl, IDisposable
                 r.Headers.TryAddWithoutValidation("Referer", "https://www.bilibili.com/");
                 using var res = await Http.SendAsync(r); res.EnsureSuccessStatusCode();
                 var b = await res.Content.ReadAsByteArrayAsync();
-                personPic.DispatcherQueue.TryEnqueue(async () => { if (generation != ImgCacheGeneration) return; try { using var s = new InMemoryRandomAccessStream(); await s.WriteAsync(b.AsBuffer()); s.Seek(0); var bmp = new BitmapImage(); await bmp.SetSourceAsync(s); CacheImage(u.AbsoluteUri, bmp); personPic.ProfilePicture = bmp; } catch { var bmp = new BitmapImage(u); CacheImage(u.AbsoluteUri, bmp); personPic.ProfilePicture = bmp; } });
+                personPic.DispatcherQueue.TryEnqueue(async () => { if (generation != ImgCacheGeneration || isCurrent?.Invoke() == false) return; try { using var s = new InMemoryRandomAccessStream(); await s.WriteAsync(b.AsBuffer()); s.Seek(0); var bmp = new BitmapImage(); await bmp.SetSourceAsync(s); if (isCurrent?.Invoke() == false) return; CacheImage(u.AbsoluteUri, bmp); personPic.ProfilePicture = bmp; } catch { if (isCurrent?.Invoke() == false) return; var bmp = new BitmapImage(u); CacheImage(u.AbsoluteUri, bmp); personPic.ProfilePicture = bmp; } });
                 return;
             }
-            catch { if (i == MaxRetries) personPic.DispatcherQueue.TryEnqueue(() => { if (generation != ImgCacheGeneration) return; var bmp = new BitmapImage(u); CacheImage(u.AbsoluteUri, bmp); personPic.ProfilePicture = bmp; }); else await Task.Delay(RetryDelay * i); }
+            catch { if (i == MaxRetries) personPic.DispatcherQueue.TryEnqueue(() => { if (generation != ImgCacheGeneration || isCurrent?.Invoke() == false) return; var bmp = new BitmapImage(u); CacheImage(u.AbsoluteUri, bmp); personPic.ProfilePicture = bmp; }); else await Task.Delay(RetryDelay * i); }
     }
 
     private static void CacheImage(string url, ImageSource image)
@@ -365,14 +442,27 @@ public sealed partial class VideoCard : UserControl, IDisposable
         if (_isDisposed) return;
         _isDisposed = true;
         Loaded -= OnLoaded;
-        ActualThemeChanged -= OnActualThemeChanged;
-        CoverImage.Source = null;
-        if (_avatarPic is not null) _avatarPic.ProfilePicture = null;
+        Unloaded -= OnUnloaded;
+        if (_themeEventSubscribed)
+        {
+            ActualThemeChanged -= OnActualThemeChanged;
+            _themeEventSubscribed = false;
+        }
+
+        _imageLoadVersion++;
+        ReleaseCurrentImages();
         CardBorder.ContextFlyout = null;
         CoverTapped = null;
         ViewLaterClicked = null;
         CreatorAvatarClicked = null;
         IsCreatorFollowedAsync = null;
+        CardMenuFlyoutFactory = null;
+    }
+
+    private void ReleaseCurrentImages()
+    {
+        CoverImage.Source = null;
+        if (_avatarPic is not null) _avatarPic.ProfilePicture = null;
     }
 
     private static IconElement MakeMenuIcon(string data) => (IconElement)XamlReader.Load($$"""<PathIcon xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Width="24" Height="24" Data="{{data}}" />""");

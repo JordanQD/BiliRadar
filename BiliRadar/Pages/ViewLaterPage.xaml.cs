@@ -8,6 +8,7 @@ using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Markup;
 using Microsoft.UI.Xaml.Media;
 using System;
+using System.Collections.Specialized;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,8 +22,10 @@ public sealed partial class ViewLaterPage : Page, IMainPanelPage, IDisposable
     private const string PersonDeleteIconData = "M17.5 12C20.5375661 12 23 14.4624339 23 17.5C23 20.5375661 20.5375661 23 17.5 23C14.4624339 23 12 20.5375661 12 17.5C12 14.4624339 14.4624339 12 17.5 12ZM12.0222607 13.9993086C11.7255613 14.4626083 11.4860296 14.9660345 11.3136172 15.4996352L4.25354153 15.499921C3.83932796 15.499921 3.50354153 15.8357075 3.50354153 16.249921L3.50354153 17.1572408C3.50354153 17.8128951 3.78953221 18.4359296 4.28670709 18.8633654C5.5447918 19.9450082 7.44080155 20.5010712 10 20.5010712C10.598839 20.5010712 11.1614445 20.4706245 11.6881394 20.4101192C11.9370538 20.9102887 12.2508544 21.3740111 12.6170965 21.7904935C11.8149076 21.9312924 10.9419626 22.0010712 10 22.0010712C7.11050247 22.0010712 4.87168436 21.3444691 3.30881727 20.0007885C2.48019625 19.2883988 2.00354153 18.2500002 2.00354153 17.1572408L2.00354153 16.249921C2.00354153 15.0072804 3.01090084 13.999921 4.25354153 13.999921L12.0222607 13.9993086ZM15.0930472 14.9662824L15.0237993 15.0241379L14.9659438 15.0933858C14.8478223 15.2638954 14.8478223 15.4914871 14.9659438 15.6619968L15.0237993 15.7312446L16.7933527 17.5006913L15.0263884 19.2674911L14.968533 19.3367389C14.8504114 19.5072486 14.8504114 19.7348403 14.968533 19.9053499L15.0263884 19.9745978L15.0956363 20.0324533C15.2661459 20.1505748 15.4937377 20.1505748 15.6642473 20.0324533L15.7334952 19.9745978L17.5003527 18.2076913L19.2693951 19.9768405L19.338643 20.0346959C19.5091526 20.1528175 19.7367444 20.1528175 19.907254 20.0346959L19.9765019 19.9768405L20.0343574 19.9075926C20.1524789 19.737083 20.1524789 19.5094912 20.0343574 19.3389816L19.9765019 19.2697337L18.2073527 17.5006913L19.9792686 15.7312918L20.0371241 15.6620439C20.1552456 15.4915343 20.1552456 15.2639425 20.0371241 15.0934329L19.9792686 15.024185L19.9100208 14.9663296C19.7395111 14.848208 19.5119194 14.848208 19.3414098 14.9663296L19.2721619 15.024185L17.5003527 16.7936913L15.7309061 15.0241379L15.6616582 14.9662824C15.5155071 14.8650354 15.3274181 14.8505715 15.1692847 14.9228908L15.0930472 14.9662824ZM10 2.0046246C12.7614237 2.0046246 15 4.24320085 15 7.0046246C15 9.76604835 12.7614237 12.0046246 10 12.0046246C7.23857625 12.0046246 5 9.76604835 5 7.0046246C5 4.24320085 7.23857625 2.0046246 10 2.0046246ZM10 3.5046246C8.06700338 3.5046246 6.5 5.07162798 6.5 7.0046246C6.5 8.93762123 8.06700338 10.5046246 10 10.5046246C11.9329966 10.5046246 13.5 8.93762123 13.5 7.0046246C13.5 5.07162798 11.9329966 3.5046246 10 3.5046246Z";
 
     private MainPanelSession? _session;
+    private ScrollViewer? _viewLaterScrollViewer;
     private CancellationToken _flyoutCancellationToken;
     private bool _isResettingScrollPosition;
+    private bool _hasViewLaterLoadCompleted;
     private bool _isDisposed;
 
     public ViewLaterPage()
@@ -35,12 +38,14 @@ public sealed partial class ViewLaterPage : Page, IMainPanelPage, IDisposable
         if (_session is not null)
         {
             _session.ViewLaterRefreshed -= OnViewLaterRefreshed;
-            _session.CollectionAdded -= OnCollectionAdded;
+            _session.ViewLaterItems.CollectionChanged -= OnViewLaterItemsCollectionChanged;
         }
 
         _session = session;
         _session.ViewLaterRefreshed += OnViewLaterRefreshed;
-        _session.CollectionAdded += OnCollectionAdded;
+        _session.ViewLaterItems.CollectionChanged += OnViewLaterItemsCollectionChanged;
+        ViewLaterListView.ItemsSource = _session.ViewLaterItems;
+        UpdateEmptyState();
     }
 
     public Task ActivateAsync(CancellationToken cancellationToken = default)
@@ -55,48 +60,61 @@ public sealed partial class ViewLaterPage : Page, IMainPanelPage, IDisposable
     {
         DispatcherQueue.TryEnqueue(() =>
         {
-            if (!_isDisposed) RenderViewLaterCards();
+            if (_isDisposed) return;
+            _hasViewLaterLoadCompleted = true;
+            RenderViewLaterCards();
         });
     }
 
-    private void OnCollectionAdded(object? sender, VideoUpdateRow row)
+    private void OnViewLaterItemsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        if (_session is null) return;
         DispatcherQueue.TryEnqueue(() =>
         {
-            if (_isDisposed) return;
-            ViewLaterCardsPanel.Children.Add(CreateVideoCardControl(row));
-            ViewLaterEmptyPanel.Visibility = Visibility.Collapsed;
+            if (!_isDisposed) UpdateEmptyState();
         });
     }
 
     private void RenderViewLaterCards()
     {
-        if (_session is null || _isDisposed) return;
-        ClearPanelChildren(ViewLaterCardsPanel);
-        ViewLaterEmptyPanel.Visibility = _session.ViewLaterItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-        foreach (var item in _session.ViewLaterItems)
-            ViewLaterCardsPanel.Children.Add(CreateVideoCardControl(item));
+        UpdateEmptyState();
     }
 
-    private VideoCard CreateVideoCardControl(VideoUpdateRow item)
+    private void UpdateEmptyState()
     {
-        var relationActionMode = _session?.GetCreatorRelationActionMode(item)
-            ?? CreatorRelationActionMode.Unfollow;
-        var card = new VideoCard
+        if (_session is null || _isDisposed) return;
+        ViewLaterEmptyPanel.Visibility = _hasViewLaterLoadCompleted && _session.ViewLaterItems.Count == 0
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
+
+    private void ViewLaterVideoCard_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not VideoCard card) return;
+
+        card.IsCreatorFollowedAsync = _session is not null
+            ? mid => _session.IsCreatorFollowedAsync(mid)
+            : null;
+        card.CardMenuFlyoutFactory = item =>
         {
-            Item = item,
-            ViewLaterButtonMode = ViewLaterButtonMode.Remove,
-            ShowMetaTime = false,
-            IsCreatorFollowedAsync = _session is not null
-                ? mid => _session.IsCreatorFollowedAsync(mid)
-                : null,
+            var relationActionMode = _session?.GetCreatorRelationActionMode(item)
+                ?? CreatorRelationActionMode.Unfollow;
+            return CreateVideoCardMenuFlyout(item, relationActionMode);
         };
-        card.CardMenuFlyout = CreateVideoCardMenuFlyout(item, relationActionMode);
-        card.CoverTapped += (_, row) => _ = LaunchVideoAsync(row);
-        card.CreatorAvatarClicked += (_, row) => _ = LaunchCreatorSpaceAsync(row);
-        card.ViewLaterClicked += (_, row) => HandleRemoveViewLaterClick(row);
-        return card;
+    }
+
+    private void VideoCard_CoverTapped(object sender, VideoUpdateRow row)
+    {
+        _ = LaunchVideoAsync(row);
+    }
+
+    private void VideoCard_CreatorAvatarClicked(object sender, VideoUpdateRow row)
+    {
+        _ = LaunchCreatorSpaceAsync(row);
+    }
+
+    private void VideoCard_ViewLaterClicked(object sender, VideoUpdateRow row)
+    {
+        HandleRemoveViewLaterClick(row);
     }
 
     private async void HandleRemoveViewLaterClick(VideoUpdateRow item)
@@ -105,36 +123,14 @@ public sealed partial class ViewLaterPage : Page, IMainPanelPage, IDisposable
         try
         {
             await _session.RemoveFromViewLaterAsync(item.Aid);
-
-            var index = IndexOfVideoCardInPanel(item);
-            if (index >= 0)
-            {
-                if (ViewLaterCardsPanel.Children[index] is IDisposable oldCard)
-                    oldCard.Dispose();
-                ViewLaterCardsPanel.Children.RemoveAt(index);
-            }
-
             _session.RemoveViewLaterItem(item);
-
-            ViewLaterEmptyPanel.Visibility = _session.ViewLaterItems.Count == 0
-                ? Visibility.Visible
-                : Visibility.Collapsed;
+            UpdateEmptyState();
             _session.ShowStatus(LocalizationHelper.GetString("RemovedFromViewLater"), InfoBarSeverity.Success);
         }
         catch (Exception ex)
         {
             _session.ShowStatus(LocalizationHelper.Format("RemoveFromViewLaterFailed", ex.Message), InfoBarSeverity.Error);
         }
-    }
-
-    private int IndexOfVideoCardInPanel(VideoUpdateRow item)
-    {
-        for (var i = 0; i < ViewLaterCardsPanel.Children.Count; i++)
-        {
-            if (ViewLaterCardsPanel.Children[i] is VideoCard card && card.Item == item)
-                return i;
-        }
-        return -1;
     }
 
     private MenuFlyout CreateVideoCardMenuFlyout(VideoUpdateRow item, CreatorRelationActionMode relationActionMode)
@@ -348,11 +344,23 @@ public sealed partial class ViewLaterPage : Page, IMainPanelPage, IDisposable
         await Launcher.LaunchUriAsync(new Uri($"https://space.bilibili.com/{item.CreatorMid}"));
     }
 
+    private void ViewLaterListView_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (_viewLaterScrollViewer is not null) return;
+
+        _viewLaterScrollViewer = FindDescendant<ScrollViewer>(ViewLaterListView);
+        if (_viewLaterScrollViewer is not null)
+        {
+            _viewLaterScrollViewer.ViewChanged += ViewLaterScrollViewer_ViewChanged;
+        }
+    }
+
     private async void ViewLaterScrollViewer_ViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
     {
         if (e.IsIntermediate || _isResettingScrollPosition) return;
+        if (_viewLaterScrollViewer is null) return;
 
-        var distanceToBottom = ViewLaterScrollViewer.ScrollableHeight - ViewLaterScrollViewer.VerticalOffset;
+        var distanceToBottom = _viewLaterScrollViewer.ScrollableHeight - _viewLaterScrollViewer.VerticalOffset;
         if (distanceToBottom <= 40 && _session is not null)
             await _session.LoadMoreViewLaterAsync(_flyoutCancellationToken);
     }
@@ -360,8 +368,8 @@ public sealed partial class ViewLaterPage : Page, IMainPanelPage, IDisposable
     public void ResetScrollPosition()
     {
         _isResettingScrollPosition = true;
-        ViewLaterScrollViewer.ChangeView(null, 0, null, true);
-        ViewLaterScrollViewer.DispatcherQueue.TryEnqueue(() => _isResettingScrollPosition = false);
+        _viewLaterScrollViewer?.ChangeView(null, 0, null, true);
+        ViewLaterListView.DispatcherQueue.TryEnqueue(() => _isResettingScrollPosition = false);
     }
 
     private static IconElement CreatePathIcon(string data)
@@ -383,20 +391,33 @@ public sealed partial class ViewLaterPage : Page, IMainPanelPage, IDisposable
         if (_session is not null)
         {
             _session.ViewLaterRefreshed -= OnViewLaterRefreshed;
-            _session.CollectionAdded -= OnCollectionAdded;
+            _session.ViewLaterItems.CollectionChanged -= OnViewLaterItemsCollectionChanged;
             _session = null;
         }
 
-        ClearPanelChildren(ViewLaterCardsPanel);
-    }
-
-    private static void ClearPanelChildren(Panel panel)
-    {
-        foreach (var child in panel.Children.OfType<IDisposable>().ToList())
+        if (_viewLaterScrollViewer is not null)
         {
-            child.Dispose();
+            _viewLaterScrollViewer.ViewChanged -= ViewLaterScrollViewer_ViewChanged;
+            _viewLaterScrollViewer = null;
         }
 
-        panel.Children.Clear();
+        ViewLaterListView.ItemsSource = null;
+    }
+
+    private static T? FindDescendant<T>(DependencyObject root)
+        where T : DependencyObject
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+        {
+            var child = VisualTreeHelper.GetChild(root, index);
+            if (child is T match)
+                return match;
+
+            var descendant = FindDescendant<T>(child);
+            if (descendant is not null)
+                return descendant;
+        }
+
+        return null;
     }
 }

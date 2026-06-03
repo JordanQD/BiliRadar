@@ -12,6 +12,7 @@ using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Linq;
 using System.Numerics;
 using System.Runtime.InteropServices.WindowsRuntime;
@@ -30,9 +31,11 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
     private const double RemoteRoundedImageCornerRadius = 22;
 
     private MainPanelSession? _session;
+    private ScrollViewer? _updatesScrollViewer;
     private CancellationToken _flyoutCancellationToken;
     private bool _isResettingScrollPosition;
     private bool _isLiveSectionExpanded;
+    private bool _hasUpdatesLoadCompleted;
     private int _liveSectionAnimationVersion;
     private bool _isDisposed;
 
@@ -48,13 +51,15 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
         {
             _session.UpdatesRefreshed -= OnUpdatesRefreshed;
             _session.FollowingListRefreshed -= OnFollowingListRefreshed;
-            _session.CollectionAdded -= OnCollectionAdded;
+            _session.Updates.CollectionChanged -= OnUpdatesCollectionChanged;
         }
 
         _session = session;
         _session.UpdatesRefreshed += OnUpdatesRefreshed;
         _session.FollowingListRefreshed += OnFollowingListRefreshed;
-        _session.CollectionAdded += OnCollectionAdded;
+        _session.Updates.CollectionChanged += OnUpdatesCollectionChanged;
+        UpdatesListView.ItemsSource = _session.Updates;
+        UpdateEmptyState();
     }
 
     public Task ActivateAsync(CancellationToken cancellationToken = default)
@@ -86,7 +91,9 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
     {
         DispatcherQueue.TryEnqueue(() =>
         {
-            if (!_isDisposed) RenderVideoCards();
+            if (_isDisposed) return;
+            _hasUpdatesLoadCompleted = true;
+            RenderVideoCards();
         });
     }
 
@@ -98,12 +105,11 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
         });
     }
 
-    private void OnCollectionAdded(object? sender, VideoUpdateRow row)
+    private void OnUpdatesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         DispatcherQueue.TryEnqueue(() =>
         {
-            if (_isDisposed) return;
-            VideoCardsPanel.Children.Add(CreateVideoCardControl(row));
+            if (!_isDisposed) UpdateEmptyState();
         });
     }
 
@@ -180,44 +186,46 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
 
     private void RenderVideoCards()
     {
-        if (_session is null || _isDisposed) return;
-        ClearPanelChildren(VideoCardsPanel);
-        if (_session.Updates.Count == 0)
-        {
-            VideoCardsPanel.Children.Add(new TextBlock
-            {
-                Text = LocalizationHelper.GetString("NoVideoUpdates"),
-                FontSize = 13,
-                Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
-            });
-            return;
-        }
-
-        foreach (var item in _session.Updates)
-            VideoCardsPanel.Children.Add(CreateVideoCardControl(item));
+        UpdateEmptyState();
     }
 
-    private VideoCard CreateVideoCardControl(
-        VideoUpdateRow item,
-        ViewLaterButtonMode viewLaterButtonMode = ViewLaterButtonMode.Add,
-        CreatorRelationActionMode relationActionMode = CreatorRelationActionMode.Unfollow)
+    private void UpdateEmptyState()
     {
-        var card = new VideoCard
+        if (_session is null || _isDisposed) return;
+        UpdatesEmptyText.Text = LocalizationHelper.GetString("NoVideoUpdates");
+        UpdatesEmptyText.Visibility = _hasUpdatesLoadCompleted && _session.Updates.Count == 0
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
+
+    private void UpdateVideoCard_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not VideoCard card) return;
+
+        card.IsCreatorFollowedAsync = _session is not null
+            ? mid => _session.IsCreatorFollowedAsync(mid)
+            : null;
+        card.CardMenuFlyoutFactory = item =>
         {
-            Item = item,
-            ViewLaterButtonMode = viewLaterButtonMode,
-            ShowMetaTime = true,
-            IsCreatorFollowedAsync = _session is not null
-                ? mid => _session.IsCreatorFollowedAsync(mid)
-                : null,
+            var relationActionMode = _session?.GetCreatorRelationActionMode(item)
+                ?? CreatorRelationActionMode.Unfollow;
+            return CreateVideoCardMenuFlyout(item, relationActionMode);
         };
-        card.CardMenuFlyout = CreateVideoCardMenuFlyout(item, relationActionMode);
-        card.CoverTapped += (_, row) => _ = LaunchVideoAsync(row);
-        card.CreatorAvatarClicked += (_, row) => _ = LaunchCreatorSpaceAsync(row);
-        card.ViewLaterClicked += viewLaterButtonMode == ViewLaterButtonMode.Remove
-            ? (_, row) => HandleRemoveViewLaterClick(row)
-            : (_, row) => HandleAddToViewLaterClick(row);
-        return card;
+    }
+
+    private void VideoCard_CoverTapped(object sender, VideoUpdateRow row)
+    {
+        _ = LaunchVideoAsync(row);
+    }
+
+    private void VideoCard_CreatorAvatarClicked(object sender, VideoUpdateRow row)
+    {
+        _ = LaunchCreatorSpaceAsync(row);
+    }
+
+    private void VideoCard_ViewLaterClicked(object sender, VideoUpdateRow row)
+    {
+        HandleAddToViewLaterClick(row);
     }
 
     private async void HandleAddToViewLaterClick(VideoUpdateRow item)
@@ -662,11 +670,23 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
         await Launcher.LaunchUriAsync(new Uri($"https://space.bilibili.com/{item.CreatorMid}"));
     }
 
-    private async void VideoScrollViewer_ViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
+    private void UpdatesListView_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (_updatesScrollViewer is not null) return;
+
+        _updatesScrollViewer = FindDescendant<ScrollViewer>(UpdatesListView);
+        if (_updatesScrollViewer is not null)
+        {
+            _updatesScrollViewer.ViewChanged += UpdatesScrollViewer_ViewChanged;
+        }
+    }
+
+    private async void UpdatesScrollViewer_ViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
     {
         if (e.IsIntermediate || _isResettingScrollPosition) return;
+        if (_updatesScrollViewer is null) return;
 
-        var distanceToBottom = VideoScrollViewer.ScrollableHeight - VideoScrollViewer.VerticalOffset;
+        var distanceToBottom = _updatesScrollViewer.ScrollableHeight - _updatesScrollViewer.VerticalOffset;
         if (distanceToBottom <= 40 && _session is not null)
             await _session.LoadMoreUpdatesAsync(_flyoutCancellationToken);
     }
@@ -674,8 +694,8 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
     public void ResetScrollPosition()
     {
         _isResettingScrollPosition = true;
-        VideoScrollViewer.ChangeView(null, 0, null, true);
-        VideoScrollViewer.DispatcherQueue.TryEnqueue(() => _isResettingScrollPosition = false);
+        _updatesScrollViewer?.ChangeView(null, 0, null, true);
+        UpdatesListView.DispatcherQueue.TryEnqueue(() => _isResettingScrollPosition = false);
     }
 
     private static FrameworkElement CreateRemoteRoundedImage(string url, double size, double cornerRadius)
@@ -769,21 +789,34 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
         {
             _session.UpdatesRefreshed -= OnUpdatesRefreshed;
             _session.FollowingListRefreshed -= OnFollowingListRefreshed;
-            _session.CollectionAdded -= OnCollectionAdded;
+            _session.Updates.CollectionChanged -= OnUpdatesCollectionChanged;
             _session = null;
         }
 
-        ClearPanelChildren(VideoCardsPanel);
+        if (_updatesScrollViewer is not null)
+        {
+            _updatesScrollViewer.ViewChanged -= UpdatesScrollViewer_ViewChanged;
+            _updatesScrollViewer = null;
+        }
+
+        UpdatesListView.ItemsSource = null;
         LiveCreatorCardsPanel.Children.Clear();
     }
 
-    private static void ClearPanelChildren(Panel panel)
+    private static T? FindDescendant<T>(DependencyObject root)
+        where T : DependencyObject
     {
-        foreach (var child in panel.Children.OfType<IDisposable>().ToList())
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
         {
-            child.Dispose();
+            var child = VisualTreeHelper.GetChild(root, index);
+            if (child is T match)
+                return match;
+
+            var descendant = FindDescendant<T>(child);
+            if (descendant is not null)
+                return descendant;
         }
 
-        panel.Children.Clear();
+        return null;
     }
 }
