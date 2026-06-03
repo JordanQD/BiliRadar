@@ -40,6 +40,9 @@
   <data name="GeneralDefaultOpenFollowingItem.Content" xml:space="preserve"><value>关注</value></data>
   <data name="GeneralDefaultOpenHistoryItem.Content" xml:space="preserve"><value>历史</value></data>
   <data name="GeneralDefaultOpenViewLaterItem.Content" xml:space="preserve"><value>稍后再看</value></data>
+  <data name="GeneralSaveMainPanelPositionCard.Header" xml:space="preserve"><value>保留弹窗位置</value></data>
+  <data name="GeneralSaveMainPanelPositionCard.Description" xml:space="preserve"><value>关闭托盘弹窗后保留当前页面和直播区域展开状态。关闭时，每次打开都会按默认设置复位。</value></data>
+  <data name="GeneralSaveMainPanelPositionSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>保留弹窗位置</value></data>
   <data name="GeneralLoginStatusCard.Header" xml:space="preserve"><value>登录状态</value></data>
   <data name="GeneralLoginStatusCard.Description" xml:space="preserve"><value>登录 Bilibili 账号后可以获取关注动态。</value></data>
   <data name="GeneralAccountNameText.Text" xml:space="preserve"><value>未登录</value></data>

@@ -29,6 +29,7 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
     private const string PersonDeleteIconData = "M17.5 12C20.5375661 12 23 14.4624339 23 17.5C23 20.5375661 20.5375661 23 17.5 23C14.4624339 23 12 20.5375661 12 17.5C12 14.4624339 14.4624339 12 17.5 12ZM12.0222607 13.9993086C11.7255613 14.4626083 11.4860296 14.9660345 11.3136172 15.4996352L4.25354153 15.499921C3.83932796 15.499921 3.50354153 15.8357075 3.50354153 16.249921L3.50354153 17.1572408C3.50354153 17.8128951 3.78953221 18.4359296 4.28670709 18.8633654C5.5447918 19.9450082 7.44080155 20.5010712 10 20.5010712C10.598839 20.5010712 11.1614445 20.4706245 11.6881394 20.4101192C11.9370538 20.9102887 12.2508544 21.3740111 12.6170965 21.7904935C11.8149076 21.9312924 10.9419626 22.0010712 10 22.0010712C7.11050247 22.0010712 4.87168436 21.3444691 3.30881727 20.0007885C2.48019625 19.2883988 2.00354153 18.2500002 2.00354153 17.1572408L2.00354153 16.249921C2.00354153 15.0072804 3.01090084 13.999921 4.25354153 13.999921L12.0222607 13.9993086ZM15.0930472 14.9662824L15.0237993 15.0241379L14.9659438 15.0933858C14.8478223 15.2638954 14.8478223 15.4914871 14.9659438 15.6619968L15.0237993 15.7312446L16.7933527 17.5006913L15.0263884 19.2674911L14.968533 19.3367389C14.8504114 19.5072486 14.8504114 19.7348403 14.968533 19.9053499L15.0263884 19.9745978L15.0956363 20.0324533C15.2661459 20.1505748 15.4937377 20.1505748 15.6642473 20.0324533L15.7334952 19.9745978L17.5003527 18.2076913L19.2693951 19.9768405L19.338643 20.0346959C19.5091526 20.1528175 19.7367444 20.1528175 19.907254 20.0346959L19.9765019 19.9768405L20.0343574 19.9075926C20.1524789 19.737083 20.1524789 19.5094912 20.0343574 19.3389816L19.9765019 19.2697337L18.2073527 17.5006913L19.9792686 15.7312918L20.0371241 15.6620439C20.1552456 15.4915343 20.1552456 15.2639425 20.0371241 15.0934329L19.9792686 15.024185L19.9100208 14.9663296C19.7395111 14.848208 19.5119194 14.848208 19.3414098 14.9663296L19.2721619 15.024185L17.5003527 16.7936913L15.7309061 15.0241379L15.6616582 14.9662824C15.5155071 14.8650354 15.3274181 14.8505715 15.1692847 14.9228908L15.0930472 14.9662824ZM10 2.0046246C12.7614237 2.0046246 15 4.24320085 15 7.0046246C15 9.76604835 12.7614237 12.0046246 10 12.0046246C7.23857625 12.0046246 5 9.76604835 5 7.0046246C5 4.24320085 7.23857625 2.0046246 10 2.0046246ZM10 3.5046246C8.06700338 3.5046246 6.5 5.07162798 6.5 7.0046246C6.5 8.93762123 8.06700338 10.5046246 10 10.5046246C11.9329966 10.5046246 13.5 8.93762123 13.5 7.0046246C13.5 5.07162798 11.9329966 3.5046246 10 3.5046246Z";
     private const double RemoteRoundedImageSize = 44;
     private const double RemoteRoundedImageCornerRadius = 22;
+    private const int RemoteRoundedImageDecodePixelWidth = 88;
 
     private MainPanelSession? _session;
     private ScrollViewer? _updatesScrollViewer;
@@ -37,6 +38,7 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
     private bool _isLiveSectionExpanded;
     private bool _hasUpdatesLoadCompleted;
     private int _liveSectionAnimationVersion;
+    private int _liveImageLoadVersion;
     private bool _isDisposed;
 
     public FollowingPage()
@@ -70,6 +72,11 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
         return _session is not null
             ? _session.RefreshOnShowAsync(cancellationToken)
             : Task.CompletedTask;
+    }
+
+    public void ApplyOpenSettings()
+    {
+        ApplyLiveSectionDisplayMode(AppSettings.LiveSectionDisplayMode);
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -648,7 +655,7 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
         UpdatesListView.DispatcherQueue.TryEnqueue(() => _isResettingScrollPosition = false);
     }
 
-    private static FrameworkElement CreateRemoteRoundedImage(string url, double size, double cornerRadius)
+    private FrameworkElement CreateRemoteRoundedImage(string url, double size, double cornerRadius)
     {
         var imageBrush = new ImageBrush
         {
@@ -662,11 +669,15 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
             Background = imageBrush,
         };
 
-        _ = LoadRemoteImageBrushAsync(imageBrush, url);
+        var imageLoadVersion = _liveImageLoadVersion;
+        _ = LoadRemoteImageBrushAsync(
+            imageBrush,
+            url,
+            () => !_isDisposed && imageLoadVersion == _liveImageLoadVersion);
         return imageFrame;
     }
 
-    private static async Task LoadRemoteImageBrushAsync(ImageBrush imageBrush, string url)
+    private static async Task LoadRemoteImageBrushAsync(ImageBrush imageBrush, string url, Func<bool> isCurrent)
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return;
 
@@ -684,18 +695,21 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
 
                 imageBrush.DispatcherQueue.TryEnqueue(async () =>
                 {
+                    if (!isCurrent()) return;
                     try
                     {
                         using var stream = new InMemoryRandomAccessStream();
                         await stream.WriteAsync(bytes.AsBuffer());
                         stream.Seek(0);
-                        var bitmap = new BitmapImage();
+                        var bitmap = new BitmapImage { DecodePixelWidth = RemoteRoundedImageDecodePixelWidth };
                         await bitmap.SetSourceAsync(stream);
+                        if (!isCurrent()) return;
                         imageBrush.ImageSource = bitmap;
                     }
                     catch
                     {
-                        imageBrush.ImageSource = new BitmapImage(uri);
+                        if (!isCurrent()) return;
+                        imageBrush.ImageSource = CreateDecodedBitmapImage(uri);
                     }
                 });
                 return;
@@ -705,7 +719,10 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
                 if (attempt == 3)
                 {
                     imageBrush.DispatcherQueue.TryEnqueue(() =>
-                        imageBrush.ImageSource = new BitmapImage(uri));
+                    {
+                        if (isCurrent())
+                            imageBrush.ImageSource = CreateDecodedBitmapImage(uri);
+                    });
                 }
                 else
                 {
@@ -726,6 +743,15 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
             """);
     }
 
+    private static BitmapImage CreateDecodedBitmapImage(Uri uri)
+    {
+        return new BitmapImage
+        {
+            DecodePixelWidth = RemoteRoundedImageDecodePixelWidth,
+            UriSource = uri,
+        };
+    }
+
     public void Dispose()
     {
         if (_isDisposed) return;
@@ -734,7 +760,15 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
         Loaded -= OnLoaded;
         ActualThemeChanged -= OnActualThemeChanged;
         _liveSectionAnimationVersion++;
+        _liveImageLoadVersion++;
 
+        Deactivate();
+        DisposeVideoCards(UpdatesListView);
+        LiveCreatorItemsRepeater.ItemTemplate = null;
+    }
+
+    public void Deactivate()
+    {
         if (_session is not null)
         {
             _session.UpdatesRefreshed -= OnUpdatesRefreshed;
@@ -751,6 +785,18 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
 
         UpdatesListView.ItemsSource = null;
         LiveCreatorItemsRepeater.ItemsSource = null;
+    }
+
+    private static void DisposeVideoCards(DependencyObject root)
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+        {
+            var child = VisualTreeHelper.GetChild(root, index);
+            if (child is VideoCard card)
+                card.Dispose();
+
+            DisposeVideoCards(child);
+        }
     }
 
     private static T? FindDescendant<T>(DependencyObject root)

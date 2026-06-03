@@ -24,6 +24,7 @@ public static class AppSettings
     private const string RunningLaunchActionKey = "RunningLaunchAction";
     private const string CustomLaunchWebPageUrlKey = "CustomLaunchWebPageUrl";
     private const string DefaultOpenPageKey = "DefaultOpenPage";
+    private const string SaveMainPanelPositionKey = "SaveMainPanelPosition";
     private const string LiveSectionDisplayModeKey = "LiveSectionDisplayMode";
     private const string MainPanelHeightKey = "MainPanelHeight";
     private const string CustomNotificationCreatorsKey = "CustomNotificationCreators";
@@ -142,6 +143,12 @@ public static class AppSettings
                 : DefaultOpenPage.Following;
         }
         set => LocalSettings.Values[DefaultOpenPageKey] = (int)value;
+    }
+
+    public static bool SaveMainPanelPosition
+    {
+        get => ReadBool(SaveMainPanelPositionKey, false);
+        set => LocalSettings.Values[SaveMainPanelPositionKey] = value;
     }
 
     public static LiveSectionDisplayMode LiveSectionDisplayMode

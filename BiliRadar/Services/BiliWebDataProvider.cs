@@ -24,9 +24,11 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
     private const string RemoveFromViewLaterUrl = "https://api.bilibili.com/x/v2/history/toview/del";
     internal const string BrowserUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
     private const int RequestMaxAttemptCount = 3;
+    private const int VideoListPageSize = 12;
     private static readonly TimeSpan RequestRetryDelay = TimeSpan.FromMilliseconds(500);
     private readonly CookieStore _cookieStore;
     private readonly HttpClient _httpClient;
+    private readonly Queue<BiliVideoUpdate> _pendingVideoUpdates = new();
     private string _nextOffset = string.Empty;
     private bool _hasMoreUpdates;
     private long _historyNextMax;
@@ -120,7 +122,8 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
         var page = await TryGetVideoUpdatesAsync(CreateAllMomentsUrl(), cookie, cancellationToken).ConfigureAwait(false);
         _nextOffset = page.NextOffset;
         _hasMoreUpdates = page.HasMore;
-        return page.Items;
+        _pendingVideoUpdates.Clear();
+        return TakeVideoUpdatePage(page.Items);
     }
 
     public async Task<BiliCreator?> GetCreatorAsync(long mid, CancellationToken cancellationToken = default)
@@ -262,10 +265,21 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
             return new BiliVideoUpdatePage(Array.Empty<BiliVideoUpdate>(), _nextOffset, false);
         }
 
+        if (_pendingVideoUpdates.Count > 0)
+        {
+            return new BiliVideoUpdatePage(
+                TakePendingVideoUpdates(),
+                _nextOffset,
+                _pendingVideoUpdates.Count > 0 || _hasMoreUpdates);
+        }
+
         var page = await TryGetVideoUpdatesAsync(CreateAllMomentsUrl(_nextOffset), cookie, cancellationToken).ConfigureAwait(false);
         _nextOffset = page.NextOffset;
         _hasMoreUpdates = page.HasMore;
-        return page;
+        return new BiliVideoUpdatePage(
+            TakeVideoUpdatePage(page.Items),
+            _nextOffset,
+            _pendingVideoUpdates.Count > 0 || _hasMoreUpdates);
     }
 
     public async Task<BiliVideoHistoryPage> GetRecentVideoHistoryAsync(CancellationToken cancellationToken = default)
@@ -586,12 +600,43 @@ public sealed class BiliWebDataProvider : IBiliDataProvider, IDisposable
 
     private static string CreateHistoryCursorUrl(long max = 0, long viewAt = 0)
     {
-        return $"{HistoryCursorUrl}?max={max}&view_at={viewAt}&business=archive";
+        return $"{HistoryCursorUrl}?max={max}&view_at={viewAt}&business=archive&ps={VideoListPageSize}";
     }
 
     private static string CreateViewLaterListUrl(int pageNumber)
     {
-        return $"{ViewLaterListUrl}?pn={pageNumber}&ps=40";
+        return $"{ViewLaterListUrl}?pn={pageNumber}&ps={VideoListPageSize}";
+    }
+
+    private IReadOnlyList<BiliVideoUpdate> TakeVideoUpdatePage(IReadOnlyList<BiliVideoUpdate> items)
+    {
+        if (items.Count <= VideoListPageSize)
+        {
+            return items;
+        }
+
+        var page = new List<BiliVideoUpdate>(VideoListPageSize);
+        for (var index = 0; index < items.Count; index++)
+        {
+            if (index < VideoListPageSize)
+                page.Add(items[index]);
+            else
+                _pendingVideoUpdates.Enqueue(items[index]);
+        }
+
+        return page;
+    }
+
+    private IReadOnlyList<BiliVideoUpdate> TakePendingVideoUpdates()
+    {
+        var count = Math.Min(VideoListPageSize, _pendingVideoUpdates.Count);
+        var page = new List<BiliVideoUpdate>(count);
+        for (var index = 0; index < count; index++)
+        {
+            page.Add(_pendingVideoUpdates.Dequeue());
+        }
+
+        return page;
     }
 
     private static BiliVideoUpdate? TryCreateVideoUpdate(JsonElement item)

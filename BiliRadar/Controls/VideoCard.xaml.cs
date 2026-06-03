@@ -29,6 +29,8 @@ public sealed partial class VideoCard : UserControl, IDisposable
     private const string UnfollowIcon = "M17.5 12C20.5376 12 23 14.4624 23 17.5C23 20.5376 20.5376 23 17.5 23C14.4624 23 12 20.5376 12 17.5C12 14.4624 14.4624 12 17.5 12ZM12.0223 13.9993C11.7256 14.4626 11.486 14.966 11.3136 15.4996L4.2535 15.4999C3.8393 15.4999 3.5035 15.8357 3.5035 16.2499V17.1572C3.5035 17.8129 3.7895 18.4359 4.2867 18.8634C5.5448 19.945 7.4408 20.5011 10 20.5011C10.5988 20.5011 11.1614 20.4706 11.6881 20.4101C11.9371 20.9103 12.2509 21.374 12.6171 21.7905C11.8149 21.9313 10.942 22.0011 10 22.0011C7.1105 22.0011 4.8717 21.3445 3.3088 20.0008C2.4802 19.2884 2.0035 18.25 2.0035 17.1572V16.2499C2.0035 15.0073 3.0109 13.9999 4.2535 13.9999L12.0223 13.9993ZM15.093 14.9663L15.0238 15.0241L14.9659 15.0934C14.8478 15.2639 14.8478 15.4915 14.9659 15.662L15.0238 15.7312L16.7934 17.5007L15.0264 19.2675L14.9685 19.3367C14.8504 19.5072 14.8504 19.7348 14.9685 19.9053L15.0264 19.9746L15.0956 20.0325C15.2661 20.1506 15.4937 20.1506 15.6643 20.0325L15.7335 19.9746L17.5004 18.2077L19.2694 19.9768L19.3386 20.0347C19.5092 20.1528 19.7367 20.1528 19.9073 20.0347L19.9765 19.9768L20.0344 19.9076C20.1525 19.7371 20.1525 19.5095 20.0344 19.339L19.9765 19.2697L18.2074 17.5007L19.9793 15.7313L20.0371 15.662C20.1552 15.4915 20.1552 15.2639 20.0371 15.0934L19.9793 15.0242L19.9101 14.9663C19.7395 14.8482 19.5119 14.8482 19.3414 14.9663L19.2722 15.0242L17.5004 16.7937L15.7309 15.0241L15.6617 14.9663C15.5155 14.865 15.3274 14.8506 15.1693 14.9229L15.093 14.9663ZM10 2.0046C12.7614 2.0046 15 4.2432 15 7.0046C15 9.766 12.7614 12.0046 10 12.0046C7.2386 12.0046 5 9.766 5 7.0046C5 4.2432 7.2386 2.0046 10 2.0046ZM10 3.5046C8.067 3.5046 6.5 5.0716 6.5 7.0046C6.5 8.9376 8.067 10.5046 10 10.5046C11.933 10.5046 13.5 8.9376 13.5 7.0046C13.5 5.0716 11.933 3.5046 10 3.5046Z";
     private const int MaxRetries = 3;
     private const int MaxCachedImages = 96;
+    private const int CoverDecodePixelWidth = 256;
+    private const int AvatarDecodePixelWidth = 96;
     private static readonly TimeSpan RetryDelay = TimeSpan.FromMilliseconds(450);
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(12) };
     private static readonly ConcurrentDictionary<string, ImageSource> ImgCache = new(StringComparer.OrdinalIgnoreCase);
@@ -369,10 +371,10 @@ public sealed partial class VideoCard : UserControl, IDisposable
                 r.Headers.TryAddWithoutValidation("Referer", "https://www.bilibili.com/");
                 using var res = await Http.SendAsync(r); res.EnsureSuccessStatusCode();
                 var b = await res.Content.ReadAsByteArrayAsync();
-                img.DispatcherQueue.TryEnqueue(async () => { if (generation != ImgCacheGeneration || isCurrent?.Invoke() == false) return; try { using var s = new InMemoryRandomAccessStream(); await s.WriteAsync(b.AsBuffer()); s.Seek(0); var bmp = new BitmapImage(); await bmp.SetSourceAsync(s); if (isCurrent?.Invoke() == false) return; CacheImage(u.AbsoluteUri, bmp); img.Source = bmp; } catch { if (isCurrent?.Invoke() == false) return; var bmp = new BitmapImage(u); CacheImage(u.AbsoluteUri, bmp); img.Source = bmp; } });
+                img.DispatcherQueue.TryEnqueue(async () => { if (generation != ImgCacheGeneration || isCurrent?.Invoke() == false) return; try { using var s = new InMemoryRandomAccessStream(); await s.WriteAsync(b.AsBuffer()); s.Seek(0); var bmp = new BitmapImage { DecodePixelWidth = CoverDecodePixelWidth }; await bmp.SetSourceAsync(s); if (isCurrent?.Invoke() == false) return; CacheImage(u.AbsoluteUri, bmp); img.Source = bmp; } catch { if (isCurrent?.Invoke() == false) return; var bmp = CreateDecodedBitmapImage(u, CoverDecodePixelWidth); CacheImage(u.AbsoluteUri, bmp); img.Source = bmp; } });
                 return;
             }
-            catch { if (i == MaxRetries) img.DispatcherQueue.TryEnqueue(() => { if (generation != ImgCacheGeneration || isCurrent?.Invoke() == false) return; var bmp = new BitmapImage(u); CacheImage(u.AbsoluteUri, bmp); img.Source = bmp; }); else await Task.Delay(RetryDelay * i); }
+            catch { if (i == MaxRetries) img.DispatcherQueue.TryEnqueue(() => { if (generation != ImgCacheGeneration || isCurrent?.Invoke() == false) return; var bmp = CreateDecodedBitmapImage(u, CoverDecodePixelWidth); CacheImage(u.AbsoluteUri, bmp); img.Source = bmp; }); else await Task.Delay(RetryDelay * i); }
     }
 
     private static async Task LoadImgBrush(ImageBrush br, string url)
@@ -388,10 +390,10 @@ public sealed partial class VideoCard : UserControl, IDisposable
                 r.Headers.TryAddWithoutValidation("Referer", "https://www.bilibili.com/");
                 using var res = await Http.SendAsync(r); res.EnsureSuccessStatusCode();
                 var b = await res.Content.ReadAsByteArrayAsync();
-                br.DispatcherQueue.TryEnqueue(async () => { if (generation != ImgCacheGeneration) return; try { using var s = new InMemoryRandomAccessStream(); await s.WriteAsync(b.AsBuffer()); s.Seek(0); var bmp = new BitmapImage(); await bmp.SetSourceAsync(s); CacheImage(u.AbsoluteUri, bmp); br.ImageSource = bmp; } catch { var bmp = new BitmapImage(u); CacheImage(u.AbsoluteUri, bmp); br.ImageSource = bmp; } });
+                br.DispatcherQueue.TryEnqueue(async () => { if (generation != ImgCacheGeneration) return; try { using var s = new InMemoryRandomAccessStream(); await s.WriteAsync(b.AsBuffer()); s.Seek(0); var bmp = new BitmapImage { DecodePixelWidth = CoverDecodePixelWidth }; await bmp.SetSourceAsync(s); CacheImage(u.AbsoluteUri, bmp); br.ImageSource = bmp; } catch { var bmp = CreateDecodedBitmapImage(u, CoverDecodePixelWidth); CacheImage(u.AbsoluteUri, bmp); br.ImageSource = bmp; } });
                 return;
             }
-            catch { if (i == MaxRetries) br.DispatcherQueue.TryEnqueue(() => { if (generation != ImgCacheGeneration) return; var bmp = new BitmapImage(u); CacheImage(u.AbsoluteUri, bmp); br.ImageSource = bmp; }); else await Task.Delay(RetryDelay * i); }
+            catch { if (i == MaxRetries) br.DispatcherQueue.TryEnqueue(() => { if (generation != ImgCacheGeneration) return; var bmp = CreateDecodedBitmapImage(u, CoverDecodePixelWidth); CacheImage(u.AbsoluteUri, bmp); br.ImageSource = bmp; }); else await Task.Delay(RetryDelay * i); }
     }
 
     private static async Task LoadAvatar(PersonPicture personPic, string url, Func<bool>? isCurrent = null)
@@ -407,10 +409,10 @@ public sealed partial class VideoCard : UserControl, IDisposable
                 r.Headers.TryAddWithoutValidation("Referer", "https://www.bilibili.com/");
                 using var res = await Http.SendAsync(r); res.EnsureSuccessStatusCode();
                 var b = await res.Content.ReadAsByteArrayAsync();
-                personPic.DispatcherQueue.TryEnqueue(async () => { if (generation != ImgCacheGeneration || isCurrent?.Invoke() == false) return; try { using var s = new InMemoryRandomAccessStream(); await s.WriteAsync(b.AsBuffer()); s.Seek(0); var bmp = new BitmapImage(); await bmp.SetSourceAsync(s); if (isCurrent?.Invoke() == false) return; CacheImage(u.AbsoluteUri, bmp); personPic.ProfilePicture = bmp; } catch { if (isCurrent?.Invoke() == false) return; var bmp = new BitmapImage(u); CacheImage(u.AbsoluteUri, bmp); personPic.ProfilePicture = bmp; } });
+                personPic.DispatcherQueue.TryEnqueue(async () => { if (generation != ImgCacheGeneration || isCurrent?.Invoke() == false) return; try { using var s = new InMemoryRandomAccessStream(); await s.WriteAsync(b.AsBuffer()); s.Seek(0); var bmp = new BitmapImage { DecodePixelWidth = AvatarDecodePixelWidth }; await bmp.SetSourceAsync(s); if (isCurrent?.Invoke() == false) return; CacheImage(u.AbsoluteUri, bmp); personPic.ProfilePicture = bmp; } catch { if (isCurrent?.Invoke() == false) return; var bmp = CreateDecodedBitmapImage(u, AvatarDecodePixelWidth); CacheImage(u.AbsoluteUri, bmp); personPic.ProfilePicture = bmp; } });
                 return;
             }
-            catch { if (i == MaxRetries) personPic.DispatcherQueue.TryEnqueue(() => { if (generation != ImgCacheGeneration || isCurrent?.Invoke() == false) return; var bmp = new BitmapImage(u); CacheImage(u.AbsoluteUri, bmp); personPic.ProfilePicture = bmp; }); else await Task.Delay(RetryDelay * i); }
+            catch { if (i == MaxRetries) personPic.DispatcherQueue.TryEnqueue(() => { if (generation != ImgCacheGeneration || isCurrent?.Invoke() == false) return; var bmp = CreateDecodedBitmapImage(u, AvatarDecodePixelWidth); CacheImage(u.AbsoluteUri, bmp); personPic.ProfilePicture = bmp; }); else await Task.Delay(RetryDelay * i); }
     }
 
     private static void CacheImage(string url, ImageSource image)
@@ -435,6 +437,15 @@ public sealed partial class VideoCard : UserControl, IDisposable
         while (ImgCacheOrder.TryDequeue(out _))
         {
         }
+    }
+
+    private static BitmapImage CreateDecodedBitmapImage(Uri uri, int decodePixelWidth)
+    {
+        return new BitmapImage
+        {
+            DecodePixelWidth = decodePixelWidth,
+            UriSource = uri,
+        };
     }
 
     public void Dispose()

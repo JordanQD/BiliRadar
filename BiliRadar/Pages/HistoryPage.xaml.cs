@@ -386,6 +386,13 @@ public sealed partial class HistoryPage : Page, IMainPanelPage, IDisposable
         if (_isDisposed) return;
         _isDisposed = true;
 
+        Deactivate();
+        DisposeVideoCards(HistoryListView);
+        HistoryListView.ItemTemplate = null;
+    }
+
+    public void Deactivate()
+    {
         if (_session is not null)
         {
             _session.HistoryRefreshed -= OnHistoryRefreshed;
@@ -400,6 +407,18 @@ public sealed partial class HistoryPage : Page, IMainPanelPage, IDisposable
         }
 
         HistoryListView.ItemsSource = null;
+    }
+
+    private static void DisposeVideoCards(DependencyObject root)
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+        {
+            var child = VisualTreeHelper.GetChild(root, index);
+            if (child is VideoCard card)
+                card.Dispose();
+
+            DisposeVideoCards(child);
+        }
     }
 
     private static T? FindDescendant<T>(DependencyObject root)

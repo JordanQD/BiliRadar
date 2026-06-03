@@ -62,6 +62,7 @@ public sealed partial class GeneralSettingsPage : Page
         RunningLaunchActionBox.SelectedIndex = AppSettings.RunningLaunchAction == RunningLaunchAction.OpenCustomWebPage ? 1 : 0;
         CustomLaunchWebPageUrlBox.Text = AppSettings.CustomLaunchWebPageUrl;
         DefaultOpenPageBox.SelectedIndex = (int)AppSettings.DefaultOpenPage;
+        SaveMainPanelPositionSwitch.IsOn = AppSettings.SaveMainPanelPosition;
         MainPanelHeightBox.SelectedIndex = AppSettings.MainPanelHeight switch
         {
             600 => 0,
@@ -216,6 +217,16 @@ public sealed partial class GeneralSettingsPage : Page
             2 => DefaultOpenPage.ViewLater,
             _ => DefaultOpenPage.Following,
         };
+    }
+
+    private void SaveMainPanelPositionSwitch_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_isLoadingSettings)
+        {
+            return;
+        }
+
+        AppSettings.SaveMainPanelPosition = SaveMainPanelPositionSwitch.IsOn;
     }
 
     private void UpdateCustomLaunchWebPageUrlBoxState()
@@ -438,6 +449,7 @@ public sealed partial class GeneralSettingsPage : Page
             RunningLaunchActionValue = AppSettings.RunningLaunchAction.ToString(),
             CustomLaunchWebPageUrl = AppSettings.CustomLaunchWebPageUrl,
             DefaultOpenPageValue = AppSettings.DefaultOpenPage.ToString(),
+            SaveMainPanelPosition = AppSettings.SaveMainPanelPosition,
             MainPanelHeight = AppSettings.MainPanelHeight,
             NotificationCheckIntervalMinutes = AppSettings.NotificationCheckIntervalMinutes,
             NotificationTargetMode = AppSettings.NotificationTargetMode.ToString(),
@@ -458,6 +470,7 @@ public sealed partial class GeneralSettingsPage : Page
         AppSettings.RunningLaunchAction = ParseRunningLaunchAction(import.RunningLaunchActionValue);
         AppSettings.CustomLaunchWebPageUrl = import.CustomLaunchWebPageUrl;
         AppSettings.DefaultOpenPage = ParseEnum(import.DefaultOpenPageValue, DefaultOpenPage.Following);
+        AppSettings.SaveMainPanelPosition = import.SaveMainPanelPosition;
         AppSettings.MainPanelHeight = NormalizeMainPanelHeight(import.MainPanelHeight);
         AppSettings.NotificationCheckIntervalMinutes = Math.Max(1, import.NotificationCheckIntervalMinutes);
         AppSettings.NotificationTargetMode = ParseEnum(import.NotificationTargetMode, NotificationTargetMode.AllFollowing);
@@ -479,6 +492,7 @@ public sealed partial class GeneralSettingsPage : Page
         RunningLaunchActionBox.SelectedIndex = AppSettings.RunningLaunchAction == RunningLaunchAction.OpenCustomWebPage ? 1 : 0;
         CustomLaunchWebPageUrlBox.Text = AppSettings.CustomLaunchWebPageUrl;
         DefaultOpenPageBox.SelectedIndex = (int)AppSettings.DefaultOpenPage;
+        SaveMainPanelPositionSwitch.IsOn = AppSettings.SaveMainPanelPosition;
         MainPanelHeightBox.SelectedIndex = AppSettings.MainPanelHeight switch
         {
             600 => 0,
@@ -615,6 +629,8 @@ public sealed partial class GeneralSettingsPage : Page
 
         [JsonPropertyName("DefaultOpenPage")]
         public string DefaultOpenPageValue { get; set; } = nameof(Services.DefaultOpenPage.Following);
+
+        public bool SaveMainPanelPosition { get; set; }
 
         public int MainPanelHeight { get; set; } = 800;
 

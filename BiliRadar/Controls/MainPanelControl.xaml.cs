@@ -62,6 +62,11 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
 
     private void SetDefaultPage()
     {
+        SetDefaultPage(resetScrollPosition: false);
+    }
+
+    private void SetDefaultPage(bool resetScrollPosition)
+    {
         var selectedItem = AppSettings.DefaultOpenPage switch
         {
             DefaultOpenPage.History => HistorySelectorItem,
@@ -74,7 +79,7 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
         selectedItem.IsSelected = true;
         _isSettingDefaultPage = false;
 
-        NavigateToSelectedPage(resetScrollPosition: false);
+        NavigateToSelectedPage(resetScrollPosition);
     }
 
     private void OnContentFrameNavigated(object sender, NavigationEventArgs e)
@@ -96,6 +101,12 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
         _flyoutCts?.Cancel();
         _flyoutCts?.Dispose();
         _flyoutCts = new CancellationTokenSource();
+
+        if (!AppSettings.SaveMainPanelPosition)
+        {
+            SetDefaultPage(resetScrollPosition: true);
+            ApplyCurrentPageOpenSettings();
+        }
 
         if (ContentFrame.Content is IMainPanelPage page)
         {
@@ -142,6 +153,7 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
         }
 
         _initializedPages.Clear();
+        StatusItemsControl.ItemsSource = null;
         ContentFrame.Content = null;
         Session.Dispose();
     }
@@ -186,7 +198,7 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
             ? SlideNavigationTransitionEffect.FromRight
             : SlideNavigationTransitionEffect.FromLeft;
 
-        DisposeCurrentPage();
+        DeactivateCurrentPage();
 
         ContentFrame.Navigate(
             pageType,
@@ -203,12 +215,13 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
         SchedulePageSwitchCleanup();
     }
 
-    private void DisposeCurrentPage()
+    private void DeactivateCurrentPage()
     {
-        if (ContentFrame.Content is IDisposable disposablePage)
+        if (ContentFrame.Content is IMainPanelPage page)
         {
-            disposablePage.Dispose();
-            _initializedPages.Remove(disposablePage);
+            page.Deactivate();
+            if (page is IDisposable disposablePage)
+                _initializedPages.Remove(disposablePage);
         }
     }
 
@@ -255,6 +268,11 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
         (ContentFrame.Content as FollowingPage)?.ResetScrollPosition();
         (ContentFrame.Content as HistoryPage)?.ResetScrollPosition();
         (ContentFrame.Content as ViewLaterPage)?.ResetScrollPosition();
+    }
+
+    private void ApplyCurrentPageOpenSettings()
+    {
+        (ContentFrame.Content as FollowingPage)?.ApplyOpenSettings();
     }
 
     private async void OpenBrowserButton_Click(object sender, RoutedEventArgs e)

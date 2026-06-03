@@ -565,6 +565,22 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
     {
         StopStatusNotificationTimers();
         _updateMonitorService.Dispose();
+        Updates.Clear();
+        HistoryItems.Clear();
+        ViewLaterItems.Clear();
+        Following.Clear();
+        LiveCreators.Clear();
+        _loadedUpdateIds.Clear();
+        _loadedHistoryIds.Clear();
+        _loadedViewLaterIds.Clear();
+        CollectionAdded = null;
+        CollectionUpdated = null;
+        StatusAdded = null;
+        UpdatesRefreshed = null;
+        HistoryRefreshed = null;
+        ViewLaterRefreshed = null;
+        FollowingListRefreshed = null;
+        PropertyChanged = null;
     }
 
     // ── Private helpers ──

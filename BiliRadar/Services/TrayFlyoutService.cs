@@ -5,6 +5,7 @@ using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.Win32;
 using System;
@@ -14,6 +15,8 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Windows.ApplicationModel;
+using Windows.Foundation;
+using Windows.Graphics;
 using Windows.UI.ViewManagement;
 using WinUIEx;
 using Flyout = Microsoft.UI.Xaml.Controls.Flyout;
@@ -24,17 +27,20 @@ namespace BiliRadar.Services;
 internal sealed class TrayFlyoutService : IDisposable
 {
     private const uint TrayIconId = 1;
+    private static readonly TimeSpan TrayLightDismissReopenGuard = TimeSpan.FromMilliseconds(300);
 
     private readonly TrayIcon _trayIcon;
     private readonly Flyout _mainFlyout;
     private readonly MenuFlyout _contextMenu;
-    private readonly Window _containerWindow;
+    private readonly TrayHostWindow _containerWindow;
     private MainWindowSnapshot? _lastSnapshot;
     private UISettings? _uiSettings;
+    private DateTime _lastMainFlyoutClosedAt = DateTime.MinValue;
+    private bool _isMainFlyoutOpen;
     private bool _isDisposed;
 
     public TrayFlyoutService(
-        Window containerWindow,
+        TrayHostWindow containerWindow,
         Action settingsAction,
         Action exitAction,
         MainWindowSnapshot? initialSnapshot = null)
@@ -58,6 +64,10 @@ internal sealed class TrayFlyoutService : IDisposable
         _mainFlyout.Closed += OnMainFlyoutClosed;
 
         _contextMenu = new MenuFlyout();
+        _contextMenu.SystemBackdrop = new MicaBackdrop();
+        _contextMenu.Placement = FlyoutPlacementMode.Top;
+        _contextMenu.ShouldConstrainToRootBounds = false;
+        _contextMenu.Closed += OnContextMenuClosed;
         _contextMenu.Items.Add(new MenuFlyoutItem
         {
             Text = LocalizationHelper.GetString("TraySettings"),
@@ -86,6 +96,8 @@ internal sealed class TrayFlyoutService : IDisposable
 
     private void OnMainFlyoutOpened(object? sender, object e)
     {
+        _isMainFlyoutOpen = true;
+
         if (_mainFlyout.Content is MainPanelControl panel)
         {
             panel.OnFlyoutOpened();
@@ -94,16 +106,16 @@ internal sealed class TrayFlyoutService : IDisposable
 
     private void OnMainFlyoutClosed(object? sender, object e)
     {
+        _isMainFlyoutOpen = false;
+        _lastMainFlyoutClosedAt = DateTime.UtcNow;
+
         if (_mainFlyout.Content is MainPanelControl panel)
         {
             panel.OnFlyoutClosed();
             _lastSnapshot = panel.Session.CreateSnapshot();
-            _mainFlyout.Content = null;
-            panel.Dispose();
-            _containerWindow.DispatcherQueue.TryEnqueue(
-                Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
-                CollectReleasedPanelResources);
         }
+
+        _containerWindow.HideFlyoutHost();
     }
 
     public void Dispose()
@@ -119,6 +131,7 @@ internal sealed class TrayFlyoutService : IDisposable
 
         _mainFlyout.Opened -= OnMainFlyoutOpened;
         _mainFlyout.Closed -= OnMainFlyoutClosed;
+        _contextMenu.Closed -= OnContextMenuClosed;
         if (_mainFlyout.Content is IDisposable disposableContent)
         {
             disposableContent.Dispose();
@@ -132,15 +145,22 @@ internal sealed class TrayFlyoutService : IDisposable
 
     private void OnTrayIconSelected(object? sender, TrayIconEventArgs args)
     {
-        if (_mainFlyout.IsOpen)
+        if (_mainFlyout.IsOpen || _isMainFlyoutOpen)
         {
-            _trayIcon.CloseFlyout();
+            args.Handled = true;
+            _mainFlyout.Hide();
+            return;
+        }
+
+        if (DateTime.UtcNow - _lastMainFlyoutClosedAt < TrayLightDismissReopenGuard)
+        {
             args.Handled = true;
             return;
         }
 
         EnsureFlyoutContent();
-        args.Flyout = _mainFlyout;
+        args.Handled = true;
+        ShowMainFlyoutAtCursor();
     }
 
     private void EnsureFlyoutContent()
@@ -162,9 +182,14 @@ internal sealed class TrayFlyoutService : IDisposable
             {
                 new Setter(FrameworkElement.WidthProperty, 420d),
                 new Setter(FrameworkElement.HeightProperty, panelHeight),
+                new Setter(FrameworkElement.MarginProperty, new Thickness(0, -8, 0, 0)),
+                new Setter(FrameworkElement.MaxWidthProperty, 10000d),
                 new Setter(FrameworkElement.MaxHeightProperty, panelHeight),
+                new Setter(Control.BackgroundProperty, new SolidColorBrush(Colors.Transparent)),
+                new Setter(Control.BorderThicknessProperty, new Thickness(0)),
                 new Setter(FlyoutPresenter.PaddingProperty, new Thickness(0)),
                 new Setter(FlyoutPresenter.CornerRadiusProperty, new CornerRadius(8)),
+                new Setter(FlyoutPresenter.IsDefaultShadowEnabledProperty, true),
                 new Setter(ScrollViewer.VerticalScrollBarVisibilityProperty, ScrollBarVisibility.Disabled),
             },
         };
@@ -179,7 +204,43 @@ internal sealed class TrayFlyoutService : IDisposable
 
     private void OnTrayIconContextMenu(object? sender, TrayIconEventArgs args)
     {
-        args.Flyout = _contextMenu;
+        args.Handled = true;
+        ShowContextMenuAtCursor();
+    }
+
+    private void ShowMainFlyoutAtCursor()
+    {
+        var cursor = GetCursorPosition();
+        _containerWindow.PrepareFlyoutHost(cursor);
+
+        var options = new FlyoutShowOptions
+        {
+            Placement = FlyoutPlacementMode.Top,
+            Position = new Point(0, 0),
+        };
+
+        _mainFlyout.ShowAt(_containerWindow.MainFlyoutAnchor, options);
+    }
+
+    private void ShowContextMenuAtCursor()
+    {
+        var cursor = GetCursorPosition();
+        _containerWindow.PrepareFlyoutHost(cursor);
+
+        var options = new FlyoutShowOptions
+        {
+            Position = new Point(0, 0),
+        };
+
+        _contextMenu.ShowAt(_containerWindow.ContextFlyoutAnchor, options);
+    }
+
+    private void OnContextMenuClosed(object? sender, object e)
+    {
+        if (!_mainFlyout.IsOpen && !_isMainFlyoutOpen)
+        {
+            _containerWindow.HideFlyoutHost();
+        }
     }
 
     private void OnColorValuesChanged(UISettings sender, object args)
@@ -204,6 +265,13 @@ internal sealed class TrayFlyoutService : IDisposable
         {
             return Path.Combine(AppContext.BaseDirectory, assetName);
         }
+    }
+
+    private static PointInt32 GetCursorPosition()
+    {
+        return GetCursorPos(out var point)
+            ? new PointInt32(point.X, point.Y)
+            : new PointInt32(0, 0);
     }
 
     private static bool IsSystemUsingLightTheme()
@@ -231,6 +299,16 @@ internal sealed class TrayFlyoutService : IDisposable
 
     [DllImport("user32.dll")]
     private static extern uint GetDpiForWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool GetCursorPos(out POINT lpPoint);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct POINT
+    {
+        public int X;
+        public int Y;
+    }
 
     private sealed class DelegateCommand : ICommand
     {

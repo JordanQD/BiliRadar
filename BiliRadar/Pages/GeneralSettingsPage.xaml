@@ -185,6 +185,20 @@
                     <ComboBoxItem x:Uid="GeneralDefaultOpenViewLaterItem" Content="稍后再看" />
                 </ComboBox>
             </controls:SettingsCard>
+            <controls:SettingsCard
+                x:Uid="GeneralSaveMainPanelPositionCard"
+                Description="关闭托盘弹窗后保留当前页面和直播区域展开状态。关闭时，每次打开都会按默认设置复位。"
+                Header="保留弹窗位置">
+                <controls:SettingsCard.HeaderIcon>
+                    <FontIcon Glyph="&#xE81C;" />
+                </controls:SettingsCard.HeaderIcon>
+                <ToggleSwitch
+                    x:Name="SaveMainPanelPositionSwitch"
+                    x:Uid="GeneralSaveMainPanelPositionSwitch"
+                    AutomationProperties.AutomationId="SaveMainPanelPositionSwitch"
+                    AutomationProperties.Name="保留弹窗位置"
+                    Toggled="SaveMainPanelPositionSwitch_Toggled" />
+            </controls:SettingsCard>
 
             <TextBlock
                 x:Uid="GeneralDisplaySectionHeader"

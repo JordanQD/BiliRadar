@@ -8,4 +8,6 @@ internal interface IMainPanelPage
     void Initialize(MainPanelSession session);
 
     Task ActivateAsync(CancellationToken cancellationToken = default);
+
+    void Deactivate();
 }
