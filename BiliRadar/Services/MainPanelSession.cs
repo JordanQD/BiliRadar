@@ -60,6 +60,18 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
             foreach (var creator in snapshot.LiveCreators)
                 LiveCreators.Add(new LiveCreatorRow(creator));
 
+            foreach (var item in snapshot.HistoryItems.OrderByDescending(item => item.PublishedAt))
+            {
+                if (_loadedHistoryIds.Add(item.Id))
+                    HistoryItems.Add(new VideoUpdateRow(item));
+            }
+
+            foreach (var item in snapshot.ViewLaterItems.OrderByDescending(item => item.PublishedAt))
+            {
+                if (_loadedViewLaterIds.Add(item.Id))
+                    ViewLaterItems.Add(new VideoUpdateRow(item));
+            }
+
             UnreadCount = Updates.Count(item => item.IsUnread);
         }
     }
@@ -528,7 +540,9 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
     {
         return new MainWindowSnapshot(
             Updates.Select(item => item.ToModel()).ToList(),
-            LiveCreators.Select(item => item.ToModel()).ToList());
+            LiveCreators.Select(item => item.ToModel()).ToList(),
+            HistoryItems.Select(item => item.ToModel()).ToList(),
+            ViewLaterItems.Select(item => item.ToModel()).ToList());
     }
 
     // ── Events for UI to react to collection changes ──

@@ -77,7 +77,7 @@ Services/
 4. **VideoCard 是"智能控件"** — 它自己处理图片加载、缓存、主题切换，页面只负责创建和事件响应
 5. **CommunityToolkit.WinUI.Animations** — 用于页面切换、直播区域展开/收起、状态通知进出动画
 6. **WinUIEx 2.9.0** — 提供 `TrayIcon`（系统托盘）和 Flyout 的自定义定位
-7. **Flyout 内容生命周期** — `MainPanelControl` 在 `TrayFlyoutService` 构造时创建，Flyout 关闭时不被销毁（内存策略待 Phase 5 测试决定）
+7. **Flyout 内容生命周期** — Phase 5 已开始：`MainPanelControl` 改为托盘左键打开时按需创建，Flyout 关闭后导出 `MainWindowSnapshot`、Dispose 面板并低优先级修剪 working set；仍需实测 working set/private memory 决定是否保留此策略
 8. **右键菜单不提供“打开”** — 左键托盘图标负责打开/关闭主 Flyout；右键菜单只保留“设置”和“退出”。不要重新加入右键“打开”，之前尝试在 MenuFlyout 命令中主动 `ShowAt(...)` 会造成状态重入和卡死风险。
 9. **隐藏 TrayHostWindow** — 新 WinUIEx 路径也使用 `TrayHostWindow.InitializeHidden()`，不要再用 `InitializeVisible()`。启动后应保持后台进程分组，不应因为宿主窗口可见而出现在任务管理器“应用”分组。
 
@@ -98,7 +98,7 @@ Debug 配置：框架依赖（`WinUISDKReferences=true`）；Release：自包含
 | Phase 2g (Flyout 集成) | ✅ 已手动验证 |
 | Phase 3 (右键菜单迁移) | ✅ 新路径原生 MenuFlyout，仅保留设置/退出 |
 | Phase 4 (清理旧代码) | ✅ 删除 MainWindow、TrayIconService、SystemTray/，#if 双路径已移除 |
-| Phase 5 (内存测试) | 待做 |
+| Phase 5 (内存测试) | 进行中：已接入关闭后重建面板的实验实现，待实测 |
 | Phase 6 (ListView 迁移) | 待做 |
 
 详见 `docs/design/tray-flyout-migration.md` 和 `C:\Users\Q\.claude\plans\radiant-bouncing-quiche.md`。
@@ -107,12 +107,12 @@ Debug 配置：框架依赖（`WinUISDKReferences=true`）；Release：自包含
 
 1. **右键菜单范围** — 右键菜单只做设置和退出。左键托盘图标是唯一主面板入口，不要重新加入右键“打开”；之前尝试在 `MenuFlyout` 命令中主动打开主 Flyout，出现过状态重入和卡死。
 2. **隐藏宿主窗口** — 新 WinUIEx 路径使用 `TrayHostWindow.InitializeHidden()`。启动后应保持后台进程分组；主 Flyout 打开期间 WinUIEx/WinUI 可能仍会让进程进入任务管理器“应用”分组，目前接受这个行为，不要为此手写枚举窗口或改 Win32 样式。
-3. **Session 生命周期** — `MainPanelControl.Dispose()` 释放 `MainPanelSession` 是生命周期正确性，不代表已经完成 RAM 优化。是否关闭后重建面板，要等 Phase 5 用 working set 和 private memory 实测后决定。
+3. **Session 生命周期** — 当前 Phase 5 实验实现会在 Flyout 关闭后 Dispose `MainPanelControl` 和 `MainPanelSession`，并用纯数据 `MainWindowSnapshot` 支撑下次重建。这个策略还没有完成实测，不要直接把它当成最终 RAM 优化结论。
 4. **取消请求链路** — 页面刷新和加载更多继续通过 `CancellationToken` 传到 `MainPanelSession`/`UpdateMonitorService`。Flyout 关闭触发取消时，不应显示错误 InfoBar。
 
 ## 建议下一步
 
-1. Phase 5 内存测量：记录首次打开耗时、连续打开/关闭后的 working set 与 private memory，再决定 `MainPanelControl` 是长期保留还是关闭后重建。
+1. Phase 5 内存测量：记录首次打开耗时、连续打开/关闭后的 working set 与 private memory，验证当前关闭后重建实现是否优于长期保留。
 2. Phase 6 列表性能优化：把三个纵向 `ScrollViewer + StackPanel + VideoCard` 迁移到虚拟化 `ListView`。
 
 ## 本地化

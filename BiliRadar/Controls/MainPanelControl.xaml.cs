@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,8 +16,10 @@ namespace BiliRadar.Controls;
 public sealed partial class MainPanelControl : UserControl, IDisposable
 {
     private int _previousSelectedPageIndex = -1;
+    private readonly HashSet<IDisposable> _initializedPages = [];
     private CancellationTokenSource? _flyoutCts;
     private bool _isFlyoutOpen;
+    private bool _isDisposed;
 
     public MainPanelSession Session { get; }
 
@@ -52,6 +55,8 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
         if (e.Content is IMainPanelPage page)
         {
             page.Initialize(Session);
+            if (page is IDisposable disposablePage)
+                _initializedPages.Add(disposablePage);
         }
     }
 
@@ -72,8 +77,8 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
     }
 
     /// <summary>
-    /// Flyout 关闭时调用：取消仍在运行的 UI 请求，保留 Session。
-    /// Session 由后续测量（Phase 5）决定是保留还是重建。
+    /// Flyout 关闭时调用：取消仍在运行的 UI 请求。
+    /// 外层 TrayFlyoutService 负责保存 snapshot 并决定是否销毁整个面板。
     /// </summary>
     public void OnFlyoutClosed()
     {
@@ -93,10 +98,20 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
 
     public void Dispose()
     {
+        if (_isDisposed) return;
+        _isDisposed = true;
+
         _flyoutCts?.Cancel();
         _flyoutCts?.Dispose();
         _flyoutCts = null;
         ContentFrame.Navigated -= OnContentFrameNavigated;
+        foreach (var page in _initializedPages)
+        {
+            page.Dispose();
+        }
+
+        _initializedPages.Clear();
+        ContentFrame.Content = null;
         Session.Dispose();
     }
 

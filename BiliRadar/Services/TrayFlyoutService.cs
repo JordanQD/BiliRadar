@@ -1,11 +1,14 @@
 using BiliRadar.Controls;
 using BiliRadar.Helpers;
+using BiliRadar.Models;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.Win32;
 using System;
+using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Windows.ApplicationModel;
@@ -24,15 +27,18 @@ internal sealed class TrayFlyoutService : IDisposable
     private readonly Flyout _mainFlyout;
     private readonly MenuFlyout _contextMenu;
     private readonly Window _containerWindow;
+    private MainWindowSnapshot? _lastSnapshot;
     private UISettings? _uiSettings;
     private bool _isDisposed;
 
     public TrayFlyoutService(
         Window containerWindow,
         Action settingsAction,
-        Action exitAction)
+        Action exitAction,
+        MainWindowSnapshot? initialSnapshot = null)
     {
         _containerWindow = containerWindow;
+        _lastSnapshot = initialSnapshot;
 
         _trayIcon = new TrayIcon(TrayIconId, GetIconPath(), "BiliRadar")
         {
@@ -76,11 +82,6 @@ internal sealed class TrayFlyoutService : IDisposable
         _uiSettings.ColorValuesChanged += OnColorValuesChanged;
     }
 
-    public void SetFlyoutContent(UIElement content)
-    {
-        _mainFlyout.Content = content;
-    }
-
     public Task RefreshCurrentPanelPageAsync()
     {
         return _mainFlyout.Content is MainPanelControl panel
@@ -101,6 +102,12 @@ internal sealed class TrayFlyoutService : IDisposable
         if (_mainFlyout.Content is MainPanelControl panel)
         {
             panel.OnFlyoutClosed();
+            _lastSnapshot = panel.Session.CreateSnapshot();
+            _mainFlyout.Content = null;
+            panel.Dispose();
+            _containerWindow.DispatcherQueue.TryEnqueue(
+                Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
+                CollectReleasedPanelResources);
         }
     }
 
@@ -137,7 +144,16 @@ internal sealed class TrayFlyoutService : IDisposable
             return;
         }
 
+        EnsureFlyoutContent();
         args.Flyout = _mainFlyout;
+    }
+
+    private void EnsureFlyoutContent()
+    {
+        if (_mainFlyout.Content is not MainPanelControl)
+        {
+            _mainFlyout.Content = new MainPanelControl(_lastSnapshot);
+        }
     }
 
     private void OnTrayIconContextMenu(object? sender, TrayIconEventArgs args)
@@ -175,6 +191,22 @@ internal sealed class TrayFlyoutService : IDisposable
         using var key = Registry.CurrentUser.OpenSubKey(personalizeKey);
         return key?.GetValue("SystemUsesLightTheme") is int value ? value != 0 : true;
     }
+
+    private static void CollectReleasedPanelResources()
+    {
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
+        using var process = Process.GetCurrentProcess();
+        SetProcessWorkingSetSize(process.Handle, new IntPtr(-1), new IntPtr(-1));
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool SetProcessWorkingSetSize(
+        IntPtr process,
+        IntPtr minimumWorkingSetSize,
+        IntPtr maximumWorkingSetSize);
 
     private sealed class DelegateCommand : ICommand
     {

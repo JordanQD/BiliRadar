@@ -86,12 +86,11 @@ public partial class App : Application
 
         if (_trayFlyoutService is null)
         {
-            var panel = new MainPanelControl(_backgroundNotificationMonitor?.GetSnapshot());
             _trayFlyoutService = new TrayFlyoutService(
                 _trayHostWindow,
                 ShowSettingsWindow,
-                ExitApplication);
-            _trayFlyoutService.SetFlyoutContent(panel);
+                ExitApplication,
+                _backgroundNotificationMonitor?.GetSnapshot());
         }
 
         if (_backgroundNotificationMonitor is null)
