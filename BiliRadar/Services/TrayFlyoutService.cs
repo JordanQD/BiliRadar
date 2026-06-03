@@ -182,7 +182,11 @@ internal sealed class TrayFlyoutService : IDisposable
 
         public DelegateCommand(Action execute) => _execute = execute;
 
-        public event EventHandler? CanExecuteChanged;
+        public event EventHandler? CanExecuteChanged
+        {
+            add { }
+            remove { }
+        }
 
         public bool CanExecute(object? parameter) => true;
 

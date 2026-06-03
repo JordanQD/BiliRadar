@@ -27,7 +27,6 @@
     <DefaultItemExcludes>$(DefaultItemExcludes);artifacts\**;bin\**;obj\**</DefaultItemExcludes>
     <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
     <Nullable>enable</Nullable>
-    <DefineConstants Condition="'$(Configuration)' == 'Debug'">$(DefineConstants);USE_WINUIEX_FLYOUT</DefineConstants>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Configurations>Debug;Release;ReleaseFull</Configurations>
     <UseProductionPackageIdentity Condition="'$(UseProductionPackageIdentity)' == ''">false</UseProductionPackageIdentity>

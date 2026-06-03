@@ -1,16 +1,12 @@
-using BiliRadar.Helpers;
 using BiliRadar.Controls;
-using BiliRadar.Models;
+using BiliRadar.Helpers;
 using BiliRadar.Services;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 using Microsoft.Windows.AppNotifications;
 using Microsoft.Windows.AppNotifications.Builder;
 using System;
-using System.Diagnostics;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Windows.ApplicationModel;
 using AppActivationArguments = Microsoft.Windows.AppLifecycle.AppActivationArguments;
@@ -24,23 +20,15 @@ public partial class App : Application
     private const string MainInstanceKey = "BiliRadar.Main";
     private const string SignInAction = "signIn";
 
-    private MainWindow? _mainWindow;
     private TrayHostWindow? _trayHostWindow;
     private SettingsWindow? _settingsWindow;
     private WebSignInWindow? _signInWindow;
-#if USE_WINUIEX_FLYOUT
     private TrayFlyoutService? _trayFlyoutService;
-#else
-    private TrayIconService? _trayIconService;
-#endif
     private BackgroundNotificationMonitor? _backgroundNotificationMonitor;
     private AppNotificationManager? _notificationManager;
     private NotificationService.NotificationActivationRequest? _pendingNotificationRequest;
-    private MainWindowSnapshot? _mainWindowSnapshot;
     private readonly CookieStore _cookieStore = new();
     private readonly DispatcherQueue _dispatcherQueue;
-    private DispatcherQueueTimer? _pendingMainWindowHideTimer;
-    private bool _isExiting;
 
     public App()
     {
@@ -62,13 +50,8 @@ public partial class App : Application
         AppInstance.GetCurrent().Activated += AppInstance_Activated;
 
         _trayHostWindow = new TrayHostWindow();
-#if USE_WINUIEX_FLYOUT
         _trayHostWindow.InitializeHidden();
         _trayHostWindow.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, InitializeTrayAndData);
-#else
-        _trayHostWindow.InitializeHidden();
-        _trayHostWindow.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, InitializeTrayAndData);
-#endif
         HandleActivation(activatedArgs, isRedirectedActivation: false);
 
         if (!_cookieStore.HasCookie)
@@ -101,29 +84,15 @@ public partial class App : Application
             return;
         }
 
-#if USE_WINUIEX_FLYOUT
         if (_trayFlyoutService is null)
         {
-            var panel = new MainPanelControl(_mainWindowSnapshot ?? _backgroundNotificationMonitor?.GetSnapshot());
+            var panel = new MainPanelControl(_backgroundNotificationMonitor?.GetSnapshot());
             _trayFlyoutService = new TrayFlyoutService(
                 _trayHostWindow,
                 ShowSettingsWindow,
                 ExitApplication);
             _trayFlyoutService.SetFlyoutContent(panel);
         }
-#else
-        if (_trayIconService is null)
-        {
-            _trayIconService = new TrayIconService(
-                _trayHostWindow,
-                "BiliRadar",
-                ToggleMainWindow,
-                ShowMainWindow,
-                ShowSettingsWindow,
-                ExitApplication);
-            _trayIconService.SetupTrayIcon();
-        }
-#endif
 
         if (_backgroundNotificationMonitor is null)
         {
@@ -132,104 +101,6 @@ public partial class App : Application
             HandlePendingNotificationRequest();
         }
     }
-
-    private void ShowMainWindow()
-    {
-        CancelPendingMainWindowHide();
-        var window = EnsureMainWindow();
-        window.ShowDefaultOpenPage();
-        window.ShowWindow();
-    }
-
-    private MainWindow EnsureMainWindow()
-    {
-        if (_mainWindow is not null)
-        {
-            return _mainWindow;
-        }
-
-        _mainWindow = new MainWindow(_mainWindowSnapshot ?? _backgroundNotificationMonitor?.GetSnapshot());
-        _mainWindow.HideRequested += RequestHideMainWindow;
-        return _mainWindow;
-    }
-
-    private void ToggleMainWindow()
-    {
-        if (_mainWindow?.IsVisible == true)
-        {
-            CancelPendingMainWindowHide();
-            HideMainWindow();
-        }
-        else
-        {
-            ShowMainWindow();
-        }
-    }
-
-    private void RequestHideMainWindow()
-    {
-        if (_isExiting || _mainWindow is null)
-        {
-            return;
-        }
-
-        CancelPendingMainWindowHide();
-
-        var timer = _dispatcherQueue.CreateTimer();
-        timer.Interval = TimeSpan.FromMilliseconds(200);
-        timer.IsRepeating = false;
-        timer.Tick += PendingMainWindowHideTimer_Tick;
-        _pendingMainWindowHideTimer = timer;
-        timer.Start();
-    }
-
-    private void PendingMainWindowHideTimer_Tick(DispatcherQueueTimer sender, object args)
-    {
-        CancelPendingMainWindowHide();
-        HideMainWindow();
-    }
-
-    private void CancelPendingMainWindowHide()
-    {
-        if (_pendingMainWindowHideTimer is null)
-        {
-            return;
-        }
-
-        _pendingMainWindowHideTimer.Stop();
-        _pendingMainWindowHideTimer.Tick -= PendingMainWindowHideTimer_Tick;
-        _pendingMainWindowHideTimer = null;
-    }
-
-    private void HideMainWindow()
-    {
-        if (_isExiting)
-        {
-            return;
-        }
-
-        CancelPendingMainWindowHide();
-
-        var window = _mainWindow;
-        _mainWindow = null;
-        _mainWindowSnapshot = window?.CreateSnapshot();
-        window?.CloseForRecycle();
-        _dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, CollectReleasedWindowResources);
-    }
-
-    private static void CollectReleasedWindowResources()
-    {
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-        GC.Collect();
-
-        using var process = Process.GetCurrentProcess();
-        SetProcessWorkingSetSize(process.Handle, new nint(-1), new nint(-1));
-    }
-
-    [DllImport("kernel32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetProcessWorkingSetSize(nint process, nint minimumWorkingSetSize, nint maximumWorkingSetSize);
 
     private void ShowSettingsWindow()
     {
@@ -259,23 +130,14 @@ public partial class App : Application
 
     private void ExitApplication()
     {
-        _isExiting = true;
-        CancelPendingMainWindowHide();
-#if USE_WINUIEX_FLYOUT
         _trayFlyoutService?.Dispose();
         _trayFlyoutService = null;
-#else
-        _trayIconService?.Destroy();
-        _trayIconService = null;
-#endif
         _backgroundNotificationMonitor?.Dispose();
         _backgroundNotificationMonitor = null;
         _notificationManager?.Unregister();
         _notificationManager = null;
         _settingsWindow?.Close();
         _settingsWindow = null;
-        _mainWindow?.CloseForExit();
-        _mainWindow = null;
         _trayHostWindow?.Close();
         _trayHostWindow = null;
         Exit();
@@ -415,12 +277,6 @@ public partial class App : Application
 
     private async void OnSignInSucceeded(object? sender, EventArgs e)
     {
-#if !USE_WINUIEX_FLYOUT
-        if (_trayIconService is null || _backgroundNotificationMonitor is null)
-        {
-            InitializeTrayAndData();
-        }
-#else
         if (_backgroundNotificationMonitor is null)
         {
             InitializeTrayAndData();
@@ -429,12 +285,6 @@ public partial class App : Application
         if (_trayFlyoutService is not null)
         {
             await _trayFlyoutService.RefreshCurrentPanelPageAsync();
-        }
-#endif
-
-        if (_mainWindow is not null)
-        {
-            await _mainWindow.RefreshAsync();
         }
     }
 

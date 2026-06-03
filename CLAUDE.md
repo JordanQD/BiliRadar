@@ -8,7 +8,7 @@ BiliRadar 是一个 Windows 桌面应用（WinUI 3 + Windows App SDK），提供
 
 ## 架构总览
 
-项目正从 `MainWindow.xaml.cs`（~2500 行单体）向 WinUIEx `TrayIcon` + 页面化架构迁移。当前处在 Phase 2f 完成、计划 Phase 2g 的状态。
+项目正从 `MainWindow.xaml.cs`（~2500 行单体）向 WinUIEx `TrayIcon` + 页面化架构迁移。当前 Phase 2 和 Phase 3 已完成并通过手动验证，下一步进入旧代码清理和内存测量。
 
 ```
 App.xaml.cs                    ← 应用入口，初始化托盘、数据监控
@@ -66,20 +66,8 @@ Services/
 ├── AppSettings          ← ApplicationData.LocalSettings 持久化
 ├── CookieStore          ← Bilibili Cookie 管理
 ├── BiliAccountService / BiliKernelAuthService / NotificationService
-├── TrayIconService      ← 旧架构托盘服务（将 Phase 4 删除）
-└── TrayFlyoutService    ← 新架构 WinUIEx TrayIcon + Flyout
+└── TrayFlyoutService    ← WinUIEx TrayIcon + Flyout
 ```
-
-### SystemTray/ 旧基础设施（Phase 4 计划删除）
-
-```
-SystemTray/Core/SystemTrayManager.cs, WindowHelper.cs
-SystemTray/UI/SystemTrayIcon.cs, SystemTrayContextMenuWindow.cs
-SystemTray/Models/SystemTrayEventArgs.cs, SystemTrayContextMenuItem.cs
-SystemTray/Interfaces/IIconFile.cs
-```
-
-当前通过 `#if USE_WINUIEX_FLYOUT` 编译符号切换新旧托盘路径（Debug 模式默认启用新路径）。
 
 ## 关键设计决策
 
@@ -90,6 +78,8 @@ SystemTray/Interfaces/IIconFile.cs
 5. **CommunityToolkit.WinUI.Animations** — 用于页面切换、直播区域展开/收起、状态通知进出动画
 6. **WinUIEx 2.9.0** — 提供 `TrayIcon`（系统托盘）和 Flyout 的自定义定位
 7. **Flyout 内容生命周期** — `MainPanelControl` 在 `TrayFlyoutService` 构造时创建，Flyout 关闭时不被销毁（内存策略待 Phase 5 测试决定）
+8. **右键菜单不提供“打开”** — 左键托盘图标负责打开/关闭主 Flyout；右键菜单只保留“设置”和“退出”。不要重新加入右键“打开”，之前尝试在 MenuFlyout 命令中主动 `ShowAt(...)` 会造成状态重入和卡死风险。
+9. **隐藏 TrayHostWindow** — 新 WinUIEx 路径也使用 `TrayHostWindow.InitializeHidden()`，不要再用 `InitializeVisible()`。启动后应保持后台进程分组，不应因为宿主窗口可见而出现在任务管理器“应用”分组。
 
 ## 构建
 
@@ -98,7 +88,6 @@ dotnet build BiliRadar/BiliRadar.csproj -p:Platform=x64
 ```
 
 Debug 配置：框架依赖（`WinUISDKReferences=true`）；Release：自包含 MSIX 包。
-`USE_WINUIEX_FLYOUT` 编译符号在 Debug 下默认定义。
 
 ## 当前迁移状态
 
@@ -106,13 +95,25 @@ Debug 配置：框架依赖（`WinUISDKReferences=true`）；Release：自包含
 |------|------|
 | Phase 1 (WinUIEx 原型) | ✅ |
 | Phase 2a-2f (页面提取) | ✅ |
-| Phase 2g (Flyout 集成) | 下一步 |
-| Phase 3 (右键菜单迁移) | 待做 |
-| Phase 4 (清理旧代码) | 待做 |
+| Phase 2g (Flyout 集成) | ✅ 已手动验证 |
+| Phase 3 (右键菜单迁移) | ✅ 新路径原生 MenuFlyout，仅保留设置/退出 |
+| Phase 4 (清理旧代码) | ✅ 删除 MainWindow、TrayIconService、SystemTray/，#if 双路径已移除 |
 | Phase 5 (内存测试) | 待做 |
 | Phase 6 (ListView 迁移) | 待做 |
 
 详见 `docs/design/tray-flyout-migration.md` 和 `C:\Users\Q\.claude\plans\radiant-bouncing-quiche.md`。
+
+## 后续迁移约束
+
+1. **右键菜单范围** — 右键菜单只做设置和退出。左键托盘图标是唯一主面板入口，不要重新加入右键“打开”；之前尝试在 `MenuFlyout` 命令中主动打开主 Flyout，出现过状态重入和卡死。
+2. **隐藏宿主窗口** — 新 WinUIEx 路径使用 `TrayHostWindow.InitializeHidden()`。启动后应保持后台进程分组；主 Flyout 打开期间 WinUIEx/WinUI 可能仍会让进程进入任务管理器“应用”分组，目前接受这个行为，不要为此手写枚举窗口或改 Win32 样式。
+3. **Session 生命周期** — `MainPanelControl.Dispose()` 释放 `MainPanelSession` 是生命周期正确性，不代表已经完成 RAM 优化。是否关闭后重建面板，要等 Phase 5 用 working set 和 private memory 实测后决定。
+4. **取消请求链路** — 页面刷新和加载更多继续通过 `CancellationToken` 传到 `MainPanelSession`/`UpdateMonitorService`。Flyout 关闭触发取消时，不应显示错误 InfoBar。
+
+## 建议下一步
+
+1. Phase 5 内存测量：记录首次打开耗时、连续打开/关闭后的 working set 与 private memory，再决定 `MainPanelControl` 是长期保留还是关闭后重建。
+2. Phase 6 列表性能优化：把三个纵向 `ScrollViewer + StackPanel + VideoCard` 迁移到虚拟化 `ListView`。
 
 ## 本地化
 
