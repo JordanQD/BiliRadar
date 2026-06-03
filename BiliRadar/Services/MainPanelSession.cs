@@ -116,7 +116,7 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
 
     // ── Data loading ──
 
-    public async Task RefreshAsync()
+    public async Task RefreshAsync(CancellationToken cancellationToken = default)
     {
         if (IsLoading) return;
 
@@ -131,12 +131,16 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
                 return;
             }
 
-            await RefreshFollowingListAsync();
+            await RefreshFollowingListAsync(cancellationToken);
 
             IReadOnlyList<BiliVideoUpdate> updates = [];
             try
             {
-                updates = await _updateMonitorService.RefreshAsync();
+                updates = await _updateMonitorService.RefreshAsync(cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return;
             }
             catch (Exception ex)
             {
@@ -168,6 +172,9 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
             if (_cookieStore.HasCookie && Updates.Count == 0 && StatusNotifications.Count == 0)
                 ShowStatus(LocalizationHelper.GetString("NoVideoUpdates"), InfoBarSeverity.Informational);
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
         catch (Exception ex)
         {
             ShowStatus(ex.Message, InfoBarSeverity.Error);
@@ -179,14 +186,14 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
         }
     }
 
-    public async Task RefreshOnShowAsync()
+    public async Task RefreshOnShowAsync(CancellationToken cancellationToken = default)
     {
         if (_refreshQueuedOnShow) return;
 
         _refreshQueuedOnShow = true;
         try
         {
-            await RefreshAsync();
+            await RefreshAsync(cancellationToken);
         }
         finally
         {
@@ -194,7 +201,7 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
         }
     }
 
-    public async Task LoadMoreUpdatesAsync()
+    public async Task LoadMoreUpdatesAsync(CancellationToken cancellationToken = default)
     {
         if (_isLoading || _isLoadingMore || !_hasMoreUpdates) return;
 
@@ -202,7 +209,7 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
         NotifyRefreshProgressChanged();
         try
         {
-            var page = await _updateMonitorService.LoadMoreAsync();
+            var page = await _updateMonitorService.LoadMoreAsync(cancellationToken);
             _hasMoreUpdates = page.HasMore;
 
             foreach (var update in page.Items.OrderByDescending(item => item.PublishedAt))
@@ -210,6 +217,9 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
                 if (AddUpdateIfNew(update))
                     CollectionAdded?.Invoke(this, Updates[^1]);
             }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
         }
         catch (Exception ex)
         {
@@ -222,7 +232,7 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
         }
     }
 
-    public async Task RefreshHistoryAsync()
+    public async Task RefreshHistoryAsync(CancellationToken cancellationToken = default)
     {
         if (_isLoadingHistory) return;
 
@@ -241,18 +251,21 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
                 return;
             }
 
-            await RefreshFollowingListAsync();
+            await RefreshFollowingListAsync(cancellationToken);
 
-            var page = await _updateMonitorService.RefreshHistoryAsync();
+            var page = await _updateMonitorService.RefreshHistoryAsync(cancellationToken);
             _hasMoreHistory = page.HasMore;
 
             int removed = DiffRefreshHistory(page.Items);
 
             if (removed > page.Items.Count / 2 && _hasMoreHistory)
-                _dispatcherQueue.TryEnqueue(() => _ = LoadMoreHistoryAsync());
+                _dispatcherQueue.TryEnqueue(() => _ = LoadMoreHistoryAsync(cancellationToken));
 
             if (HistoryItems.Count == 0 && StatusNotifications.Count == 0)
                 ShowStatus(LocalizationHelper.GetString("NoHistory"), InfoBarSeverity.Informational);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
         }
         catch (Exception ex)
         {
@@ -266,7 +279,7 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
         }
     }
 
-    public async Task LoadMoreHistoryAsync()
+    public async Task LoadMoreHistoryAsync(CancellationToken cancellationToken = default)
     {
         if (_isLoadingMoreHistory || !_hasMoreHistory) return;
 
@@ -274,7 +287,7 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
         NotifyRefreshProgressChanged();
         try
         {
-            var page = await _updateMonitorService.LoadMoreHistoryAsync();
+            var page = await _updateMonitorService.LoadMoreHistoryAsync(cancellationToken);
             _hasMoreHistory = page.HasMore;
             foreach (var item in page.Items)
             {
@@ -284,6 +297,9 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
                 else if (change.Kind == HistoryItemChangeKind.Updated)
                     CollectionUpdated?.Invoke(this, (change.NewIndex, HistoryItems[change.NewIndex]));
             }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
         }
         catch (Exception ex)
         {
@@ -296,7 +312,7 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
         }
     }
 
-    public async Task RefreshViewLaterAsync()
+    public async Task RefreshViewLaterAsync(CancellationToken cancellationToken = default)
     {
         if (_isLoadingViewLater) return;
 
@@ -315,18 +331,21 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
                 return;
             }
 
-            await RefreshFollowingListAsync();
+            await RefreshFollowingListAsync(cancellationToken);
 
-            var page = await _updateMonitorService.RefreshViewLaterAsync();
+            var page = await _updateMonitorService.RefreshViewLaterAsync(cancellationToken);
             _hasMoreViewLater = page.HasMore;
 
             int removed = DiffRefreshViewLater(page.Items);
 
             if (removed > page.Items.Count / 2 && _hasMoreViewLater)
-                _dispatcherQueue.TryEnqueue(() => _ = LoadMoreViewLaterAsync());
+                _dispatcherQueue.TryEnqueue(() => _ = LoadMoreViewLaterAsync(cancellationToken));
 
             if (ViewLaterItems.Count == 0 && StatusNotifications.Count == 0)
                 ShowStatus(LocalizationHelper.GetString("NoViewLater"), InfoBarSeverity.Informational);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
         }
         catch (Exception ex)
         {
@@ -340,7 +359,7 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
         }
     }
 
-    public async Task LoadMoreViewLaterAsync()
+    public async Task LoadMoreViewLaterAsync(CancellationToken cancellationToken = default)
     {
         if (_isLoadingMoreViewLater || !_hasMoreViewLater) return;
 
@@ -348,13 +367,16 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
         NotifyRefreshProgressChanged();
         try
         {
-            var page = await _updateMonitorService.LoadMoreViewLaterAsync();
+            var page = await _updateMonitorService.LoadMoreViewLaterAsync(cancellationToken);
             _hasMoreViewLater = page.HasMore;
             foreach (var item in page.Items)
             {
                 if (AddViewLaterIfNew(item))
                     CollectionAdded?.Invoke(this, ViewLaterItems[^1]);
             }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
         }
         catch (Exception ex)
         {
@@ -533,9 +555,9 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
 
     // ── Private helpers ──
 
-    private async Task RefreshFollowingListAsync()
+    private async Task RefreshFollowingListAsync(CancellationToken cancellationToken = default)
     {
-        var following = await _updateMonitorService.GetFollowingAsync();
+        var following = await _updateMonitorService.GetFollowingAsync(cancellationToken);
 
         Following.Clear();
         foreach (var creator in following)
@@ -544,9 +566,13 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
         LiveCreators.Clear();
         try
         {
-            var liveCreators = await _updateMonitorService.GetFollowingLiveCreatorsAsync();
+            var liveCreators = await _updateMonitorService.GetFollowingLiveCreatorsAsync(cancellationToken);
             foreach (var creator in liveCreators)
                 LiveCreators.Add(new LiveCreatorRow(creator));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch
         {

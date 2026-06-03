@@ -15,6 +15,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Threading;
 using System.Threading.Tasks;
 using Windows.Storage.Streams;
 using Windows.System;
@@ -29,6 +30,7 @@ public sealed partial class FollowingPage : Page, IMainPanelPage
     private const double RemoteRoundedImageCornerRadius = 22;
 
     private MainPanelSession? _session;
+    private CancellationToken _flyoutCancellationToken;
     private bool _isResettingScrollPosition;
     private bool _isLiveSectionExpanded;
     private int _liveSectionAnimationVersion;
@@ -54,10 +56,11 @@ public sealed partial class FollowingPage : Page, IMainPanelPage
         _session.CollectionAdded += OnCollectionAdded;
     }
 
-    public Task ActivateAsync()
+    public Task ActivateAsync(CancellationToken cancellationToken = default)
     {
+        _flyoutCancellationToken = cancellationToken;
         return _session is not null
-            ? _session.RefreshOnShowAsync()
+            ? _session.RefreshOnShowAsync(cancellationToken)
             : Task.CompletedTask;
     }
 
@@ -655,7 +658,7 @@ public sealed partial class FollowingPage : Page, IMainPanelPage
 
         var distanceToBottom = VideoScrollViewer.ScrollableHeight - VideoScrollViewer.VerticalOffset;
         if (distanceToBottom <= 40 && _session is not null)
-            await _session.LoadMoreUpdatesAsync();
+            await _session.LoadMoreUpdatesAsync(_flyoutCancellationToken);
     }
 
     public void ResetScrollPosition()

@@ -63,8 +63,8 @@ public partial class App : Application
 
         _trayHostWindow = new TrayHostWindow();
 #if USE_WINUIEX_FLYOUT
-        _trayHostWindow.InitializeVisible();
-        InitializeTrayAndData();
+        _trayHostWindow.InitializeHidden();
+        _trayHostWindow.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, InitializeTrayAndData);
 #else
         _trayHostWindow.InitializeHidden();
         _trayHostWindow.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, InitializeTrayAndData);
@@ -107,7 +107,6 @@ public partial class App : Application
             var panel = new MainPanelControl(_mainWindowSnapshot ?? _backgroundNotificationMonitor?.GetSnapshot());
             _trayFlyoutService = new TrayFlyoutService(
                 _trayHostWindow,
-                () => { },
                 ShowSettingsWindow,
                 ExitApplication);
             _trayFlyoutService.SetFlyoutContent(panel);
@@ -425,6 +424,11 @@ public partial class App : Application
         if (_backgroundNotificationMonitor is null)
         {
             InitializeTrayAndData();
+        }
+
+        if (_trayFlyoutService is not null)
+        {
+            await _trayFlyoutService.RefreshCurrentPanelPageAsync();
         }
 #endif
 

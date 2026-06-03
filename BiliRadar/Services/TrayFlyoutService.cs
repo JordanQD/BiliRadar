@@ -1,3 +1,4 @@
+using BiliRadar.Controls;
 using BiliRadar.Helpers;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -5,6 +6,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.Win32;
 using System;
 using System.IO;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using Windows.ApplicationModel;
 using Windows.UI.ViewManagement;
@@ -27,7 +29,6 @@ internal sealed class TrayFlyoutService : IDisposable
 
     public TrayFlyoutService(
         Window containerWindow,
-        Action openAction,
         Action settingsAction,
         Action exitAction)
     {
@@ -51,14 +52,11 @@ internal sealed class TrayFlyoutService : IDisposable
                 },
             },
         };
-        _mainFlyout.SystemBackdrop = new Microsoft.UI.Xaml.Media.DesktopAcrylicBackdrop();
+        _mainFlyout.SystemBackdrop = new MicaBackdrop();
+        _mainFlyout.Opened += OnMainFlyoutOpened;
+        _mainFlyout.Closed += OnMainFlyoutClosed;
 
         _contextMenu = new MenuFlyout();
-        _contextMenu.Items.Add(new MenuFlyoutItem
-        {
-            Text = LocalizationHelper.GetString("TrayOpenBiliRadar"),
-            Command = new DelegateCommand(openAction),
-        });
         _contextMenu.Items.Add(new MenuFlyoutItem
         {
             Text = LocalizationHelper.GetString("TraySettings"),
@@ -83,6 +81,29 @@ internal sealed class TrayFlyoutService : IDisposable
         _mainFlyout.Content = content;
     }
 
+    public Task RefreshCurrentPanelPageAsync()
+    {
+        return _mainFlyout.Content is MainPanelControl panel
+            ? panel.RefreshCurrentPageAsync()
+            : Task.CompletedTask;
+    }
+
+    private void OnMainFlyoutOpened(object? sender, object e)
+    {
+        if (_mainFlyout.Content is MainPanelControl panel)
+        {
+            panel.OnFlyoutOpened();
+        }
+    }
+
+    private void OnMainFlyoutClosed(object? sender, object e)
+    {
+        if (_mainFlyout.Content is MainPanelControl panel)
+        {
+            panel.OnFlyoutClosed();
+        }
+    }
+
     public void Dispose()
     {
         if (_isDisposed) return;
@@ -94,6 +115,14 @@ internal sealed class TrayFlyoutService : IDisposable
             _uiSettings = null;
         }
 
+        _mainFlyout.Opened -= OnMainFlyoutOpened;
+        _mainFlyout.Closed -= OnMainFlyoutClosed;
+        if (_mainFlyout.Content is IDisposable disposableContent)
+        {
+            disposableContent.Dispose();
+        }
+
+        _mainFlyout.Content = null;
         _trayIcon.Selected -= OnTrayIconSelected;
         _trayIcon.ContextMenu -= OnTrayIconContextMenu;
         _trayIcon.Dispose();
