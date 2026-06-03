@@ -1,12 +1,12 @@
 # Phase 5 内存测试计划
 
-> 状态：进行中
+> 状态：已实施，待最终数值记录
 > 参考：`docs/WINUI3_MEMORY_OPTIMIZATION.md`
 > 目标：用同一套指标比较当前“Flyout 内容长期保留”策略与“Flyout 关闭后重建面板”策略，再决定是否进入生命周期改造。
 
 ## 1. 结论先行
 
-Phase 5 不直接做 `ListView` 虚拟化，也不先清空图片缓存。当前已经接入关闭后销毁 `MainPanelControl` 的实验实现，下一步用同一套口径测它相对长期保留策略的收益。
+Phase 5 已接入关闭后销毁 `MainPanelControl` 的实现。随后 Phase 6 已完成三个纵向 `ListView`、直播 `ItemsRepeater`、切页 Dispose 当前页和延迟 working set trim。下一步是用同一套口径记录最终数值。
 
 需要回答的问题只有一个：
 
@@ -37,12 +37,18 @@ Flyout 打开
   -> MainPanelControl.OnFlyoutOpened()
   -> 当前页面 ActivateAsync()
 
+切换页面
+  -> Dispose 当前 Page
+  -> Frame.Navigate 到新 Page
+  -> 新 Page 绑定 MainPanelSession 中的集合
+  -> 延迟 2 秒低优先级 GC + working set trim
+
 Flyout 关闭
   -> MainPanelControl.OnFlyoutClosed()
   -> 取消仍在运行的 UI 请求
   -> 导出 MainWindowSnapshot
   -> 清空 Flyout.Content
-  -> Dispose MainPanelControl、Frame 缓存页面、MainPanelSession 和已创建卡片
+  -> Dispose MainPanelControl、当前 Page、MainPanelSession 和已创建卡片
   -> 低优先级 GC + working set trim
 
 应用退出
@@ -123,16 +129,17 @@ Flyout 关闭
 
 不要把 `Page`、`VideoCard`、`ImageSource`、`BitmapImage` 或 `DispatcherQueue` 放入 snapshot。snapshot 只保存纯模型数据。
 
-## 7. Phase 6 边界
+## 7. Phase 6 结果
 
-以下问题留给 Phase 6：
+Phase 6 已完成：
 
 - 三个纵向列表迁移到虚拟化 `ListView`。
 - `VideoCard` 适配虚拟化复用。
-- 删除手动 `Panel.Children` 渲染方法。
-- 关注页直播横向区域改为 `ItemsRepeater`。
+- 关注页直播横向区域改为官方 `ItemsRepeater`。
+- 页面切换时 Dispose 当前页，避免三页 UI 稳定内存叠加。
+- 页面切换后延迟触发资源回收和 working set trim。
 
-Phase 5 只决定 Flyout 内容生命周期。列表性能优化是另一个变量，不能混在同一轮测量里。
+仍需通过手测确认直播点击、直播右键菜单、三页滚动加载、稍后再看移除和关注/取消关注行为。
 
 ## 8. 建议记录模板
 

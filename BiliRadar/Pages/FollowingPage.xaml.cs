@@ -59,6 +59,8 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
         _session.FollowingListRefreshed += OnFollowingListRefreshed;
         _session.Updates.CollectionChanged += OnUpdatesCollectionChanged;
         UpdatesListView.ItemsSource = _session.Updates;
+        LiveCreatorItemsRepeater.ItemsSource = _session.LiveCreators;
+        LiveCreatorItemsRepeater.ItemTemplate ??= new LiveCreatorElementFactory(this);
         UpdateEmptyState();
     }
 
@@ -451,7 +453,6 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
         if (_session is null || _isDisposed) return;
 
         ApplyLiveSectionExpandedStateImmediately(_isLiveSectionExpanded);
-        SyncLiveCreatorCards();
 
         var hasLiveCreators = _session.LiveCreators.Count > 0;
         if (AppSettings.LiveSectionDisplayMode == LiveSectionDisplayMode.Hidden)
@@ -483,57 +484,6 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
                     .StartAsync(LiveCreatorsSection);
             }
         }
-    }
-
-    private void SyncLiveCreatorCards()
-    {
-        if (_session is null) return;
-
-        for (var index = LiveCreatorCardsPanel.Children.Count - 1; index >= 0; index--)
-        {
-            if (LiveCreatorCardsPanel.Children[index] is not FrameworkElement { Tag: LiveCreatorRow existingItem }
-                || _session.LiveCreators.All(item => !IsSameLiveCreator(item, existingItem)))
-            {
-                LiveCreatorCardsPanel.Children.RemoveAt(index);
-            }
-        }
-
-        for (var targetIndex = 0; targetIndex < _session.LiveCreators.Count; targetIndex++)
-        {
-            var item = _session.LiveCreators[targetIndex];
-            var existingIndex = FindLiveCreatorCardIndex(item);
-            if (existingIndex < 0)
-            {
-                LiveCreatorCardsPanel.Children.Insert(targetIndex, CreateLiveCreatorItem(item));
-            }
-            else if (existingIndex != targetIndex)
-            {
-                var existingCard = LiveCreatorCardsPanel.Children[existingIndex];
-                LiveCreatorCardsPanel.Children.RemoveAt(existingIndex);
-                LiveCreatorCardsPanel.Children.Insert(targetIndex, existingCard);
-            }
-        }
-    }
-
-    private int FindLiveCreatorCardIndex(LiveCreatorRow item)
-    {
-        for (var index = 0; index < LiveCreatorCardsPanel.Children.Count; index++)
-        {
-            if (LiveCreatorCardsPanel.Children[index] is FrameworkElement { Tag: LiveCreatorRow existingItem }
-                && IsSameLiveCreator(item, existingItem))
-            {
-                return index;
-            }
-        }
-
-        return -1;
-    }
-
-    private static bool IsSameLiveCreator(LiveCreatorRow left, LiveCreatorRow right)
-    {
-        return left.Mid > 0 && right.Mid > 0
-            ? left.Mid == right.Mid
-            : left.RoomId == right.RoomId;
     }
 
     private FrameworkElement CreateLiveCreatorItem(LiveCreatorRow item)
@@ -800,7 +750,7 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
         }
 
         UpdatesListView.ItemsSource = null;
-        LiveCreatorCardsPanel.Children.Clear();
+        LiveCreatorItemsRepeater.ItemsSource = null;
     }
 
     private static T? FindDescendant<T>(DependencyObject root)
@@ -818,5 +768,26 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
         }
 
         return null;
+    }
+
+    private sealed class LiveCreatorElementFactory(FollowingPage owner) : IElementFactory
+    {
+        public UIElement GetElement(ElementFactoryGetArgs args)
+        {
+            return args.Data is LiveCreatorRow item
+                ? owner.CreateLiveCreatorItem(item)
+                : new Grid();
+        }
+
+        public void RecycleElement(ElementFactoryRecycleArgs args)
+        {
+            if (args.Element is Button button)
+            {
+                button.Click -= owner.LiveCreatorButton_Click;
+                button.ContextFlyout = null;
+                button.Content = null;
+                button.Tag = null;
+            }
+        }
     }
 }

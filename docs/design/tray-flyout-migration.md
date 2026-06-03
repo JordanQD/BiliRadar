@@ -1,7 +1,7 @@
 # BiliRadar 托盘主面板迁移设计：采用 WinUI 原生 Flyout
 
 > 状态：实施基线
-> 最近检查：2026-06-02
+> 最近检查：2026-06-03
 > 参考项目：`C:\Users\Q\Data\Visual Studio\FluentFlyouts`
 > 目标：让托盘主面板获得系统一致的打开、关闭和 light-dismiss 动画，同时尽量使用现成依赖，不维护自制 Shell 托盘基础设施。
 
@@ -14,6 +14,15 @@ BiliRadar 的托盘主面板应从“显示和隐藏一个顶层 `MainWindow`”
 3. 将当前 `MainWindow` 中的业务 UI 抽取为可嵌入的 `MainPanelControl`，并在控件内部使用原生 `SelectorBar + Frame + Page` 组织三个同级视图。
 4. 让 WinUI 原生 Flyout transition 负责打开、关闭动画，不再调用 `AnimateWindow`，也不对应用内根元素模拟窗口动画。
 5. 删除或逐步退役 BiliRadar 自己维护的 `Shell_NotifyIcon`、WndProc 和托盘回调实现。
+
+截至 2026-06-03，以上迁移已落地，并完成 Phase 5/6 的内存和列表性能优化：
+
+- `MainPanelControl` 在 Flyout 打开时按需创建，Flyout 关闭后导出纯数据 `MainWindowSnapshot` 并 Dispose。
+- `Frame.CacheSize=0`，切页前 Dispose 当前 Page，不保留三页 UI 树。
+- 三个纵向视频列表使用虚拟化 `ListView`。
+- 关注页直播横向区域使用官方 `ItemsRepeater`。
+- `VideoCard` 已适配虚拟化复用和异步图片回写校验。
+- 页面切换后延迟执行低优先级 GC + working set trim，提前释放切走页面后的工作集。
 
 这条路线复用了 FluentFlyouts 的核心思路，但不照搬它的低层托盘代码。FluentFlyouts 创建于较早版本的 WinUIEx 生态中，因此仍然手动使用 TerraFX 调用 Win32 API；当前 WinUIEx 已经内置 WinUI 3 托盘 Flyout 和菜单支持。
 
@@ -322,20 +331,19 @@ public MainPanelControl()
 
 如果默认页来自 `AppSettings.DefaultOpenPage`，则将设置映射为 `MainPanelSection`，再设置对应的 `SelectorBarItem`。保持一个映射入口，不要让托盘服务、页面和按钮分别维护自己的索引判断。
 
-#### 2.4 使用 Frame 页面缓存保留切换状态
+#### 2.4 当前实现：不缓存页面 UI 树
 
-默认情况下，`Frame.Navigate(...)` 会创建新的页面实例。三个页面会被频繁来回切换，并且应保留各自滚动位置、已经加载的列表和空状态，因此建议每个页面声明：
+原设计建议通过 `NavigationCacheMode="Required"` 和 `Frame.CacheSize="3"` 保留三个页面状态。但 Phase 6 实测发现，三页都加载后稳定内存接近多个页面 UI 资源叠加。
 
-```xml
-<Page
-    x:Class="BiliRadar.Pages.FollowingPage"
-    ...
-    NavigationCacheMode="Required">
-```
+当前实现以内存优先：
 
-`HistoryPage` 和 `ViewLaterPage` 同样设置 `NavigationCacheMode="Required"`。`MainPanelControl` 的 `Frame.CacheSize="3"` 保持页面数量意图清晰；`Required` 确保三个页面在当前面板会话中都被复用。
+- `Frame.CacheSize="0"`。
+- 三个 Page 不设置 `NavigationCacheMode="Required"`。
+- 切页前主动 Dispose 当前 Page。
+- 数据保留在 `MainPanelSession` 的集合中，新 Page 重新绑定集合。
+- 切页后延迟 2 秒、低优先级执行 GC + working set trim。
 
-页面缓存只负责一次 `MainPanelControl` 会话内的视图复用。Flyout 关闭后是否继续保留整个 `MainPanelControl`，仍按第 8 节的内存测量结果决定。不要为了跨 Flyout 会话保留状态而把 `Page` 存入应用级静态字段。
+不要重新启用页面缓存，除非重新测量确认内存叠加问题已经通过其他方式解决。
 
 #### 2.5 添加轻量的页面会话，不要添加自制导航框架
 
@@ -415,86 +423,40 @@ private void ContentFrame_Navigated(object sender, NavigationEventArgs args)
 | `CreateSnapshot()`、`InitializeFirstFrame(...)` | `MainPanelSession` | 从窗口生命周期迁移到面板会话生命周期 |
 | `AdjustWindowSizeToContent()` | 删除或改为 Flyout 内容尺寸约束 | Flyout 迁移后不再移动顶层面板窗口 |
 
-#### 2.7 性能优化是独立阶段：优先替换纵向 StackPanel
+#### 2.7 Phase 6 实施结果：ListView 与 ItemsRepeater
 
-改成 `Frame + Page` 的主要收益是职责拆分、原生导航语义和原生页面过渡。它不会自动优化列表性能。
+改成 `Frame + Page` 的主要收益是职责拆分、原生导航语义和原生页面过渡。列表性能优化已在 Phase 6 单独实施。
 
-当前三个视频列表使用：
-
-```text
-ScrollViewer
-  -> StackPanel
-     -> VideoCard
-     -> VideoCard
-     -> ...
-```
-
-并通过 `Panel.Children.Add(...)`、`Insert(...)`、`RemoveAt(...)` 和 `Clear()` 手动维护。随着列表增长，所有卡片都会留在视觉树中。后续性能优化应优先迁移为原生数据绑定列表：
-
-```xml
-<ListView
-    ItemsSource="{x:Bind Session.Updates, Mode=OneWay}"
-    SelectionMode="None">
-    <ListView.ItemTemplate>
-        <DataTemplate x:DataType="models:VideoUpdateRow">
-            <controls:VideoCard
-                Item="{x:Bind}"
-                CoverTapped="VideoCard_CoverTapped"
-                CreatorAvatarClicked="VideoCard_CreatorAvatarClicked"
-                ViewLaterClicked="VideoCard_ViewLaterClicked" />
-        </DataTemplate>
-    </ListView.ItemTemplate>
-</ListView>
-```
-
-三个纵向视频列表优先使用 `ListView`，因为它提供滚动、容器复用、键盘行为和虚拟化策略。不要在 `ListView` 外再套一个纵向 `ScrollViewer`，否则会破坏虚拟化和滚动所有权。
-
-关注页应改为：
+当前实现：
 
 ```text
-Grid
-  Row Auto -> 直播区域
+FollowingPage
+  Row Auto -> 直播 ItemsRepeater
   Row Auto -> “最新视频”标题
-  Row *    -> ListView
+  Row *    -> Updates ListView
+
+HistoryPage
+  -> HistoryItems ListView
+  -> 加载完成后才显示空状态
+
+ViewLaterPage
+  -> ViewLaterItems ListView
+  -> 加载完成后才显示空状态
 ```
 
-历史页和稍后再看页应改为：
+三个纵向视频列表都使用 `ListView`，因为它提供滚动、容器复用、键盘行为和虚拟化策略。不要在 `ListView` 外再套一个纵向 `ScrollViewer`，否则会破坏虚拟化和滚动所有权。
 
-```text
-Grid
-  -> ListView
-  -> 居中的空状态 StackPanel，按集合数量显示或隐藏
-```
+`VideoCard` 已经适配虚拟化：
 
-`VideoCard` 已经是 `UserControl`，可以继续作为 `DataTemplate` 内容，但需要逐步清理：
+- `Item` 是依赖属性，可由 XAML template 绑定。
+- `Loaded` 初始化幂等，避免重复创建文本树或重复订阅事件。
+- `Unloaded` 释放当前封面和头像引用。
+- 图片异步加载有版本校验，复用后旧图片不能写回新 item。
+- 右键菜单通过 `CardMenuFlyoutFactory` 按当前 item 重建。
 
-- 保留 `Item`、`ViewLaterButtonMode`、`ShowMetaTime` 等配置入口。
-- 让 `Loaded` 初始化幂等。当前 `OnLoaded(...)` 每次都会调用 `BuildTextPanel()` 并订阅 `ActualThemeChanged`；虚拟化后控件可能卸载、重载和复用，不能重复创建文本树或重复订阅事件。
-- 增加与复用兼容的轻量清理路径：控件暂时离开可视区域时清理当前图片引用和与当前条目相关的临时状态，但不要把可复用控件直接永久 `Dispose()`。
-- 保留 `Dispose()` 给 Session 结束或控件永久释放时使用，并确保释放图片引用、上下文菜单和事件订阅。
-- 为图片异步加载增加条目版本或取消令牌校验。`VideoCard.Item` 被改成新条目后，旧条目的封面和头像请求不能再写回当前控件。
-- 将只用于手动 `Panel.Children` 维护的 `RenderVideoCards()`、`RenderHistoryCards()`、`RenderViewLaterCards()`、`ReplaceHistoryCard(...)` 和 `DiffRefreshPanel(...)` 逐步删除。
-- 让 `ObservableCollection<T>` 变更直接驱动 UI，不再同步维护“集合 + Panel.Children”两套状态。
+直播横向区域使用官方 `ItemsRepeater + StackLayout(Orientation=Horizontal)`，外层继续使用横向 `ScrollViewer`。`ItemsRepeater` 是低策略重复器，不提供 `ListView` 的选择/键盘/完整列表策略，但适合直播头像这种横向轻量展示。
 
-先使用 `ListView` 的默认虚拟化行为。只有性能测量确认卡片创建或图片加载仍然造成明显卡顿时，再考虑 `ContainerContentChanging` 等渐进式渲染钩子。不要在第一版迁移中同时引入复杂的容器回收状态机。
-
-直播横向区域可以后续单独迁移为：
-
-```xml
-<ScrollViewer
-    HorizontalScrollMode="Enabled"
-    HorizontalScrollBarVisibility="Auto"
-    VerticalScrollMode="Disabled"
-    VerticalScrollBarVisibility="Disabled">
-    <ItemsRepeater ItemsSource="{x:Bind Session.LiveCreators, Mode=OneWay}">
-        <ItemsRepeater.Layout>
-            <StackLayout Orientation="Horizontal" Spacing="6" />
-        </ItemsRepeater.Layout>
-    </ItemsRepeater>
-</ScrollViewer>
-```
-
-`ItemsRepeater` 是低策略、支持虚拟化的原生布局构件，没有内置滚动、选择或键盘策略，因此横向直播条目适合使用它；三个主要纵向视频列表则优先使用更完整的 `ListView`。不要为了统一控件而把所有列表都强行改成 `ItemsRepeater`。
+空状态必须等对应刷新事件完成后再显示，避免加载期间误显示“未登录/暂无内容”。
 
 #### 2.8 推荐实施顺序
 
@@ -505,7 +467,7 @@ Grid
 3. 将共享集合、服务、快照和请求状态抽取到 `MainPanelSession`。
 4. 将历史页和稍后再看页的纵向列表先改为绑定 `ListView`。
 5. 将关注页的视频列表改为绑定 `ListView`，保留直播横向区域。
-6. 测量后再决定是否将直播区域改为 `ItemsRepeater`。
+6. 将直播区域改为 `ItemsRepeater`。
 7. 删除不再使用的手动渲染方法、页面切换 Toolkit 动画和旧顶层窗口代码。
 
 每一步都应单独完成 x64 Debug 构建、托盘打开关闭、三页切换、滚动加载和内存观察，再进入下一步。
