@@ -25,6 +25,7 @@ public static class AppSettings
     private const string CustomLaunchWebPageUrlKey = "CustomLaunchWebPageUrl";
     private const string DefaultOpenPageKey = "DefaultOpenPage";
     private const string LiveSectionDisplayModeKey = "LiveSectionDisplayMode";
+    private const string MainPanelHeightKey = "MainPanelHeight";
     private const string CustomNotificationCreatorsKey = "CustomNotificationCreators";
     private const string AppLanguageKey = "AppLanguage";
     private const string DefaultCustomLaunchWebPageUrl = "https://www.bilibili.com/";
@@ -153,6 +154,24 @@ public static class AppSettings
                 : LiveSectionDisplayMode.Expanded;
         }
         set => LocalSettings.Values[LiveSectionDisplayModeKey] = (int)value;
+    }
+
+    public static int MainPanelHeight
+    {
+        get
+        {
+            var value = ReadRawInt(MainPanelHeightKey, 800);
+            return value switch
+            {
+                600 or 800 or 1000 => value,
+                _ => 800,
+            };
+        }
+        set => LocalSettings.Values[MainPanelHeightKey] = value switch
+        {
+            600 or 800 or 1000 => value,
+            _ => 800,
+        };
     }
 
     public static bool VideoNotificationBaselineInitialized

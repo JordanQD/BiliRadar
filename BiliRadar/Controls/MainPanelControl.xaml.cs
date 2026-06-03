@@ -1,6 +1,7 @@
 using BiliRadar.Models;
 using BiliRadar.Pages;
 using BiliRadar.Services;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Animation;
@@ -30,6 +31,8 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
     public MainPanelControl()
     {
         InitializeComponent();
+        ApplyPanelHeight();
+        Loaded += MainPanelControl_Loaded;
         Session = new MainPanelSession(new CookieStore());
         ContentFrame.Navigated += OnContentFrameNavigated;
         SetDefaultPage();
@@ -38,9 +41,23 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
     public MainPanelControl(MainWindowSnapshot? snapshot)
     {
         InitializeComponent();
+        ApplyPanelHeight();
+        Loaded += MainPanelControl_Loaded;
         Session = new MainPanelSession(new CookieStore(), snapshot);
         ContentFrame.Navigated += OnContentFrameNavigated;
         SetDefaultPage();
+    }
+
+    private void MainPanelControl_Loaded(object sender, RoutedEventArgs e)
+    {
+        ApplyPanelHeight();
+    }
+
+    private void ApplyPanelHeight()
+    {
+        var scale = XamlRoot?.RasterizationScale ?? 1.0;
+        var workAreaHeight = DisplayArea.Primary.WorkArea.Height / scale;
+        RootGrid.Height = Math.Min(workAreaHeight - 80, AppSettings.MainPanelHeight);
     }
 
     private void SetDefaultPage()
@@ -117,6 +134,7 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
         _pageSwitchCleanupCts?.Cancel();
         _pageSwitchCleanupCts?.Dispose();
         _pageSwitchCleanupCts = null;
+        Loaded -= MainPanelControl_Loaded;
         ContentFrame.Navigated -= OnContentFrameNavigated;
         foreach (var page in _initializedPages)
         {

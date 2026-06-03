@@ -49,6 +49,12 @@
   <data name="GeneralSignOutButton.Content" xml:space="preserve"><value>清除</value></data>
   <data name="GeneralAccountInfoBar.Message" xml:space="preserve"><value>正在檢查登錄狀態...</value></data>
   <data name="GeneralDisplaySectionHeader.Text" xml:space="preserve"><value>顯示</value></data>
+  <data name="GeneralMainPanelHeightCard.Header" xml:space="preserve"><value>主彈窗高度</value></data>
+  <data name="GeneralMainPanelHeightCard.Description" xml:space="preserve"><value>設定任務欄托盤主彈窗的高度。</value></data>
+  <data name="GeneralMainPanelHeightBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>主彈窗高度</value></data>
+  <data name="GeneralMainPanelHeight600Item.Content" xml:space="preserve"><value>600</value></data>
+  <data name="GeneralMainPanelHeight800Item.Content" xml:space="preserve"><value>800</value></data>
+  <data name="GeneralMainPanelHeight1000Item.Content" xml:space="preserve"><value>1000</value></data>
   <data name="GeneralLiveSectionDisplayModeCard.Header" xml:space="preserve"><value>正在直播</value></data>
   <data name="GeneralLiveSectionDisplayModeCard.Description" xml:space="preserve"><value>控制關注頁面中正在直播區域的顯示方式。</value></data>
   <data name="GeneralLiveSectionDisplayModeBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>正在直播</value></data>

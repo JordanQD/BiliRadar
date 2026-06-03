@@ -1,6 +1,8 @@
 using BiliRadar.Controls;
 using BiliRadar.Helpers;
 using BiliRadar.Models;
+using Microsoft.UI;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
@@ -49,14 +51,7 @@ internal sealed class TrayFlyoutService : IDisposable
         {
             LightDismissOverlayMode = LightDismissOverlayMode.On,
             ShouldConstrainToRootBounds = false,
-            FlyoutPresenterStyle = new Style(typeof(FlyoutPresenter))
-            {
-                Setters =
-                {
-                    new Setter(FlyoutPresenter.PaddingProperty, new Thickness(0)),
-                    new Setter(FlyoutPresenter.CornerRadiusProperty, new CornerRadius(8)),
-                },
-            },
+            FlyoutPresenterStyle = CreateMainFlyoutPresenterStyle(),
         };
         _mainFlyout.SystemBackdrop = new MicaBackdrop();
         _mainFlyout.Opened += OnMainFlyoutOpened;
@@ -152,8 +147,34 @@ internal sealed class TrayFlyoutService : IDisposable
     {
         if (_mainFlyout.Content is not MainPanelControl)
         {
+            _mainFlyout.FlyoutPresenterStyle = CreateMainFlyoutPresenterStyle();
             _mainFlyout.Content = new MainPanelControl(_lastSnapshot);
         }
+    }
+
+    private Style CreateMainFlyoutPresenterStyle()
+    {
+        var panelHeight = GetMainPanelHeight();
+
+        return new Style(typeof(FlyoutPresenter))
+        {
+            Setters =
+            {
+                new Setter(FrameworkElement.WidthProperty, 420d),
+                new Setter(FrameworkElement.HeightProperty, panelHeight),
+                new Setter(FrameworkElement.MaxHeightProperty, panelHeight),
+                new Setter(FlyoutPresenter.PaddingProperty, new Thickness(0)),
+                new Setter(FlyoutPresenter.CornerRadiusProperty, new CornerRadius(8)),
+                new Setter(ScrollViewer.VerticalScrollBarVisibilityProperty, ScrollBarVisibility.Disabled),
+            },
+        };
+    }
+
+    private double GetMainPanelHeight()
+    {
+        var scale = GetDpiForWindow(Win32Interop.GetWindowFromWindowId(_containerWindow.AppWindow.Id)) / 96.0;
+        var workArea = DisplayArea.GetFromWindowId(_containerWindow.AppWindow.Id, DisplayAreaFallback.Primary).WorkArea;
+        return Math.Min(workArea.Height / scale - 80, AppSettings.MainPanelHeight);
     }
 
     private void OnTrayIconContextMenu(object? sender, TrayIconEventArgs args)
@@ -207,6 +228,9 @@ internal sealed class TrayFlyoutService : IDisposable
         IntPtr process,
         IntPtr minimumWorkingSetSize,
         IntPtr maximumWorkingSetSize);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetDpiForWindow(IntPtr hWnd);
 
     private sealed class DelegateCommand : ICommand
     {

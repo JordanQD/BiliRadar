@@ -355,11 +355,11 @@ public sealed partial class HistoryPage : Page, IMainPanelPage, IDisposable
 
     private async void HistoryScrollViewer_ViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
     {
-        if (e.IsIntermediate || _isResettingScrollPosition) return;
+        if (_isResettingScrollPosition) return;
         if (_historyScrollViewer is null) return;
 
         var distanceToBottom = _historyScrollViewer.ScrollableHeight - _historyScrollViewer.VerticalOffset;
-        if (distanceToBottom <= 40 && _session is not null)
+        if (distanceToBottom <= 120 && _session is not null)
             await _session.LoadMoreHistoryAsync(_flyoutCancellationToken);
     }
 

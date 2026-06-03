@@ -191,6 +191,27 @@
                 Style="{StaticResource SettingsSectionHeaderTextBlockStyle}"
                 Text="显示" />
             <controls:SettingsCard
+                x:Uid="GeneralMainPanelHeightCard"
+                Description="设置任务栏托盘主弹窗的高度。"
+                Header="主弹窗高度">
+                <controls:SettingsCard.HeaderIcon>
+                    <FontIcon Glyph="&#xE9D9;" />
+                </controls:SettingsCard.HeaderIcon>
+                <ComboBox
+                    x:Name="MainPanelHeightBox"
+                    x:Uid="GeneralMainPanelHeightBox"
+                    MinWidth="160"
+                    MaxWidth="300"
+                    HorizontalAlignment="Stretch"
+                    AutomationProperties.AutomationId="MainPanelHeightBox"
+                    AutomationProperties.Name="主弹窗高度"
+                    SelectionChanged="MainPanelHeightBox_SelectionChanged">
+                    <ComboBoxItem x:Uid="GeneralMainPanelHeight600Item" Content="600" Tag="600" />
+                    <ComboBoxItem x:Uid="GeneralMainPanelHeight800Item" Content="800" Tag="800" />
+                    <ComboBoxItem x:Uid="GeneralMainPanelHeight1000Item" Content="1000" Tag="1000" />
+                </ComboBox>
+            </controls:SettingsCard>
+            <controls:SettingsCard
                 x:Uid="GeneralLiveSectionDisplayModeCard"
                 Description="控制关注页面中正在直播区域的显示方式。"
                 Header="正在直播">

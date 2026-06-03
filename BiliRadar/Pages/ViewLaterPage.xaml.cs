@@ -357,11 +357,11 @@ public sealed partial class ViewLaterPage : Page, IMainPanelPage, IDisposable
 
     private async void ViewLaterScrollViewer_ViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
     {
-        if (e.IsIntermediate || _isResettingScrollPosition) return;
+        if (_isResettingScrollPosition) return;
         if (_viewLaterScrollViewer is null) return;
 
         var distanceToBottom = _viewLaterScrollViewer.ScrollableHeight - _viewLaterScrollViewer.VerticalOffset;
-        if (distanceToBottom <= 40 && _session is not null)
+        if (distanceToBottom <= 120 && _session is not null)
             await _session.LoadMoreViewLaterAsync(_flyoutCancellationToken);
     }
 

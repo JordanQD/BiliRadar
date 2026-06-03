@@ -633,11 +633,11 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
 
     private async void UpdatesScrollViewer_ViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
     {
-        if (e.IsIntermediate || _isResettingScrollPosition) return;
+        if (_isResettingScrollPosition) return;
         if (_updatesScrollViewer is null) return;
 
         var distanceToBottom = _updatesScrollViewer.ScrollableHeight - _updatesScrollViewer.VerticalOffset;
-        if (distanceToBottom <= 40 && _session is not null)
+        if (distanceToBottom <= 120 && _session is not null)
             await _session.LoadMoreUpdatesAsync(_flyoutCancellationToken);
     }
 
