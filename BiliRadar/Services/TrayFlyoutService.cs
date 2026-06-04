@@ -12,6 +12,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Windows.ApplicationModel;
@@ -36,6 +37,9 @@ internal sealed class TrayFlyoutService : IDisposable
     private MainWindowSnapshot? _lastSnapshot;
     private UISettings? _uiSettings;
     private DateTime _lastMainFlyoutClosedAt = DateTime.MinValue;
+    private CancellationTokenSource? _mainFlyoutCloseAnimationCts;
+    private bool _isRunningMainFlyoutCloseAnimation;
+    private bool _isMainFlyoutCloseAnimationComplete;
     private bool _isMainFlyoutOpen;
     private bool _isDisposed;
 
@@ -61,6 +65,8 @@ internal sealed class TrayFlyoutService : IDisposable
         };
         _mainFlyout.AreOpenCloseAnimationsEnabled = true;
         _mainFlyout.SystemBackdrop = new MicaBackdrop();
+        TraceFlyout($"_mainFlyout.AreOpenCloseAnimationsEnabled={_mainFlyout.AreOpenCloseAnimationsEnabled}");
+        _mainFlyout.Closing += OnMainFlyoutClosing;
         _mainFlyout.Opened += OnMainFlyoutOpened;
         _mainFlyout.Closed += OnMainFlyoutClosed;
 
@@ -78,13 +84,14 @@ internal sealed class TrayFlyoutService : IDisposable
         _contextMenu.Items.Add(new MenuFlyoutItem
         {
             Text = LocalizationHelper.GetString("TrayExit"),
-            Command = new DelegateCommand(exitAction),
+            Command = new DelegateCommand(() => RequestExit(exitAction)),
         });
 
         _trayIcon.Selected += OnTrayIconSelected;
         _trayIcon.ContextMenu += OnTrayIconContextMenu;
 
         _uiSettings = new UISettings();
+        TraceFlyout($"UISettings.AnimationsEnabled={_uiSettings.AnimationsEnabled}");
         _uiSettings.ColorValuesChanged += OnColorValuesChanged;
     }
 
@@ -93,6 +100,38 @@ internal sealed class TrayFlyoutService : IDisposable
         return _mainFlyout.Content is MainPanelControl panel
             ? panel.RefreshCurrentPageAsync()
             : Task.CompletedTask;
+    }
+
+    private void OnMainFlyoutClosing(FlyoutBase sender, FlyoutBaseClosingEventArgs args)
+    {
+        TraceFlyout("_mainFlyout.Closing");
+
+        if (_isDisposed || _isMainFlyoutCloseAnimationComplete)
+        {
+            _isMainFlyoutCloseAnimationComplete = false;
+            TraceFlyout("_mainFlyout.Closing allowed after close animation");
+            return;
+        }
+
+        if (_uiSettings?.AnimationsEnabled != true || _mainFlyout.Content is not MainPanelControl panel)
+        {
+            return;
+        }
+
+        args.Cancel = true;
+
+        if (_isRunningMainFlyoutCloseAnimation)
+        {
+            TraceFlyout("_mainFlyout.Closing ignored while close animation is already running");
+            return;
+        }
+
+        _isRunningMainFlyoutCloseAnimation = true;
+        _mainFlyoutCloseAnimationCts?.Cancel();
+        _mainFlyoutCloseAnimationCts?.Dispose();
+        _mainFlyoutCloseAnimationCts = new CancellationTokenSource();
+
+        _ = CompleteMainFlyoutCloseAfterAnimationAsync(panel, _mainFlyoutCloseAnimationCts.Token);
     }
 
     private void OnMainFlyoutOpened(object? sender, object e)
@@ -105,8 +144,42 @@ internal sealed class TrayFlyoutService : IDisposable
         }
     }
 
+    private async Task CompleteMainFlyoutCloseAfterAnimationAsync(
+        MainPanelControl panel,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            TraceFlyout("MainPanelControl close animation started");
+            await panel.PlayFlyoutCloseAnimationAsync(cancellationToken);
+            TraceFlyout("MainPanelControl close animation completed");
+        }
+        catch (OperationCanceledException)
+        {
+            TraceFlyout("MainPanelControl close animation canceled");
+            return;
+        }
+        catch (Exception ex)
+        {
+            TraceFlyout($"MainPanelControl close animation failed: {ex.GetType().Name}");
+        }
+
+        if (_isDisposed || cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+
+        _isRunningMainFlyoutCloseAnimation = false;
+        _isMainFlyoutCloseAnimationComplete = true;
+        TraceFlyout("_mainFlyout.Hide() requested after close animation");
+        _mainFlyout.Hide();
+    }
+
     private void OnMainFlyoutClosed(object? sender, object e)
     {
+        TraceFlyout("_mainFlyout.Closed");
+        _isRunningMainFlyoutCloseAnimation = false;
+        _isMainFlyoutCloseAnimationComplete = false;
         _isMainFlyoutOpen = false;
         _lastMainFlyoutClosedAt = DateTime.UtcNow;
 
@@ -116,6 +189,7 @@ internal sealed class TrayFlyoutService : IDisposable
             _lastSnapshot = panel.Session.CreateSnapshot();
         }
 
+        TraceFlyout("TrayHostWindow.HideFlyoutHost() requested from _mainFlyout.Closed");
         _containerWindow.HideFlyoutHost();
     }
 
@@ -130,7 +204,11 @@ internal sealed class TrayFlyoutService : IDisposable
             _uiSettings = null;
         }
 
+        _mainFlyoutCloseAnimationCts?.Cancel();
+        _mainFlyoutCloseAnimationCts?.Dispose();
+        _mainFlyoutCloseAnimationCts = null;
         _mainFlyout.Opened -= OnMainFlyoutOpened;
+        _mainFlyout.Closing -= OnMainFlyoutClosing;
         _mainFlyout.Closed -= OnMainFlyoutClosed;
         _contextMenu.Closed -= OnContextMenuClosed;
         if (_mainFlyout.Content is IDisposable disposableContent)
@@ -146,10 +224,27 @@ internal sealed class TrayFlyoutService : IDisposable
 
     private void OnTrayIconSelected(object? sender, TrayIconEventArgs args)
     {
-        if (_mainFlyout.IsOpen || _isMainFlyoutOpen)
+        TraceFlyout($"Tray icon selected. IsOpen={_mainFlyout.IsOpen}, trackedOpen={_isMainFlyoutOpen}");
+
+        if (_isRunningMainFlyoutCloseAnimation)
         {
             args.Handled = true;
+            TraceFlyout("Tray icon selected while close animation is running; ignored duplicate hide request");
+            return;
+        }
+
+        if (_mainFlyout.IsOpen)
+        {
+            args.Handled = true;
+            TraceFlyout("_mainFlyout.Hide() requested from tray icon selected");
             _mainFlyout.Hide();
+            return;
+        }
+
+        if (_isMainFlyoutOpen)
+        {
+            args.Handled = true;
+            TraceFlyout("Tray icon selected while _mainFlyout is closing; ignored duplicate hide request");
             return;
         }
 
@@ -213,6 +308,10 @@ internal sealed class TrayFlyoutService : IDisposable
     {
         var cursor = GetCursorPosition();
         _containerWindow.PrepareFlyoutHost(cursor);
+        if (_mainFlyout.Content is MainPanelControl panel)
+        {
+            panel.PrepareForFlyoutOpenAnimation();
+        }
 
         var options = new FlyoutShowOptions
         {
@@ -240,8 +339,22 @@ internal sealed class TrayFlyoutService : IDisposable
     {
         if (!_mainFlyout.IsOpen && !_isMainFlyoutOpen)
         {
+            TraceFlyout("TrayHostWindow.HideFlyoutHost() requested from context menu closed");
             _containerWindow.HideFlyoutHost();
         }
+    }
+
+    private void RequestExit(Action exitAction)
+    {
+        TraceFlyout("Exit requested from context menu");
+        _contextMenu.Hide();
+        _containerWindow.DispatcherQueue.TryEnqueue(
+            Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
+            () =>
+            {
+                TraceFlyout("Exit action running after context menu dismissed");
+                exitAction();
+            });
     }
 
     private void OnColorValuesChanged(UISettings sender, object args)
@@ -280,6 +393,11 @@ internal sealed class TrayFlyoutService : IDisposable
         const string personalizeKey = @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize";
         using var key = Registry.CurrentUser.OpenSubKey(personalizeKey);
         return key?.GetValue("SystemUsesLightTheme") is int value ? value != 0 : true;
+    }
+
+    private static void TraceFlyout(string message)
+    {
+        Debug.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [TrayFlyout] {message}");
     }
 
     private static void CollectReleasedPanelResources()

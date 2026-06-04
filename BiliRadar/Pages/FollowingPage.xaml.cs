@@ -764,7 +764,6 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
 
         Deactivate();
         DisposeVideoCards(UpdatesListView);
-        LiveCreatorItemsRepeater.ItemTemplate = null;
     }
 
     public void Deactivate()

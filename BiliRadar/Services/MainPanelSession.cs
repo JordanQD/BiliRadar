@@ -517,10 +517,31 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
             var timer = _dispatcherQueue.CreateTimer();
             timer.Interval = TimeSpan.FromSeconds(3);
             timer.IsRepeating = false;
-            timer.Tick += (_, _) => RemoveStatusNotification(notification);
+            timer.Tick += (_, _) => DismissStatusNotification(notification);
             notification.AutoDismissTimer = timer;
             timer.Start();
         }
+    }
+
+    public void DismissStatusNotification(StatusNotification notification)
+    {
+        if (!StatusNotifications.Contains(notification) || notification.IsRemoving)
+        {
+            return;
+        }
+
+        notification.AutoDismissTimer?.Stop();
+        notification.AutoDismissTimer = null;
+        notification.BeginRemove();
+
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(220));
+            _dispatcherQueue.TryEnqueue(() =>
+            {
+                StatusNotifications.Remove(notification);
+            });
+        });
     }
 
     public void ClearSignedOutData()
@@ -757,9 +778,7 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
 
     private void RemoveStatusNotification(StatusNotification notification)
     {
-        notification.AutoDismissTimer?.Stop();
-        notification.AutoDismissTimer = null;
-        StatusNotifications.Remove(notification);
+        DismissStatusNotification(notification);
     }
 
     private void ClearStatusNotifications()

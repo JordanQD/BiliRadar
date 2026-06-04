@@ -1,15 +1,19 @@
 using BiliRadar.Models;
 using BiliRadar.Pages;
 using BiliRadar.Services;
+using Microsoft.UI.Composition;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Hosting;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -20,6 +24,7 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
 {
     private int _previousSelectedPageIndex = -1;
     private readonly HashSet<IDisposable> _initializedPages = [];
+    private readonly Dictionary<StatusNotification, FrameworkElement> _statusNotificationHosts = [];
     private CancellationTokenSource? _flyoutCts;
     private CancellationTokenSource? _pageSwitchCleanupCts;
     private bool _isFlyoutOpen;
@@ -134,6 +139,44 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
         return page.ActivateAsync(_flyoutCts?.Token ?? CancellationToken.None);
     }
 
+    public void PrepareForFlyoutOpenAnimation()
+    {
+        var visual = ElementCompositionPreview.GetElementVisual(RootGrid);
+        visual.Opacity = 1f;
+        visual.Offset = Vector3.Zero;
+    }
+
+    public async Task PlayFlyoutCloseAnimationAsync(CancellationToken cancellationToken)
+    {
+        var visual = ElementCompositionPreview.GetElementVisual(RootGrid);
+        visual.Opacity = 1f;
+        visual.Offset = Vector3.Zero;
+
+        var compositor = visual.Compositor;
+        var duration = TimeSpan.FromMilliseconds(83);
+
+        var opacityAnimation = compositor.CreateScalarKeyFrameAnimation();
+        opacityAnimation.Duration = duration;
+        opacityAnimation.InsertKeyFrame(0f, 1f);
+        opacityAnimation.InsertKeyFrame(1f, 0f);
+
+        var offsetAnimation = compositor.CreateScalarKeyFrameAnimation();
+        offsetAnimation.Duration = duration;
+        offsetAnimation.InsertKeyFrame(0f, 0f);
+        offsetAnimation.InsertKeyFrame(1f, 4f);
+
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var registration = cancellationToken.Register(() => completion.TrySetCanceled(cancellationToken));
+
+        var batch = compositor.CreateScopedBatch(CompositionBatchTypes.Animation);
+        batch.Completed += (_, _) => completion.TrySetResult();
+        visual.StartAnimation("Opacity", opacityAnimation);
+        visual.StartAnimation("Offset.Y", offsetAnimation);
+        batch.End();
+
+        await completion.Task;
+    }
+
     public void Dispose()
     {
         if (_isDisposed) return;
@@ -153,6 +196,12 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
         }
 
         _initializedPages.Clear();
+        foreach (var notification in _statusNotificationHosts.Keys.ToList())
+        {
+            notification.PropertyChanged -= StatusNotification_PropertyChanged;
+        }
+
+        _statusNotificationHosts.Clear();
         StatusItemsControl.ItemsSource = null;
         ContentFrame.Content = null;
         Session.Dispose();
@@ -290,9 +339,69 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
     {
         if (sender.DataContext is StatusNotification notification)
         {
-            notification.AutoDismissTimer?.Stop();
-            notification.AutoDismissTimer = null;
-            Session.StatusNotifications.Remove(notification);
+            Session.DismissStatusNotification(notification);
         }
+    }
+
+    private void StatusNotificationHost_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement host
+            || host.DataContext is not StatusNotification notification)
+        {
+            return;
+        }
+
+        _statusNotificationHosts[notification] = host;
+        notification.PropertyChanged -= StatusNotification_PropertyChanged;
+        notification.PropertyChanged += StatusNotification_PropertyChanged;
+
+        var visual = ElementCompositionPreview.GetElementVisual(host);
+        visual.Opacity = notification.IsRemoving ? 0f : 1f;
+        visual.Offset = Vector3.Zero;
+    }
+
+    private void StatusNotificationHost_Unloaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement host
+            || host.DataContext is not StatusNotification notification)
+        {
+            return;
+        }
+
+        notification.PropertyChanged -= StatusNotification_PropertyChanged;
+        _statusNotificationHosts.Remove(notification);
+    }
+
+    private void StatusNotification_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(StatusNotification.IsRemoving)
+            || sender is not StatusNotification notification
+            || !notification.IsRemoving
+            || !_statusNotificationHosts.TryGetValue(notification, out var host))
+        {
+            return;
+        }
+
+        PlayStatusNotificationDismissAnimation(host);
+    }
+
+    private static void PlayStatusNotificationDismissAnimation(FrameworkElement host)
+    {
+        var visual = ElementCompositionPreview.GetElementVisual(host);
+        var compositor = visual.Compositor;
+        var duration = TimeSpan.FromMilliseconds(180);
+
+        var opacityAnimation = compositor.CreateScalarKeyFrameAnimation();
+        opacityAnimation.Duration = duration;
+        opacityAnimation.InsertKeyFrame(0f, visual.Opacity);
+        opacityAnimation.InsertKeyFrame(1f, 0f);
+
+        var offsetAnimation = compositor.CreateScalarKeyFrameAnimation();
+        offsetAnimation.Duration = duration;
+        offsetAnimation.InsertKeyFrame(0f, visual.Offset.Y);
+        offsetAnimation.InsertKeyFrame(1f, 8f);
+
+        visual.StartAnimation("Opacity", opacityAnimation);
+        visual.StartAnimation("Offset.Y", offsetAnimation);
     }
 }

@@ -76,17 +76,28 @@
                 ItemsSource="{x:Bind Session.StatusNotifications, Mode=OneWay}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <StackPanel Spacing="8" />
+                        <StackPanel Spacing="8">
+                            <StackPanel.ChildrenTransitions>
+                                <TransitionCollection>
+                                    <EntranceThemeTransition FromVerticalOffset="16" />
+                                    <RepositionThemeTransition IsStaggeringEnabled="False" />
+                                </TransitionCollection>
+                            </StackPanel.ChildrenTransitions>
+                        </StackPanel>
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="models:StatusNotification">
-                        <InfoBar
-                            IsClosable="True"
-                            IsOpen="True"
-                            CloseButtonClick="StatusNotificationInfoBar_CloseButtonClick"
-                            Message="{x:Bind Message}"
-                            Severity="{x:Bind Severity}" />
+                        <Grid
+                            Loaded="StatusNotificationHost_Loaded"
+                            Unloaded="StatusNotificationHost_Unloaded">
+                            <InfoBar
+                                IsClosable="True"
+                                IsOpen="True"
+                                CloseButtonClick="StatusNotificationInfoBar_CloseButtonClick"
+                                Message="{x:Bind Message}"
+                                Severity="{x:Bind Severity}" />
+                        </Grid>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>

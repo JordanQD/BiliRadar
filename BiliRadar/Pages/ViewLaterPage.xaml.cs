@@ -390,7 +390,6 @@ public sealed partial class ViewLaterPage : Page, IMainPanelPage, IDisposable
 
         Deactivate();
         DisposeVideoCards(ViewLaterListView);
-        ViewLaterListView.ItemTemplate = null;
     }
 
     public void Deactivate()

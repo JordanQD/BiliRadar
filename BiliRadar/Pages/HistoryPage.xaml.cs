@@ -388,7 +388,6 @@ public sealed partial class HistoryPage : Page, IMainPanelPage, IDisposable
 
         Deactivate();
         DisposeVideoCards(HistoryListView);
-        HistoryListView.ItemTemplate = null;
     }
 
     public void Deactivate()
