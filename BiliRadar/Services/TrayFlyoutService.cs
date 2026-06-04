@@ -59,6 +59,7 @@ internal sealed class TrayFlyoutService : IDisposable
             ShouldConstrainToRootBounds = false,
             FlyoutPresenterStyle = CreateMainFlyoutPresenterStyle(),
         };
+        _mainFlyout.AreOpenCloseAnimationsEnabled = true;
         _mainFlyout.SystemBackdrop = new MicaBackdrop();
         _mainFlyout.Opened += OnMainFlyoutOpened;
         _mainFlyout.Closed += OnMainFlyoutClosed;
