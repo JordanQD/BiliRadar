@@ -34,6 +34,7 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
     private bool _isLoadingViewLater;
     private bool _isLoadingMoreViewLater;
     private bool _refreshQueuedOnShow;
+    private int _pendingImageLoads;
     private bool _hasMoreUpdates = true;
     private bool _hasMoreHistory = true;
     private bool _hasMoreViewLater = true;
@@ -122,6 +123,7 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
     private string _followingListText = LocalizationHelper.GetString("NoFollowingData");
 
     public bool RefreshProgressIsActive => IsLoading || _isLoadingHistory || _isLoadingViewLater
+        || _pendingImageLoads > 0
         || _isLoadingMoreHistory || _isLoadingMoreViewLater || _isLoadingMore;
 
     public double RefreshProgressOpacity => RefreshProgressIsActive ? 1.0 : 0.0;
@@ -500,6 +502,13 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
         }
     }
 
+    public IDisposable TrackImageLoad()
+    {
+        _pendingImageLoads++;
+        NotifyRefreshProgressChanged();
+        return new ImageLoadTracker(this);
+    }
+
     public void ShowStatus(string message, InfoBarSeverity severity)
     {
         if (string.IsNullOrWhiteSpace(message))
@@ -816,6 +825,21 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RefreshProgressOpacity)));
     }
 
+    private void CompleteImageLoad()
+    {
+        if (!_dispatcherQueue.HasThreadAccess)
+        {
+            _dispatcherQueue.TryEnqueue(CompleteImageLoad);
+            return;
+        }
+
+        if (_pendingImageLoads <= 0)
+            return;
+
+        _pendingImageLoads--;
+        NotifyRefreshProgressChanged();
+    }
+
     private readonly record struct HistoryItemChange(HistoryItemChangeKind Kind, int OldIndex, int NewIndex)
     {
         public static HistoryItemChange None { get; } = new(HistoryItemChangeKind.None, -1, -1);
@@ -824,4 +848,16 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
     }
 
     private enum HistoryItemChangeKind { None, Inserted, Updated }
+
+    private sealed class ImageLoadTracker(MainPanelSession owner) : IDisposable
+    {
+        private bool _isDisposed;
+
+        public void Dispose()
+        {
+            if (_isDisposed) return;
+            _isDisposed = true;
+            owner.CompleteImageLoad();
+        }
+    }
 }

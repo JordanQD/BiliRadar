@@ -135,7 +135,9 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
             return;
         }
 
-        LatestVideosHeader.Visibility = Visibility.Visible;
+        LatestVideosHeader.Visibility = _session is not null && _session.LiveCreators.Count > 0
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         ApplyLiveSectionExpandedStateImmediately(_isLiveSectionExpanded);
 
         if (_session is not null && _session.LiveCreators.Count > 0)
@@ -214,6 +216,7 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
         card.IsCreatorFollowedAsync = _session is not null
             ? mid => _session.IsCreatorFollowedAsync(mid)
             : null;
+        card.ImageLoadTrackerFactory = () => _session?.TrackImageLoad();
         card.CardMenuFlyoutFactory = item =>
         {
             var relationActionMode = _session?.GetCreatorRelationActionMode(item)
@@ -471,9 +474,9 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
         }
         else
         {
-            LatestVideosHeader.Visibility = Visibility.Visible;
             if (hasLiveCreators)
             {
+                LatestVideosHeader.Visibility = Visibility.Visible;
                 if (LiveCreatorsSection.Visibility != Visibility.Visible)
                 {
                     LiveCreatorsSection.Visibility = Visibility.Visible;
@@ -483,14 +486,30 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
                         .StartAsync(LiveCreatorsSection);
                 }
             }
-            else if (LiveCreatorsSection.Visibility == Visibility.Visible)
+            else
             {
-                _ = AnimationBuilder.Create()
-                    .Opacity(from: 1, to: 0, duration: TimeSpan.FromMilliseconds(180), easingType: EasingType.Cubic, easingMode: EasingMode.EaseIn)
-                    .Translation(Axis.Y, from: 0, to: -8, duration: TimeSpan.FromMilliseconds(180), easingType: EasingType.Cubic, easingMode: EasingMode.EaseIn)
-                    .StartAsync(LiveCreatorsSection);
+                LatestVideosHeader.Visibility = Visibility.Collapsed;
+                HideLiveCreatorsSection();
             }
         }
+    }
+
+    private async void HideLiveCreatorsSection()
+    {
+        var animationVersion = ++_liveSectionAnimationVersion;
+        if (LiveCreatorsSection.Visibility == Visibility.Visible)
+        {
+            await AnimationBuilder.Create()
+                .Opacity(from: 1, to: 0, duration: TimeSpan.FromMilliseconds(180), easingType: EasingType.Cubic, easingMode: EasingMode.EaseIn)
+                .Translation(Axis.Y, from: 0, to: -8, duration: TimeSpan.FromMilliseconds(180), easingType: EasingType.Cubic, easingMode: EasingMode.EaseIn)
+                .StartAsync(LiveCreatorsSection);
+        }
+
+        if (animationVersion != _liveSectionAnimationVersion || _isDisposed) return;
+        LiveCreatorsSection.Visibility = Visibility.Collapsed;
+        LiveCreatorsSection.Opacity = 1;
+        LiveCreatorsSection.Translation = Vector3.Zero;
+        LiveCardsScrollViewer.ChangeView(0, null, null, true);
     }
 
     private FrameworkElement CreateLiveCreatorItem(LiveCreatorRow item)
@@ -652,6 +671,7 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
     {
         _isResettingScrollPosition = true;
         _updatesScrollViewer?.ChangeView(null, 0, null, true);
+        LiveCardsScrollViewer.ChangeView(0, null, null, true);
         UpdatesListView.DispatcherQueue.TryEnqueue(() => _isResettingScrollPosition = false);
     }
 
@@ -673,12 +693,18 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
         _ = LoadRemoteImageBrushAsync(
             imageBrush,
             url,
-            () => !_isDisposed && imageLoadVersion == _liveImageLoadVersion);
+            () => !_isDisposed && imageLoadVersion == _liveImageLoadVersion,
+            _session?.TrackImageLoad());
         return imageFrame;
     }
 
-    private static async Task LoadRemoteImageBrushAsync(ImageBrush imageBrush, string url, Func<bool> isCurrent)
+    private static async Task LoadRemoteImageBrushAsync(
+        ImageBrush imageBrush,
+        string url,
+        Func<bool> isCurrent,
+        IDisposable? imageLoadTracker)
     {
+        using var tracker = imageLoadTracker;
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return;
 
         for (var attempt = 1; attempt <= 3; attempt++)
@@ -693,7 +719,7 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
                 response.EnsureSuccessStatusCode();
                 var bytes = await response.Content.ReadAsByteArrayAsync();
 
-                imageBrush.DispatcherQueue.TryEnqueue(async () =>
+                await EnqueueOnDispatcherAsync(imageBrush.DispatcherQueue, async () =>
                 {
                     if (!isCurrent()) return;
                     try
@@ -718,10 +744,11 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
             {
                 if (attempt == 3)
                 {
-                    imageBrush.DispatcherQueue.TryEnqueue(() =>
+                    await EnqueueOnDispatcherAsync(imageBrush.DispatcherQueue, () =>
                     {
                         if (isCurrent())
                             imageBrush.ImageSource = CreateDecodedBitmapImage(uri);
+                        return Task.CompletedTask;
                     });
                 }
                 else
@@ -730,6 +757,30 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
                 }
             }
         }
+    }
+
+    private static Task EnqueueOnDispatcherAsync(
+        Microsoft.UI.Dispatching.DispatcherQueue dispatcherQueue,
+        Func<Task> action)
+    {
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (!dispatcherQueue.TryEnqueue(async () =>
+        {
+            try
+            {
+                await action();
+                completion.TrySetResult();
+            }
+            catch (Exception ex)
+            {
+                completion.TrySetException(ex);
+            }
+        }))
+        {
+            completion.TrySetResult();
+        }
+
+        return completion.Task;
     }
 
     private static IconElement CreatePathIcon(string data)

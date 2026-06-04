@@ -96,6 +96,8 @@ public sealed partial class VideoCard : UserControl, IDisposable
 
     public Func<long, Task<bool>>? IsCreatorFollowedAsync { get; set; }
 
+    public Func<IDisposable?>? ImageLoadTrackerFactory { get; set; }
+
     public FlyoutBase? CardMenuFlyout
     {
         get => CardBorder.ContextFlyout;
@@ -328,9 +330,17 @@ public sealed partial class VideoCard : UserControl, IDisposable
 
         var imageLoadVersion = _imageLoadVersion;
         if (!string.IsNullOrWhiteSpace(item.CoverUrl))
-            _ = LoadImg(CoverImage, item.CoverUrl, () => imageLoadVersion == _imageLoadVersion && _item?.CoverUrl == item.CoverUrl);
+            _ = LoadImg(
+                CoverImage,
+                item.CoverUrl,
+                () => imageLoadVersion == _imageLoadVersion && _item?.CoverUrl == item.CoverUrl,
+                ImageLoadTrackerFactory?.Invoke());
         if (!string.IsNullOrWhiteSpace(item.AvatarUrl))
-            _ = LoadAvatar(_avatarPic, item.AvatarUrl, () => imageLoadVersion == _imageLoadVersion && _item?.AvatarUrl == item.AvatarUrl);
+            _ = LoadAvatar(
+                _avatarPic,
+                item.AvatarUrl,
+                () => imageLoadVersion == _imageLoadVersion && _item?.AvatarUrl == item.AvatarUrl,
+                ImageLoadTrackerFactory?.Invoke());
 
         ApplyVLMode();
     }
@@ -358,23 +368,79 @@ public sealed partial class VideoCard : UserControl, IDisposable
     private static bool IsInteractive(DependencyObject? s) { while (s is not null) { if (s is Button or MenuFlyoutItem) return true; s = VisualTreeHelper.GetParent(s); } return false; }
 
     // ── Image loading ──
-    private static async Task LoadImg(Image img, string url, Func<bool>? isCurrent = null)
+    private static async Task LoadImg(
+        Image img,
+        string url,
+        Func<bool>? isCurrent = null,
+        IDisposable? imageLoadTracker = null)
     {
+        using var tracker = imageLoadTracker;
         var generation = ImgCacheGeneration;
         if (!Uri.TryCreate(url, UriKind.Absolute, out var u)) return;
-        if (ImgCache.TryGetValue(u.AbsoluteUri, out var c)) { img.DispatcherQueue.TryEnqueue(() => { if (isCurrent?.Invoke() != false) img.Source = c; }); return; }
+        if (ImgCache.TryGetValue(u.AbsoluteUri, out var c))
+        {
+            await EnqueueOnDispatcherAsync(img.DispatcherQueue, () =>
+            {
+                if (isCurrent?.Invoke() != false)
+                    img.Source = c;
+                return Task.CompletedTask;
+            });
+            return;
+        }
+
         for (int i = 1; i <= MaxRetries; i++)
+        {
             try
             {
                 using var r = new HttpRequestMessage(HttpMethod.Get, u);
                 r.Headers.TryAddWithoutValidation("User-Agent", BiliWebDataProvider.BrowserUserAgent);
                 r.Headers.TryAddWithoutValidation("Referer", "https://www.bilibili.com/");
-                using var res = await Http.SendAsync(r); res.EnsureSuccessStatusCode();
+                using var res = await Http.SendAsync(r);
+                res.EnsureSuccessStatusCode();
                 var b = await res.Content.ReadAsByteArrayAsync();
-                img.DispatcherQueue.TryEnqueue(async () => { if (generation != ImgCacheGeneration || isCurrent?.Invoke() == false) return; try { using var s = new InMemoryRandomAccessStream(); await s.WriteAsync(b.AsBuffer()); s.Seek(0); var bmp = new BitmapImage { DecodePixelWidth = CoverDecodePixelWidth }; await bmp.SetSourceAsync(s); if (isCurrent?.Invoke() == false) return; CacheImage(u.AbsoluteUri, bmp); img.Source = bmp; } catch { if (isCurrent?.Invoke() == false) return; var bmp = CreateDecodedBitmapImage(u, CoverDecodePixelWidth); CacheImage(u.AbsoluteUri, bmp); img.Source = bmp; } });
+                await EnqueueOnDispatcherAsync(img.DispatcherQueue, async () =>
+                {
+                    if (generation != ImgCacheGeneration || isCurrent?.Invoke() == false) return;
+                    try
+                    {
+                        using var s = new InMemoryRandomAccessStream();
+                        await s.WriteAsync(b.AsBuffer());
+                        s.Seek(0);
+                        var bmp = new BitmapImage { DecodePixelWidth = CoverDecodePixelWidth };
+                        await bmp.SetSourceAsync(s);
+                        if (isCurrent?.Invoke() == false) return;
+                        CacheImage(u.AbsoluteUri, bmp);
+                        img.Source = bmp;
+                    }
+                    catch
+                    {
+                        if (isCurrent?.Invoke() == false) return;
+                        var bmp = CreateDecodedBitmapImage(u, CoverDecodePixelWidth);
+                        CacheImage(u.AbsoluteUri, bmp);
+                        img.Source = bmp;
+                    }
+                });
                 return;
             }
-            catch { if (i == MaxRetries) img.DispatcherQueue.TryEnqueue(() => { if (generation != ImgCacheGeneration || isCurrent?.Invoke() == false) return; var bmp = CreateDecodedBitmapImage(u, CoverDecodePixelWidth); CacheImage(u.AbsoluteUri, bmp); img.Source = bmp; }); else await Task.Delay(RetryDelay * i); }
+            catch
+            {
+                if (i == MaxRetries)
+                {
+                    await EnqueueOnDispatcherAsync(img.DispatcherQueue, () =>
+                    {
+                        if (generation != ImgCacheGeneration || isCurrent?.Invoke() == false) return Task.CompletedTask;
+                        var bmp = CreateDecodedBitmapImage(u, CoverDecodePixelWidth);
+                        CacheImage(u.AbsoluteUri, bmp);
+                        img.Source = bmp;
+                        return Task.CompletedTask;
+                    });
+                }
+                else
+                {
+                    await Task.Delay(RetryDelay * i);
+                }
+            }
+        }
     }
 
     private static async Task LoadImgBrush(ImageBrush br, string url)
@@ -396,23 +462,103 @@ public sealed partial class VideoCard : UserControl, IDisposable
             catch { if (i == MaxRetries) br.DispatcherQueue.TryEnqueue(() => { if (generation != ImgCacheGeneration) return; var bmp = CreateDecodedBitmapImage(u, CoverDecodePixelWidth); CacheImage(u.AbsoluteUri, bmp); br.ImageSource = bmp; }); else await Task.Delay(RetryDelay * i); }
     }
 
-    private static async Task LoadAvatar(PersonPicture personPic, string url, Func<bool>? isCurrent = null)
+    private static async Task LoadAvatar(
+        PersonPicture personPic,
+        string url,
+        Func<bool>? isCurrent = null,
+        IDisposable? imageLoadTracker = null)
     {
+        using var tracker = imageLoadTracker;
         var generation = ImgCacheGeneration;
         if (!Uri.TryCreate(url, UriKind.Absolute, out var u)) return;
-        if (ImgCache.TryGetValue(u.AbsoluteUri, out var c)) { personPic.DispatcherQueue.TryEnqueue(() => { if (isCurrent?.Invoke() != false) personPic.ProfilePicture = c; }); return; }
+        if (ImgCache.TryGetValue(u.AbsoluteUri, out var c))
+        {
+            await EnqueueOnDispatcherAsync(personPic.DispatcherQueue, () =>
+            {
+                if (isCurrent?.Invoke() != false)
+                    personPic.ProfilePicture = c;
+                return Task.CompletedTask;
+            });
+            return;
+        }
+
         for (int i = 1; i <= MaxRetries; i++)
+        {
             try
             {
                 using var r = new HttpRequestMessage(HttpMethod.Get, u);
                 r.Headers.TryAddWithoutValidation("User-Agent", BiliWebDataProvider.BrowserUserAgent);
                 r.Headers.TryAddWithoutValidation("Referer", "https://www.bilibili.com/");
-                using var res = await Http.SendAsync(r); res.EnsureSuccessStatusCode();
+                using var res = await Http.SendAsync(r);
+                res.EnsureSuccessStatusCode();
                 var b = await res.Content.ReadAsByteArrayAsync();
-                personPic.DispatcherQueue.TryEnqueue(async () => { if (generation != ImgCacheGeneration || isCurrent?.Invoke() == false) return; try { using var s = new InMemoryRandomAccessStream(); await s.WriteAsync(b.AsBuffer()); s.Seek(0); var bmp = new BitmapImage { DecodePixelWidth = AvatarDecodePixelWidth }; await bmp.SetSourceAsync(s); if (isCurrent?.Invoke() == false) return; CacheImage(u.AbsoluteUri, bmp); personPic.ProfilePicture = bmp; } catch { if (isCurrent?.Invoke() == false) return; var bmp = CreateDecodedBitmapImage(u, AvatarDecodePixelWidth); CacheImage(u.AbsoluteUri, bmp); personPic.ProfilePicture = bmp; } });
+                await EnqueueOnDispatcherAsync(personPic.DispatcherQueue, async () =>
+                {
+                    if (generation != ImgCacheGeneration || isCurrent?.Invoke() == false) return;
+                    try
+                    {
+                        using var s = new InMemoryRandomAccessStream();
+                        await s.WriteAsync(b.AsBuffer());
+                        s.Seek(0);
+                        var bmp = new BitmapImage { DecodePixelWidth = AvatarDecodePixelWidth };
+                        await bmp.SetSourceAsync(s);
+                        if (isCurrent?.Invoke() == false) return;
+                        CacheImage(u.AbsoluteUri, bmp);
+                        personPic.ProfilePicture = bmp;
+                    }
+                    catch
+                    {
+                        if (isCurrent?.Invoke() == false) return;
+                        var bmp = CreateDecodedBitmapImage(u, AvatarDecodePixelWidth);
+                        CacheImage(u.AbsoluteUri, bmp);
+                        personPic.ProfilePicture = bmp;
+                    }
+                });
                 return;
             }
-            catch { if (i == MaxRetries) personPic.DispatcherQueue.TryEnqueue(() => { if (generation != ImgCacheGeneration || isCurrent?.Invoke() == false) return; var bmp = CreateDecodedBitmapImage(u, AvatarDecodePixelWidth); CacheImage(u.AbsoluteUri, bmp); personPic.ProfilePicture = bmp; }); else await Task.Delay(RetryDelay * i); }
+            catch
+            {
+                if (i == MaxRetries)
+                {
+                    await EnqueueOnDispatcherAsync(personPic.DispatcherQueue, () =>
+                    {
+                        if (generation != ImgCacheGeneration || isCurrent?.Invoke() == false) return Task.CompletedTask;
+                        var bmp = CreateDecodedBitmapImage(u, AvatarDecodePixelWidth);
+                        CacheImage(u.AbsoluteUri, bmp);
+                        personPic.ProfilePicture = bmp;
+                        return Task.CompletedTask;
+                    });
+                }
+                else
+                {
+                    await Task.Delay(RetryDelay * i);
+                }
+            }
+        }
+    }
+
+    private static Task EnqueueOnDispatcherAsync(
+        DispatcherQueue dispatcherQueue,
+        Func<Task> action)
+    {
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (!dispatcherQueue.TryEnqueue(async () =>
+        {
+            try
+            {
+                await action();
+                completion.TrySetResult();
+            }
+            catch (Exception ex)
+            {
+                completion.TrySetException(ex);
+            }
+        }))
+        {
+            completion.TrySetResult();
+        }
+
+        return completion.Task;
     }
 
     private static void CacheImage(string url, ImageSource image)
@@ -467,6 +613,7 @@ public sealed partial class VideoCard : UserControl, IDisposable
         ViewLaterClicked = null;
         CreatorAvatarClicked = null;
         IsCreatorFollowedAsync = null;
+        ImageLoadTrackerFactory = null;
         CardMenuFlyoutFactory = null;
     }
 
