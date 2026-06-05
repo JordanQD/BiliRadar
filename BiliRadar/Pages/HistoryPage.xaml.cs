@@ -123,7 +123,7 @@ public sealed partial class HistoryPage : Page, IMainPanelPage, IDisposable
         try
         {
             await _session.AddToViewLaterAsync(item.Aid);
-            _session.ShowStatus(LocalizationHelper.GetString("AddedToViewLaterToast"), InfoBarSeverity.Success);
+            _session.ShowStatus(LocalizationHelper.Format("AddedToViewLaterToast", item.Title), InfoBarSeverity.Success);
         }
         catch (Exception ex)
         {

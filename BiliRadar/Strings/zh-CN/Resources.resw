@@ -138,9 +138,9 @@
   <data name="FollowFailed" xml:space="preserve"><value>关注失败：{0}</value></data>
   <data name="Followed" xml:space="preserve"><value>已关注：{0}</value></data>
   <data name="Unfollowed" xml:space="preserve"><value>已取消关注：{0}</value></data>
-  <data name="AddedToViewLaterToast" xml:space="preserve"><value>已添加到稍后再看。</value></data>
+  <data name="AddedToViewLaterToast" xml:space="preserve"><value>已添加到稍后再看：{0}</value></data>
   <data name="AddToViewLaterFailedToast" xml:space="preserve"><value>添加稍后再看失败：{0}</value></data>
-  <data name="RemovedFromViewLater" xml:space="preserve"><value>已移出稍后再看。</value></data>
+  <data name="RemovedFromViewLater" xml:space="preserve"><value>已移出稍后再看：{0}</value></data>
   <data name="RemoveFromViewLaterFailed" xml:space="preserve"><value>移出稍后再看失败：{0}</value></data>
   <data name="LoginWindowInitFailed" xml:space="preserve"><value>登录窗口初始化失败：{0}</value></data>
   <data name="LoginSuccessExchanging" xml:space="preserve"><value>网页登录成功，正在换取更稳定的登录凭据...</value></data>

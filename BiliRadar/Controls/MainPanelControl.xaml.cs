@@ -10,7 +10,6 @@ using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
@@ -22,11 +21,21 @@ namespace BiliRadar.Controls;
 
 public sealed partial class MainPanelControl : UserControl, IDisposable
 {
+    private static readonly TimeSpan FlyoutOpenAnimationDuration = TimeSpan.FromMilliseconds(267);
+    private static readonly TimeSpan FlyoutCloseAnimationDuration = TimeSpan.FromMilliseconds(200);
+    private static readonly Vector2 FlyoutOpenAnimationControlPoint1 = new(0.1f, 0.9f);
+    private static readonly Vector2 FlyoutOpenAnimationControlPoint2 = new(0.4f, 1.0f);
+    private static readonly Vector2 FlyoutCloseAnimationControlPoint1 = new(0.2f, 0.0f);
+    private static readonly Vector2 FlyoutCloseAnimationControlPoint2 = new(0.9f, 0.0f);
+    private static readonly TimeSpan StatusNotificationEnterAnimationDuration = TimeSpan.FromMilliseconds(180);
+    private static readonly TimeSpan StatusNotificationExitAnimationDuration = TimeSpan.FromMilliseconds(160);
+
     private int _previousSelectedPageIndex = -1;
     private readonly HashSet<IDisposable> _initializedPages = [];
-    private readonly Dictionary<StatusNotification, FrameworkElement> _statusNotificationHosts = [];
     private CancellationTokenSource? _flyoutCts;
     private CancellationTokenSource? _pageSwitchCleanupCts;
+    private StatusNotification? _currentStatusNotification;
+    private int _statusNotificationAnimationVersion;
     private bool _isFlyoutOpen;
     private bool _isDisposed;
     private bool _isSettingDefaultPage;
@@ -39,6 +48,9 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
         ApplyPanelHeight();
         Loaded += MainPanelControl_Loaded;
         Session = new MainPanelSession(new CookieStore());
+        Session.StatusAdded += Session_StatusAdded;
+        Session.StatusRemoved += Session_StatusRemoved;
+        Session.StatusCleared += Session_StatusCleared;
         ContentFrame.Navigated += OnContentFrameNavigated;
         SetDefaultPage();
     }
@@ -49,6 +61,9 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
         ApplyPanelHeight();
         Loaded += MainPanelControl_Loaded;
         Session = new MainPanelSession(new CookieStore(), snapshot);
+        Session.StatusAdded += Session_StatusAdded;
+        Session.StatusRemoved += Session_StatusRemoved;
+        Session.StatusCleared += Session_StatusCleared;
         ContentFrame.Navigated += OnContentFrameNavigated;
         SetDefaultPage();
     }
@@ -100,12 +115,21 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
     /// <summary>
     /// Flyout 打开时调用：创建新的 CancellationTokenSource，触发当前可见页面的数据刷新。
     /// </summary>
-    public void OnFlyoutOpened()
+    public void OnFlyoutOpened(bool playOpenAnimation)
     {
         _isFlyoutOpen = true;
         _flyoutCts?.Cancel();
         _flyoutCts?.Dispose();
         _flyoutCts = new CancellationTokenSource();
+
+        if (playOpenAnimation)
+        {
+            _ = PlayFlyoutOpenAnimationAsync(_flyoutCts.Token);
+        }
+        else
+        {
+            ResetFlyoutVisual();
+        }
 
         if (!AppSettings.SaveMainPanelPosition)
         {
@@ -139,11 +163,30 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
         return page.ActivateAsync(_flyoutCts?.Token ?? CancellationToken.None);
     }
 
-    public void PrepareForFlyoutOpenAnimation()
+    public void PrepareForFlyoutOpenAnimation(bool playOpenAnimation)
     {
         var visual = ElementCompositionPreview.GetElementVisual(RootGrid);
         visual.Opacity = 1f;
-        visual.Offset = Vector3.Zero;
+        visual.Offset = playOpenAnimation
+            ? new Vector3(0f, GetFlyoutTransitionOffset(), 0f)
+            : Vector3.Zero;
+    }
+
+    private async Task PlayFlyoutOpenAnimationAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await AnimateFlyoutOffsetAsync(
+                GetFlyoutTransitionOffset(),
+                0f,
+                FlyoutOpenAnimationDuration,
+                FlyoutOpenAnimationControlPoint1,
+                FlyoutOpenAnimationControlPoint2,
+                cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+        }
     }
 
     public async Task PlayFlyoutCloseAnimationAsync(CancellationToken cancellationToken)
@@ -152,29 +195,65 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
         visual.Opacity = 1f;
         visual.Offset = Vector3.Zero;
 
+        await AnimateFlyoutOffsetAsync(
+            0f,
+            GetFlyoutTransitionOffset(),
+            FlyoutCloseAnimationDuration,
+            FlyoutCloseAnimationControlPoint1,
+            FlyoutCloseAnimationControlPoint2,
+            cancellationToken);
+    }
+
+    private async Task AnimateFlyoutOffsetAsync(
+        float from,
+        float to,
+        TimeSpan duration,
+        Vector2 controlPoint1,
+        Vector2 controlPoint2,
+        CancellationToken cancellationToken)
+    {
+        var visual = ElementCompositionPreview.GetElementVisual(RootGrid);
+        visual.Opacity = 1f;
+        visual.Offset = new Vector3(0f, from, 0f);
+
         var compositor = visual.Compositor;
-        var duration = TimeSpan.FromMilliseconds(83);
-
-        var opacityAnimation = compositor.CreateScalarKeyFrameAnimation();
-        opacityAnimation.Duration = duration;
-        opacityAnimation.InsertKeyFrame(0f, 1f);
-        opacityAnimation.InsertKeyFrame(1f, 0f);
-
+        var easing = compositor.CreateCubicBezierEasingFunction(controlPoint1, controlPoint2);
         var offsetAnimation = compositor.CreateScalarKeyFrameAnimation();
         offsetAnimation.Duration = duration;
-        offsetAnimation.InsertKeyFrame(0f, 0f);
-        offsetAnimation.InsertKeyFrame(1f, 4f);
+        offsetAnimation.InsertKeyFrame(0f, from);
+        offsetAnimation.InsertKeyFrame(1f, to, easing);
 
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         using var registration = cancellationToken.Register(() => completion.TrySetCanceled(cancellationToken));
 
         var batch = compositor.CreateScopedBatch(CompositionBatchTypes.Animation);
         batch.Completed += (_, _) => completion.TrySetResult();
-        visual.StartAnimation("Opacity", opacityAnimation);
         visual.StartAnimation("Offset.Y", offsetAnimation);
         batch.End();
 
         await completion.Task;
+        visual.Offset = new Vector3(0f, to, 0f);
+    }
+
+    private void ResetFlyoutVisual()
+    {
+        var visual = ElementCompositionPreview.GetElementVisual(RootGrid);
+        visual.Opacity = 1f;
+        visual.Offset = Vector3.Zero;
+    }
+
+    private float GetFlyoutTransitionOffset()
+    {
+        var height = RootGrid.ActualHeight > 0
+            ? RootGrid.ActualHeight
+            : RootGrid.Height;
+
+        if (double.IsNaN(height) || height <= 0)
+        {
+            height = AppSettings.MainPanelHeight;
+        }
+
+        return (float)Math.Max(1d, height);
     }
 
     public void Dispose()
@@ -189,6 +268,9 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
         _pageSwitchCleanupCts?.Dispose();
         _pageSwitchCleanupCts = null;
         Loaded -= MainPanelControl_Loaded;
+        Session.StatusAdded -= Session_StatusAdded;
+        Session.StatusRemoved -= Session_StatusRemoved;
+        Session.StatusCleared -= Session_StatusCleared;
         ContentFrame.Navigated -= OnContentFrameNavigated;
         foreach (var page in _initializedPages)
         {
@@ -196,13 +278,12 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
         }
 
         _initializedPages.Clear();
-        foreach (var notification in _statusNotificationHosts.Keys.ToList())
-        {
-            notification.PropertyChanged -= StatusNotification_PropertyChanged;
-        }
-
-        _statusNotificationHosts.Clear();
-        StatusItemsControl.ItemsSource = null;
+        _currentStatusNotification = null;
+        _statusNotificationAnimationVersion++;
+        StatusInfoBar.IsOpen = false;
+        StatusNotificationLayer.Visibility = Visibility.Collapsed;
+        StatusInfoBarText.Text = string.Empty;
+        ResetStatusNotificationVisual();
         ContentFrame.Content = null;
         Session.Dispose();
     }
@@ -335,73 +416,142 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
         await Session.LaunchSelectedBrowserUriAsync(section);
     }
 
+    private void Session_StatusAdded(object? sender, StatusNotification notification)
+    {
+        var isReplacingVisibleNotification = StatusInfoBar.IsOpen && _currentStatusNotification is not null;
+        _currentStatusNotification = notification;
+        StatusNotificationLayer.Visibility = Visibility.Visible;
+        StatusInfoBarText.Text = notification.Message;
+        StatusInfoBar.Severity = notification.Severity;
+        StatusInfoBar.IsOpen = true;
+
+        if (isReplacingVisibleNotification)
+        {
+            _statusNotificationAnimationVersion++;
+            ResetStatusNotificationVisual();
+            return;
+        }
+
+        PlayStatusNotificationEnterAnimation(++_statusNotificationAnimationVersion);
+    }
+
+    private void Session_StatusRemoved(object? sender, StatusNotification notification)
+    {
+        if (!ReferenceEquals(_currentStatusNotification, notification))
+        {
+            return;
+        }
+
+        _currentStatusNotification = null;
+        _ = PlayStatusNotificationExitAnimationAsync(++_statusNotificationAnimationVersion);
+    }
+
+    private void Session_StatusCleared(object? sender, EventArgs e)
+    {
+        _currentStatusNotification = null;
+        _statusNotificationAnimationVersion++;
+        StatusInfoBar.IsOpen = false;
+        StatusNotificationLayer.Visibility = Visibility.Collapsed;
+        StatusInfoBarText.Text = string.Empty;
+        ResetStatusNotificationVisual();
+    }
+
     private void StatusNotificationInfoBar_CloseButtonClick(InfoBar sender, object args)
     {
-        if (sender.DataContext is StatusNotification notification)
+        if (_currentStatusNotification is StatusNotification notification)
         {
             Session.DismissStatusNotification(notification);
-        }
-    }
-
-    private void StatusNotificationHost_Loaded(object sender, RoutedEventArgs e)
-    {
-        if (sender is not FrameworkElement host
-            || host.DataContext is not StatusNotification notification)
-        {
             return;
         }
 
-        _statusNotificationHosts[notification] = host;
-        notification.PropertyChanged -= StatusNotification_PropertyChanged;
-        notification.PropertyChanged += StatusNotification_PropertyChanged;
-
-        var visual = ElementCompositionPreview.GetElementVisual(host);
-        visual.Opacity = notification.IsRemoving ? 0f : 1f;
-        visual.Offset = Vector3.Zero;
+        StatusInfoBar.IsOpen = false;
+        StatusNotificationLayer.Visibility = Visibility.Collapsed;
+        StatusInfoBarText.Text = string.Empty;
+        ResetStatusNotificationVisual();
     }
 
-    private void StatusNotificationHost_Unloaded(object sender, RoutedEventArgs e)
+    private void PlayStatusNotificationEnterAnimation(int version)
     {
-        if (sender is not FrameworkElement host
-            || host.DataContext is not StatusNotification notification)
-        {
-            return;
-        }
+        var visual = ElementCompositionPreview.GetElementVisual(StatusNotificationLayer);
+        visual.Opacity = 0f;
+        visual.Offset = new Vector3(0f, 12f, 0f);
 
-        notification.PropertyChanged -= StatusNotification_PropertyChanged;
-        _statusNotificationHosts.Remove(notification);
-    }
-
-    private void StatusNotification_PropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName != nameof(StatusNotification.IsRemoving)
-            || sender is not StatusNotification notification
-            || !notification.IsRemoving
-            || !_statusNotificationHosts.TryGetValue(notification, out var host))
-        {
-            return;
-        }
-
-        PlayStatusNotificationDismissAnimation(host);
-    }
-
-    private static void PlayStatusNotificationDismissAnimation(FrameworkElement host)
-    {
-        var visual = ElementCompositionPreview.GetElementVisual(host);
         var compositor = visual.Compositor;
-        var duration = TimeSpan.FromMilliseconds(180);
+        var easing = compositor.CreateCubicBezierEasingFunction(
+            FlyoutOpenAnimationControlPoint1,
+            FlyoutOpenAnimationControlPoint2);
 
         var opacityAnimation = compositor.CreateScalarKeyFrameAnimation();
-        opacityAnimation.Duration = duration;
-        opacityAnimation.InsertKeyFrame(0f, visual.Opacity);
-        opacityAnimation.InsertKeyFrame(1f, 0f);
+        opacityAnimation.Duration = StatusNotificationEnterAnimationDuration;
+        opacityAnimation.InsertKeyFrame(0f, 0f);
+        opacityAnimation.InsertKeyFrame(1f, 1f, easing);
 
         var offsetAnimation = compositor.CreateScalarKeyFrameAnimation();
-        offsetAnimation.Duration = duration;
-        offsetAnimation.InsertKeyFrame(0f, visual.Offset.Y);
-        offsetAnimation.InsertKeyFrame(1f, 8f);
+        offsetAnimation.Duration = StatusNotificationEnterAnimationDuration;
+        offsetAnimation.InsertKeyFrame(0f, 12f);
+        offsetAnimation.InsertKeyFrame(1f, 0f, easing);
+
+        var batch = compositor.CreateScopedBatch(CompositionBatchTypes.Animation);
+        batch.Completed += (_, _) =>
+        {
+            if (version != _statusNotificationAnimationVersion)
+            {
+                return;
+            }
+
+            visual.Opacity = 1f;
+            visual.Offset = Vector3.Zero;
+        };
 
         visual.StartAnimation("Opacity", opacityAnimation);
         visual.StartAnimation("Offset.Y", offsetAnimation);
+        batch.End();
+    }
+
+    private async Task PlayStatusNotificationExitAnimationAsync(int version)
+    {
+        var visual = ElementCompositionPreview.GetElementVisual(StatusNotificationLayer);
+        visual.Opacity = 1f;
+        visual.Offset = Vector3.Zero;
+
+        var compositor = visual.Compositor;
+        var easing = compositor.CreateCubicBezierEasingFunction(
+            FlyoutCloseAnimationControlPoint1,
+            FlyoutCloseAnimationControlPoint2);
+
+        var opacityAnimation = compositor.CreateScalarKeyFrameAnimation();
+        opacityAnimation.Duration = StatusNotificationExitAnimationDuration;
+        opacityAnimation.InsertKeyFrame(0f, 1f);
+        opacityAnimation.InsertKeyFrame(1f, 0f, easing);
+
+        var offsetAnimation = compositor.CreateScalarKeyFrameAnimation();
+        offsetAnimation.Duration = StatusNotificationExitAnimationDuration;
+        offsetAnimation.InsertKeyFrame(0f, 0f);
+        offsetAnimation.InsertKeyFrame(1f, 12f, easing);
+
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var batch = compositor.CreateScopedBatch(CompositionBatchTypes.Animation);
+        batch.Completed += (_, _) => completion.TrySetResult();
+        visual.StartAnimation("Opacity", opacityAnimation);
+        visual.StartAnimation("Offset.Y", offsetAnimation);
+        batch.End();
+
+        await completion.Task;
+        if (version != _statusNotificationAnimationVersion)
+        {
+            return;
+        }
+
+        StatusInfoBar.IsOpen = false;
+        StatusNotificationLayer.Visibility = Visibility.Collapsed;
+        StatusInfoBarText.Text = string.Empty;
+        ResetStatusNotificationVisual();
+    }
+
+    private void ResetStatusNotificationVisual()
+    {
+        var visual = ElementCompositionPreview.GetElementVisual(StatusNotificationLayer);
+        visual.Opacity = 1f;
+        visual.Offset = Vector3.Zero;
     }
 }

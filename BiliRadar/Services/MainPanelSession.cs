@@ -521,36 +521,25 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
         StatusNotifications.Add(notification);
         StatusAdded?.Invoke(this, notification);
 
-        if (severity is InfoBarSeverity.Informational or InfoBarSeverity.Success)
-        {
-            var timer = _dispatcherQueue.CreateTimer();
-            timer.Interval = TimeSpan.FromSeconds(3);
-            timer.IsRepeating = false;
-            timer.Tick += (_, _) => DismissStatusNotification(notification);
-            notification.AutoDismissTimer = timer;
-            timer.Start();
-        }
+        var timer = _dispatcherQueue.CreateTimer();
+        timer.Interval = TimeSpan.FromSeconds(3);
+        timer.IsRepeating = false;
+        timer.Tick += (_, _) => DismissStatusNotification(notification);
+        notification.AutoDismissTimer = timer;
+        timer.Start();
     }
 
     public void DismissStatusNotification(StatusNotification notification)
     {
-        if (!StatusNotifications.Contains(notification) || notification.IsRemoving)
+        if (!StatusNotifications.Contains(notification))
         {
             return;
         }
 
         notification.AutoDismissTimer?.Stop();
         notification.AutoDismissTimer = null;
-        notification.BeginRemove();
-
-        _ = Task.Run(async () =>
-        {
-            await Task.Delay(TimeSpan.FromMilliseconds(220));
-            _dispatcherQueue.TryEnqueue(() =>
-            {
-                StatusNotifications.Remove(notification);
-            });
-        });
+        StatusNotifications.Remove(notification);
+        StatusRemoved?.Invoke(this, notification);
     }
 
     public void ClearSignedOutData()
@@ -580,6 +569,8 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
     public event EventHandler<VideoUpdateRow>? CollectionAdded;
     public event EventHandler<(int index, VideoUpdateRow item)>? CollectionUpdated;
     public event EventHandler<StatusNotification>? StatusAdded;
+    public event EventHandler<StatusNotification>? StatusRemoved;
+    public event EventHandler? StatusCleared;
     public event EventHandler? UpdatesRefreshed;
     public event EventHandler? HistoryRefreshed;
     public event EventHandler? ViewLaterRefreshed;
@@ -606,6 +597,8 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
         CollectionAdded = null;
         CollectionUpdated = null;
         StatusAdded = null;
+        StatusRemoved = null;
+        StatusCleared = null;
         UpdatesRefreshed = null;
         HistoryRefreshed = null;
         ViewLaterRefreshed = null;
@@ -798,6 +791,7 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
             n.AutoDismissTimer = null;
         }
         StatusNotifications.Clear();
+        StatusCleared?.Invoke(this, EventArgs.Empty);
     }
 
     private void StopStatusNotificationTimers()

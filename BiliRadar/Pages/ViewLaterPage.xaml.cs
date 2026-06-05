@@ -125,7 +125,7 @@ public sealed partial class ViewLaterPage : Page, IMainPanelPage, IDisposable
             await _session.RemoveFromViewLaterAsync(item.Aid);
             _session.RemoveViewLaterItem(item);
             UpdateEmptyState();
-            _session.ShowStatus(LocalizationHelper.GetString("RemovedFromViewLater"), InfoBarSeverity.Success);
+            _session.ShowStatus(LocalizationHelper.Format("RemovedFromViewLater", item.Title), InfoBarSeverity.Success);
         }
         catch (Exception ex)
         {

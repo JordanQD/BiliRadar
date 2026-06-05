@@ -140,7 +140,7 @@ internal sealed class TrayFlyoutService : IDisposable
 
         if (_mainFlyout.Content is MainPanelControl panel)
         {
-            panel.OnFlyoutOpened();
+            panel.OnFlyoutOpened(_uiSettings?.AnimationsEnabled == true);
         }
     }
 
@@ -310,7 +310,7 @@ internal sealed class TrayFlyoutService : IDisposable
         _containerWindow.PrepareFlyoutHost(cursor);
         if (_mainFlyout.Content is MainPanelControl panel)
         {
-            panel.PrepareForFlyoutOpenAnimation();
+            panel.PrepareForFlyoutOpenAnimation(_uiSettings?.AnimationsEnabled == true);
         }
 
         var options = new FlyoutShowOptions

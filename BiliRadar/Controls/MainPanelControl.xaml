@@ -2,8 +2,7 @@
 <UserControl
     x:Class="BiliRadar.Controls.MainPanelControl"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:models="using:BiliRadar.Models">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Grid x:Name="RootGrid" Width="420">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -69,38 +68,31 @@
                 CacheSize="0"
                 IsNavigationStackEnabled="False" />
 
-            <ItemsControl
-                x:Name="StatusItemsControl"
-                Margin="12,0,12,16"
-                VerticalAlignment="Bottom"
-                ItemsSource="{x:Bind Session.StatusNotifications, Mode=OneWay}">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <StackPanel Spacing="8">
-                            <StackPanel.ChildrenTransitions>
-                                <TransitionCollection>
-                                    <EntranceThemeTransition FromVerticalOffset="16" />
-                                    <RepositionThemeTransition IsStaggeringEnabled="False" />
-                                </TransitionCollection>
-                            </StackPanel.ChildrenTransitions>
-                        </StackPanel>
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="models:StatusNotification">
-                        <Grid
-                            Loaded="StatusNotificationHost_Loaded"
-                            Unloaded="StatusNotificationHost_Unloaded">
-                            <InfoBar
-                                IsClosable="True"
-                                IsOpen="True"
-                                CloseButtonClick="StatusNotificationInfoBar_CloseButtonClick"
-                                Message="{x:Bind Message}"
-                                Severity="{x:Bind Severity}" />
-                        </Grid>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+            <Grid
+                x:Name="StatusNotificationLayer"
+                Canvas.ZIndex="10"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                Visibility="Collapsed">
+                <InfoBar
+                    x:Name="StatusInfoBar"
+                    Height="64"
+                    MinHeight="64"
+                    MaxHeight="64"
+                    Margin="12,0,12,16"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Bottom"
+                    IsClosable="True"
+                    IsOpen="False"
+                    CloseButtonClick="StatusNotificationInfoBar_CloseButtonClick">
+                    <TextBlock
+                        x:Name="StatusInfoBarText"
+                        VerticalAlignment="Center"
+                        MaxLines="1"
+                        TextTrimming="CharacterEllipsis"
+                        TextWrapping="NoWrap" />
+                </InfoBar>
+            </Grid>
         </Grid>
     </Grid>
 </UserControl>

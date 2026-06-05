@@ -246,7 +246,7 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
         try
         {
             await _session.AddToViewLaterAsync(item.Aid);
-            _session.ShowStatus(LocalizationHelper.GetString("AddedToViewLaterToast"), InfoBarSeverity.Success);
+            _session.ShowStatus(LocalizationHelper.Format("AddedToViewLaterToast", item.Title), InfoBarSeverity.Success);
         }
         catch (Exception ex)
         {
@@ -261,7 +261,7 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
         {
             await _session.RemoveFromViewLaterAsync(item.Aid);
             _session.RemoveViewLaterItem(item);
-            _session.ShowStatus(LocalizationHelper.GetString("RemovedFromViewLater"), InfoBarSeverity.Success);
+            _session.ShowStatus(LocalizationHelper.Format("RemovedFromViewLater", item.Title), InfoBarSeverity.Success);
         }
         catch (Exception ex)
         {
