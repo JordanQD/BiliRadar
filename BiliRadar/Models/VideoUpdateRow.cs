@@ -1,11 +1,14 @@
 using Microsoft.UI.Xaml.Media.Imaging;
 using System;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 
 namespace BiliRadar.Models;
 
-public sealed class VideoUpdateRow
+public sealed class VideoUpdateRow : INotifyPropertyChanged
 {
     private readonly BiliVideoUpdate _source;
+    private string _tip;
 
     public VideoUpdateRow(BiliVideoUpdate update)
     {
@@ -21,7 +24,7 @@ public sealed class VideoUpdateRow
         Url = update.Url;
         CoverUrl = update.CoverUrl;
         AvatarUrl = update.AvatarUrl;
-        Tip = update.Tip;
+        _tip = update.Tip;
         DurationText = update.DurationText;
         Description = update.Description;
         LikeCountText = FormatCount(update.LikeCount);
@@ -55,7 +58,11 @@ public sealed class VideoUpdateRow
 
     public string AvatarUrl { get; }
 
-    public string Tip { get; set; }
+    public string Tip
+    {
+        get => _tip;
+        set => SetProperty(ref _tip, value);
+    }
 
     public string DurationText { get; }
 
@@ -74,6 +81,8 @@ public sealed class VideoUpdateRow
     public BitmapImage? CoverImage { get; }
 
     public BitmapImage? AvatarImage { get; }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 
     public BiliVideoUpdate ToModel()
     {
@@ -95,5 +104,12 @@ public sealed class VideoUpdateRow
         return count >= 10000
             ? $"{count / 10000d:0.#}万"
             : count.ToString();
+    }
+
+    private void SetProperty<T>(ref T storage, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (Equals(storage, value)) return;
+        storage = value;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

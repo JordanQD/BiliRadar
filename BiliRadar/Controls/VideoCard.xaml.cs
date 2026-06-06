@@ -11,6 +11,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using System;
 using System.Collections.Concurrent;
+using System.ComponentModel;
 using System.Net.Http;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading.Tasks;
@@ -80,7 +81,13 @@ public sealed partial class VideoCard : UserControl, IDisposable
     private void SetItem(VideoUpdateRow? item)
     {
         _imageLoadVersion++;
+        if (_item is not null)
+            _item.PropertyChanged -= OnItemPropertyChanged;
+
         _item = item;
+        if (_item is not null)
+            _item.PropertyChanged += OnItemPropertyChanged;
+
         if (_loaded)
         {
             ReleaseCurrentImages();
@@ -129,6 +136,21 @@ public sealed partial class VideoCard : UserControl, IDisposable
     public event EventHandler<VideoUpdateRow>? CoverTapped;
     public event EventHandler<VideoUpdateRow>? ViewLaterClicked;
     public event EventHandler<VideoUpdateRow>? CreatorAvatarClicked;
+
+    private void OnItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (_isDisposed || sender is not VideoUpdateRow item || !ReferenceEquals(item, _item))
+            return;
+
+        if (e.PropertyName == nameof(VideoUpdateRow.Tip))
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                if (!_isDisposed && ReferenceEquals(item, _item) && _timeText is not null)
+                    _timeText.Text = item.Tip;
+            });
+        }
+    }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
@@ -607,6 +629,9 @@ public sealed partial class VideoCard : UserControl, IDisposable
         }
 
         _imageLoadVersion++;
+        if (_item is not null)
+            _item.PropertyChanged -= OnItemPropertyChanged;
+        _item = null;
         ReleaseCurrentImages();
         CardBorder.ContextFlyout = null;
         CoverTapped = null;
