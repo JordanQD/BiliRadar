@@ -33,6 +33,8 @@
 
             <SelectorBar
                 x:Name="ContentSelectorBar"
+                Grid.Column="0"
+                HorizontalAlignment="Stretch"
                 SelectionChanged="ContentSelectorBar_SelectionChanged">
                 <SelectorBarItem
                     x:Name="FollowingSelectorItem"

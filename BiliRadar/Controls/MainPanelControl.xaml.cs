@@ -6,6 +6,7 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Hosting;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
 using System;
@@ -296,18 +297,70 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
         }
 
         _isSchedulingOpenActivation = true;
+        _ = ActivateCurrentPageAfterShellRenderAsync(
+            resetScrollPosition,
+            _flyoutCts?.Token ?? CancellationToken.None);
+    }
+
+    private async Task ActivateCurrentPageAfterShellRenderAsync(
+        bool resetScrollPosition,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await WaitForRenderPassAsync(cancellationToken);
+            await WaitForRenderPassAsync(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            _isSchedulingOpenActivation = false;
+            return;
+        }
+
         DispatcherQueue.TryEnqueue(
             Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
             () =>
             {
                 _isSchedulingOpenActivation = false;
-                if (_isDisposed || !_isFlyoutOpen)
+                if (_isDisposed || !_isFlyoutOpen || cancellationToken.IsCancellationRequested)
                 {
                     return;
                 }
 
                 EnsureSelectedPageNavigated(resetScrollPosition);
             });
+    }
+
+    private static Task WaitForRenderPassAsync(CancellationToken cancellationToken)
+    {
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return Task.FromCanceled(cancellationToken);
+        }
+
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        EventHandler<object>? handler = null;
+        CancellationTokenRegistration registration = default;
+
+        handler = (_, _) =>
+        {
+            CompositionTarget.Rendering -= handler;
+            registration.Dispose();
+            completion.TrySetResult();
+        };
+
+        registration = cancellationToken.Register(() =>
+        {
+            if (handler is not null)
+            {
+                CompositionTarget.Rendering -= handler;
+            }
+
+            completion.TrySetCanceled(cancellationToken);
+        });
+
+        CompositionTarget.Rendering += handler;
+        return completion.Task;
     }
 
     private void NavigateToSelectedPage(bool resetScrollPosition)
