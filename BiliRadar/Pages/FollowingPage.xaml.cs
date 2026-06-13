@@ -33,6 +33,7 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
 
     private MainPanelSession? _session;
     private ScrollViewer? _updatesScrollViewer;
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _relativeTimeRefreshTimer;
     private CancellationToken _flyoutCancellationToken;
     private bool _isResettingScrollPosition;
     private bool _isLiveSectionExpanded;
@@ -69,6 +70,8 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
     public Task ActivateAsync(CancellationToken cancellationToken = default)
     {
         _flyoutCancellationToken = cancellationToken;
+        _session?.RefreshUpdateRelativeTimes();
+        StartRelativeTimeRefreshTimer();
         return _session is not null
             ? _session.RefreshOnShowAsync(cancellationToken)
             : Task.CompletedTask;
@@ -819,6 +822,8 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
 
     public void Deactivate()
     {
+        StopRelativeTimeRefreshTimer();
+
         if (_session is not null)
         {
             _session.UpdatesRefreshed -= OnUpdatesRefreshed;
@@ -835,6 +840,32 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
 
         UpdatesListView.ItemsSource = null;
         LiveCreatorItemsRepeater.ItemsSource = null;
+    }
+
+    private void StartRelativeTimeRefreshTimer()
+    {
+        _relativeTimeRefreshTimer ??= DispatcherQueue.CreateTimer();
+        _relativeTimeRefreshTimer.Interval = TimeSpan.FromMinutes(1);
+        _relativeTimeRefreshTimer.IsRepeating = true;
+        _relativeTimeRefreshTimer.Tick -= RelativeTimeRefreshTimer_Tick;
+        _relativeTimeRefreshTimer.Tick += RelativeTimeRefreshTimer_Tick;
+        _relativeTimeRefreshTimer.Start();
+    }
+
+    private void StopRelativeTimeRefreshTimer()
+    {
+        if (_relativeTimeRefreshTimer is null)
+        {
+            return;
+        }
+
+        _relativeTimeRefreshTimer.Stop();
+        _relativeTimeRefreshTimer.Tick -= RelativeTimeRefreshTimer_Tick;
+    }
+
+    private void RelativeTimeRefreshTimer_Tick(Microsoft.UI.Dispatching.DispatcherQueueTimer sender, object args)
+    {
+        _session?.RefreshUpdateRelativeTimes();
     }
 
     private static void DisposeVideoCards(DependencyObject root)

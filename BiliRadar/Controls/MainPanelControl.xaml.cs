@@ -39,6 +39,7 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
     private bool _isFlyoutOpen;
     private bool _isDisposed;
     private bool _isSettingDefaultPage;
+    private bool _isSchedulingOpenActivation;
 
     public MainPanelSession Session { get; }
 
@@ -52,7 +53,7 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
         Session.StatusRemoved += Session_StatusRemoved;
         Session.StatusCleared += Session_StatusCleared;
         ContentFrame.Navigated += OnContentFrameNavigated;
-        SetDefaultPage();
+        SelectDefaultPage();
     }
 
     public MainPanelControl(MainWindowSnapshot? snapshot)
@@ -65,7 +66,7 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
         Session.StatusRemoved += Session_StatusRemoved;
         Session.StatusCleared += Session_StatusCleared;
         ContentFrame.Navigated += OnContentFrameNavigated;
-        SetDefaultPage();
+        SelectDefaultPage();
     }
 
     private void MainPanelControl_Loaded(object sender, RoutedEventArgs e)
@@ -80,12 +81,7 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
         RootGrid.Height = Math.Min(workAreaHeight - 80, AppSettings.MainPanelHeight);
     }
 
-    private void SetDefaultPage()
-    {
-        SetDefaultPage(resetScrollPosition: false);
-    }
-
-    private void SetDefaultPage(bool resetScrollPosition)
+    private void SelectDefaultPage()
     {
         var selectedItem = AppSettings.DefaultOpenPage switch
         {
@@ -98,8 +94,6 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
         ContentSelectorBar.SelectedItem = selectedItem;
         selectedItem.IsSelected = true;
         _isSettingDefaultPage = false;
-
-        NavigateToSelectedPage(resetScrollPosition);
     }
 
     private void OnContentFrameNavigated(object sender, NavigationEventArgs e)
@@ -133,14 +127,10 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
 
         if (!AppSettings.SaveMainPanelPosition)
         {
-            SetDefaultPage(resetScrollPosition: true);
-            ApplyCurrentPageOpenSettings();
+            SelectDefaultPage();
         }
 
-        if (ContentFrame.Content is IMainPanelPage page)
-        {
-            _ = page.ActivateAsync(_flyoutCts.Token);
-        }
+        ScheduleCurrentPageActivation(resetScrollPosition: !AppSettings.SaveMainPanelPosition);
     }
 
     /// <summary>
@@ -298,6 +288,28 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
         NavigateToSelectedPage(resetScrollPosition: true);
     }
 
+    private void ScheduleCurrentPageActivation(bool resetScrollPosition)
+    {
+        if (_isSchedulingOpenActivation)
+        {
+            return;
+        }
+
+        _isSchedulingOpenActivation = true;
+        DispatcherQueue.TryEnqueue(
+            Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
+            () =>
+            {
+                _isSchedulingOpenActivation = false;
+                if (_isDisposed || !_isFlyoutOpen)
+                {
+                    return;
+                }
+
+                EnsureSelectedPageNavigated(resetScrollPosition);
+            });
+    }
+
     private void NavigateToSelectedPage(bool resetScrollPosition)
     {
         var currentIndex = ContentSelectorBar.Items.IndexOf(ContentSelectorBar.SelectedItem);
@@ -343,6 +355,12 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
             _ = newPage.ActivateAsync(_flyoutCts?.Token ?? CancellationToken.None);
 
         SchedulePageSwitchCleanup();
+    }
+
+    private void EnsureSelectedPageNavigated(bool resetScrollPosition)
+    {
+        NavigateToSelectedPage(resetScrollPosition);
+        ApplyCurrentPageOpenSettings();
     }
 
     private void DeactivateCurrentPage()

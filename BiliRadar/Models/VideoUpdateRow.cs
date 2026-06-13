@@ -89,6 +89,11 @@ public sealed class VideoUpdateRow : INotifyPropertyChanged
         return _source with { Tip = Tip };
     }
 
+    public void RefreshPublishedTip()
+    {
+        Tip = FormatRelativeTime(PublishedAt);
+    }
+
     private static BitmapImage? CreateImage(string url)
     {
         if (string.IsNullOrWhiteSpace(url) || !Uri.TryCreate(url, UriKind.Absolute, out var uri))
@@ -104,6 +109,33 @@ public sealed class VideoUpdateRow : INotifyPropertyChanged
         return count >= 10000
             ? $"{count / 10000d:0.#}万"
             : count.ToString();
+    }
+
+    private static string FormatRelativeTime(DateTimeOffset time)
+    {
+        var now = DateTimeOffset.Now;
+        var delta = now - time;
+        if (delta.TotalMinutes < 1)
+        {
+            return "刚刚";
+        }
+
+        if (delta.TotalHours < 1)
+        {
+            return $"{Math.Max(1, (int)delta.TotalMinutes)} 分钟前";
+        }
+
+        if (delta.TotalDays < 1)
+        {
+            return $"{Math.Max(1, (int)delta.TotalHours)} 小时前";
+        }
+
+        if (time.Date == now.AddDays(-1).Date)
+        {
+            return $"昨天 {time:HH:mm}";
+        }
+
+        return time.Year == now.Year ? time.ToString("M-d HH:mm") : time.ToString("yyyy-M-d HH:mm");
     }
 
     private void SetProperty<T>(ref T storage, T value, [CallerMemberName] string? propertyName = null)

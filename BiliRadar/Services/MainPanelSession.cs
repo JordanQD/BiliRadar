@@ -55,7 +55,11 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
             foreach (var update in snapshot.Updates.OrderByDescending(item => item.PublishedAt))
             {
                 if (_loadedUpdateIds.Add(update.Id))
-                    Updates.Add(new VideoUpdateRow(update));
+                {
+                    var row = new VideoUpdateRow(update);
+                    row.RefreshPublishedTip();
+                    Updates.Add(row);
+                }
             }
 
             foreach (var creator in snapshot.LiveCreators)
@@ -132,6 +136,8 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
 
     public async Task RefreshAsync(CancellationToken cancellationToken = default)
     {
+        RefreshUpdateRelativeTimes();
+
         if (IsLoading) return;
 
         IsLoading = true;
@@ -167,6 +173,7 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
                 if (_loadedUpdateIds.Add(update.Id))
                 {
                     var row = new VideoUpdateRow(update);
+                    row.RefreshPublishedTip();
                     Updates.Insert(newRows.Count, row);
                     newRows.Add(row);
                 }
@@ -174,7 +181,7 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
                 {
                     var existing = Updates.FirstOrDefault(r => string.Equals(r.Id, update.Id, StringComparison.OrdinalIgnoreCase));
                     if (existing != null)
-                        existing.Tip = update.Tip;
+                        existing.RefreshPublishedTip();
                 }
             }
 
@@ -195,6 +202,7 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
         }
         finally
         {
+            RefreshUpdateRelativeTimes();
             IsLoading = false;
             UpdatesRefreshed?.Invoke(this, EventArgs.Empty);
         }
@@ -553,6 +561,14 @@ public sealed class MainPanelSession : IDisposable, INotifyPropertyChanged
         UnreadCount = 0;
         FollowingListText = LocalizationHelper.GetString("NoFollowingData");
         LastCheckedText = LocalizationHelper.GetString("LastCheckedNotYet");
+    }
+
+    public void RefreshUpdateRelativeTimes()
+    {
+        foreach (var item in Updates)
+        {
+            item.RefreshPublishedTip();
+        }
     }
 
     public MainWindowSnapshot CreateSnapshot()
