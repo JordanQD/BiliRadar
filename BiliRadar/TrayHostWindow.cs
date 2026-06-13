@@ -1,9 +1,11 @@
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using System;
 using System.Runtime.InteropServices;
 using Windows.Graphics;
 using WinUIEx;
+using WinUIEx.Messaging;
 using WinRT.Interop;
 
 namespace BiliRadar;
@@ -11,7 +13,11 @@ namespace BiliRadar;
 internal sealed class TrayHostWindow : Window
 {
     private readonly AppWindow _appWindow;
+    private readonly WindowMessageMonitor _messageMonitor;
     private readonly nint _hwnd;
+    private readonly uint _taskbarCreatedMessage;
+
+    public event EventHandler? TaskbarCreated;
 
     public ContentControl MainFlyoutAnchor { get; } = new();
 
@@ -21,6 +27,11 @@ internal sealed class TrayHostWindow : Window
     {
         _hwnd = WindowNative.GetWindowHandle(this);
         _appWindow = AppWindow.GetFromWindowId(Microsoft.UI.Win32Interop.GetWindowIdFromWindow(_hwnd));
+        _taskbarCreatedMessage = RegisterWindowMessage("TaskbarCreated");
+        _messageMonitor = new WindowMessageMonitor(_hwnd);
+        _messageMonitor.WindowMessageReceived += OnWindowMessageReceived;
+        Closed += TrayHostWindow_Closed;
+
         _appWindow.IsShownInSwitchers = false;
         _appWindow.Resize(new Windows.Graphics.SizeInt32(1, 1));
         this.SetExtendedWindowStyle(ExtendedWindowStyle.Transparent);
@@ -65,6 +76,21 @@ internal sealed class TrayHostWindow : Window
         _appWindow.Hide();
     }
 
+    private void OnWindowMessageReceived(object? sender, WindowMessageEventArgs e)
+    {
+        if (_taskbarCreatedMessage != 0 && e.Message.MessageId == _taskbarCreatedMessage)
+        {
+            TaskbarCreated?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    private void TrayHostWindow_Closed(object sender, WindowEventArgs args)
+    {
+        Closed -= TrayHostWindow_Closed;
+        _messageMonitor.WindowMessageReceived -= OnWindowMessageReceived;
+        _messageMonitor.Dispose();
+    }
+
     private void HideFromAltTabAndTaskbar()
     {
         var style = GetWindowLongPtr(_hwnd, GwlExStyle);
@@ -79,6 +105,9 @@ internal sealed class TrayHostWindow : Window
 
     [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")]
     private static extern nint SetWindowLongPtr(nint hWnd, int nIndex, nint dwNewLong);
+
+    [DllImport("user32.dll", EntryPoint = "RegisterWindowMessageW", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern uint RegisterWindowMessage(string lpString);
 
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(nint hWnd);

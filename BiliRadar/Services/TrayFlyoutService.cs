@@ -30,10 +30,10 @@ internal sealed class TrayFlyoutService : IDisposable
     private const uint TrayIconId = 1;
     private static readonly TimeSpan TrayLightDismissReopenGuard = TimeSpan.FromMilliseconds(300);
 
-    private readonly TrayIcon _trayIcon;
     private readonly Flyout _mainFlyout;
     private readonly MenuFlyout _contextMenu;
     private readonly TrayHostWindow _containerWindow;
+    private TrayIcon _trayIcon;
     private MainWindowSnapshot? _lastSnapshot;
     private UISettings? _uiSettings;
     private DateTime _lastMainFlyoutClosedAt = DateTime.MinValue;
@@ -52,10 +52,8 @@ internal sealed class TrayFlyoutService : IDisposable
         _containerWindow = containerWindow;
         _lastSnapshot = initialSnapshot;
 
-        _trayIcon = new TrayIcon(TrayIconId, GetIconPath(), "BiliRadar")
-        {
-            IsVisible = true,
-        };
+        _trayIcon = CreateTrayIcon();
+        _containerWindow.TaskbarCreated += OnTaskbarCreated;
 
         _mainFlyout = new Flyout
         {
@@ -87,9 +85,6 @@ internal sealed class TrayFlyoutService : IDisposable
             Command = new DelegateCommand(() => RequestExit(exitAction)),
         });
 
-        _trayIcon.Selected += OnTrayIconSelected;
-        _trayIcon.ContextMenu += OnTrayIconContextMenu;
-
         _uiSettings = new UISettings();
         TraceFlyout($"UISettings.AnimationsEnabled={_uiSettings.AnimationsEnabled}");
         _uiSettings.ColorValuesChanged += OnColorValuesChanged;
@@ -100,6 +95,37 @@ internal sealed class TrayFlyoutService : IDisposable
         return _mainFlyout.Content is MainPanelControl panel
             ? panel.RefreshCurrentPageAsync()
             : Task.CompletedTask;
+    }
+
+    private TrayIcon CreateTrayIcon()
+    {
+        var trayIcon = new TrayIcon(TrayIconId, GetIconPath(), "BiliRadar")
+        {
+            IsVisible = true,
+        };
+
+        trayIcon.Selected += OnTrayIconSelected;
+        trayIcon.ContextMenu += OnTrayIconContextMenu;
+        return trayIcon;
+    }
+
+    private void OnTaskbarCreated(object? sender, EventArgs e)
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        TraceFlyout("TaskbarCreated received; recreating tray icon");
+        RecreateTrayIcon();
+    }
+
+    private void RecreateTrayIcon()
+    {
+        _trayIcon.Selected -= OnTrayIconSelected;
+        _trayIcon.ContextMenu -= OnTrayIconContextMenu;
+        _trayIcon.Dispose();
+        _trayIcon = CreateTrayIcon();
     }
 
     private void OnMainFlyoutClosing(FlyoutBase sender, FlyoutBaseClosingEventArgs args)
@@ -211,6 +237,7 @@ internal sealed class TrayFlyoutService : IDisposable
         _mainFlyout.Closing -= OnMainFlyoutClosing;
         _mainFlyout.Closed -= OnMainFlyoutClosed;
         _contextMenu.Closed -= OnContextMenuClosed;
+        _containerWindow.TaskbarCreated -= OnTaskbarCreated;
         if (_mainFlyout.Content is IDisposable disposableContent)
         {
             disposableContent.Dispose();
