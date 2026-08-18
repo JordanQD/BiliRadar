@@ -4,7 +4,7 @@
 
 BiliRadar 是一个 Windows 桌面应用（WinUI 3 + Windows App SDK），提供 Bilibili 关注作者的视频更新追踪、历史记录和稍后再看管理。通过系统托盘图标驻留后台，点击弹出 Flyout 面板展示内容。
 
-**技术栈**：C# / WinUI 3 / WinUIEx 2.9.0 / CommunityToolkit 8.2 / .NET 9
+**技术栈**：C# / WinUI 3 / WinUIEx 2.9.3 / CommunityToolkit 8.2 / .NET 9
 
 ## 架构总览
 
@@ -88,6 +88,49 @@ dotnet build BiliRadar/BiliRadar.csproj -p:Platform=x64
 ```
 
 Debug 配置：框架依赖（`WinUISDKReferences=true`）；Release：自包含 MSIX 包。
+
+### Codex 环境中的 NuGet 还原
+
+本机普通终端或 Visual Studio 能访问 NuGet，但 Codex 受限沙箱内的 Windows Schannel 可能报以下错误：
+
+- `SEC_E_NO_CREDENTIALS (0x8009030e)` / “安全包中没有可用的凭据”
+- `NU1301`，内层错误为 “The SSL connection could not be established”
+
+这表示沙箱进程无法取得 TLS credential handle，不是 NuGet 用户名/密码错误，也不是项目包源配置错误。不要改用非 HTTPS 包源，也不要设置或保留 `disableTLSCertificateValidation="true"` 绕过证书校验。
+
+正确做法是在沙箱外运行同一条还原命令；Codex 工具调用应使用 `sandbox_permissions: require_escalated`：
+
+```powershell
+dotnet restore BiliRadar/BiliRadar.csproj -p:Platform=x64
+```
+
+下载期间偶发 `unexpected EOF or 0 bytes` 通常是代理或 CDN 瞬时断流，先让 NuGet 自己重试。若持续发生，再降低并发：
+
+```powershell
+dotnet restore BiliRadar/BiliRadar.csproj -p:Platform=x64 --disable-parallel
+```
+
+还原成功后，编译时避免再次触发网络请求：
+
+```powershell
+dotnet build BiliRadar/BiliRadar.csproj -p:Platform=x64 --no-restore
+```
+
+项目根目录的 `NuGet.Config` 是本项目包源配置的唯一依据，当前通过 `<clear />` 后只启用官方 `https://api.nuget.org/v3/index.json`。若沙箱内失败而沙箱外访问该地址返回 HTTP 200，应直接按上述方式在沙箱外还原，不要继续修改项目配置。
+
+## Windows App SDK 升级准入
+
+不要只根据“能编译”决定是否升级。候选版本必须是 Stable 通道，并按以下顺序评测：
+
+1. **依赖审计** — 用 `dotnet list BiliRadar/BiliRadar.csproj package --outdated` 确认候选版本；检查直接和传递依赖是否出现降级、冲突、弃用或安全警告，并确认 WinUIEx 版本支持该 Windows App SDK。
+2. **构建与打包矩阵** — 至少验证 Debug x64 框架依赖构建、Release x64 自包含 MSIX；发布前再验证 ARM64 的构建或包生成。还原成功后构建统一使用 `--no-restore`。
+3. **启动与生命周期** — 安装/注册并真实启动 MSIX，验证二次启动的单实例重定向、开机启动、通知激活、设置窗口和 WebView2 登录链路，不能只检查进程存在。
+4. **托盘关键路径** — 验证托盘左键 Flyout、右键仅“设置/退出”、Explorer 重启后的图标恢复、切换显示器/DPI 后图标清晰，以及连续开关 Flyout 不出现重入或卡死。
+5. **WinUI 关键路径** — 验证三页切换、`ListView`/`ItemsRepeater` 虚拟化与滚动加载、稍后再看移除、关注/取消关注、直播卡片操作；刷新或加载中关闭 Flyout 时，取消请求不能产生错误 InfoBar。
+6. **性能与稳定性基线** — 至少重复测量 3 次：后台未打开、各页加载稳定、连续切页后 2–3 秒、Flyout 关闭后 10–30 秒的工作集；同时比较冷启动时间、空闲 CPU，并做至少 30 分钟后台通知与反复开关 Flyout 的稳定性测试。
+7. **升级门槛** — 构建/打包零错误，关键路径无功能回归，事件日志无新的应用崩溃；启动时间和稳定工作集原则上不应回退超过 10%。若未通过，只回退 Windows App SDK 版本并记录具体回归，不要同时混入其他重构。
+
+评测时应单独建分支，只修改 Windows App SDK 版本，先验证默认行为；不要一开始同时启用新的 XAML 可选行为或 `XamlChangeId`，这些应作为第二阶段独立基准测试。
 
 ## 当前迁移状态
 

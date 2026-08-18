@@ -2,6 +2,7 @@ using BiliRadar.Controls;
 using BiliRadar.Helpers;
 using BiliRadar.Models;
 using Microsoft.UI;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -33,6 +34,7 @@ internal sealed class TrayFlyoutService : IDisposable
     private readonly Flyout _mainFlyout;
     private readonly MenuFlyout _contextMenu;
     private readonly TrayHostWindow _containerWindow;
+    private readonly DispatcherQueueTimer _trayIconRefreshTimer;
     private TrayIcon _trayIcon;
     private MainWindowSnapshot? _lastSnapshot;
     private UISettings? _uiSettings;
@@ -53,7 +55,11 @@ internal sealed class TrayFlyoutService : IDisposable
         _lastSnapshot = initialSnapshot;
 
         _trayIcon = CreateTrayIcon();
-        _containerWindow.TaskbarCreated += OnTaskbarCreated;
+        _containerWindow.DisplayConfigurationChanged += OnDisplayConfigurationChanged;
+        _trayIconRefreshTimer = _containerWindow.DispatcherQueue.CreateTimer();
+        _trayIconRefreshTimer.Interval = TimeSpan.FromMilliseconds(500);
+        _trayIconRefreshTimer.IsRepeating = false;
+        _trayIconRefreshTimer.Tick += OnTrayIconRefreshTimerTick;
 
         _mainFlyout = new Flyout
         {
@@ -109,14 +115,31 @@ internal sealed class TrayFlyoutService : IDisposable
         return trayIcon;
     }
 
-    private void OnTaskbarCreated(object? sender, EventArgs e)
+    private void OnDisplayConfigurationChanged(object? sender, EventArgs e)
     {
         if (_isDisposed)
         {
             return;
         }
 
-        TraceFlyout("TaskbarCreated received; recreating tray icon");
+        // WinUIEx chooses an .ico frame from the DPI of its private hidden window only when
+        // the icon is loaded. Let the shell finish rearranging displays, then create a fresh
+        // TrayIcon so the image is loaded again at the new notification-area DPI.
+        TraceFlyout("Display configuration or DPI changed; scheduling tray icon recreation");
+        _trayIconRefreshTimer.Stop();
+        _trayIconRefreshTimer.Start();
+    }
+
+    private void OnTrayIconRefreshTimerTick(DispatcherQueueTimer sender, object args)
+    {
+        sender.Stop();
+
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        TraceFlyout("Display configuration settled; recreating tray icon");
         RecreateTrayIcon();
     }
 
@@ -237,7 +260,9 @@ internal sealed class TrayFlyoutService : IDisposable
         _mainFlyout.Closing -= OnMainFlyoutClosing;
         _mainFlyout.Closed -= OnMainFlyoutClosed;
         _contextMenu.Closed -= OnContextMenuClosed;
-        _containerWindow.TaskbarCreated -= OnTaskbarCreated;
+        _containerWindow.DisplayConfigurationChanged -= OnDisplayConfigurationChanged;
+        _trayIconRefreshTimer.Stop();
+        _trayIconRefreshTimer.Tick -= OnTrayIconRefreshTimerTick;
         if (_mainFlyout.Content is IDisposable disposableContent)
         {
             disposableContent.Dispose();

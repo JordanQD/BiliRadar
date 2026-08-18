@@ -15,9 +15,8 @@ internal sealed class TrayHostWindow : Window
     private readonly AppWindow _appWindow;
     private readonly WindowMessageMonitor _messageMonitor;
     private readonly nint _hwnd;
-    private readonly uint _taskbarCreatedMessage;
 
-    public event EventHandler? TaskbarCreated;
+    public event EventHandler? DisplayConfigurationChanged;
 
     public ContentControl MainFlyoutAnchor { get; } = new();
 
@@ -27,7 +26,6 @@ internal sealed class TrayHostWindow : Window
     {
         _hwnd = WindowNative.GetWindowHandle(this);
         _appWindow = AppWindow.GetFromWindowId(Microsoft.UI.Win32Interop.GetWindowIdFromWindow(_hwnd));
-        _taskbarCreatedMessage = RegisterWindowMessage("TaskbarCreated");
         _messageMonitor = new WindowMessageMonitor(_hwnd);
         _messageMonitor.WindowMessageReceived += OnWindowMessageReceived;
         Closed += TrayHostWindow_Closed;
@@ -78,9 +76,9 @@ internal sealed class TrayHostWindow : Window
 
     private void OnWindowMessageReceived(object? sender, WindowMessageEventArgs e)
     {
-        if (_taskbarCreatedMessage != 0 && e.Message.MessageId == _taskbarCreatedMessage)
+        if (e.Message.MessageId is WmDisplayChange or WmDpiChanged)
         {
-            TaskbarCreated?.Invoke(this, EventArgs.Empty);
+            DisplayConfigurationChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 
@@ -99,15 +97,14 @@ internal sealed class TrayHostWindow : Window
 
     private const int GwlExStyle = -20;
     private const nint WsExToolWindow = 0x00000080;
+    private const uint WmDisplayChange = 0x007E;
+    private const uint WmDpiChanged = 0x02E0;
 
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
     private static extern nint GetWindowLongPtr(nint hWnd, int nIndex);
 
     [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")]
     private static extern nint SetWindowLongPtr(nint hWnd, int nIndex, nint dwNewLong);
-
-    [DllImport("user32.dll", EntryPoint = "RegisterWindowMessageW", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern uint RegisterWindowMessage(string lpString);
 
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(nint hWnd);
