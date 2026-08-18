@@ -77,12 +77,10 @@ $buildProperties = @(
 
 Push-Location $projectDir
 try {
-    foreach ($platform in @("x64", "ARM64")) {
-        $platformOutput = "artifacts/store-upload-$Version/$($platform.ToLowerInvariant())/"
-        dotnet build $projectFile @buildProperties "-p:Platform=$platform" "-p:AppxPackageDir=$platformOutput"
-        if ($LASTEXITCODE -ne 0) {
-            throw "dotnet build failed for $platform."
-        }
+    $platformOutput = "artifacts/store-upload-$Version/x64/"
+    dotnet build $projectFile @buildProperties "-p:Platform=x64" "-p:AppxPackageDir=$platformOutput"
+    if ($LASTEXITCODE -ne 0) {
+        throw "dotnet build failed for x64."
     }
 }
 finally {
@@ -94,15 +92,12 @@ finally {
 
 $x64Msix = Get-ChildItem -LiteralPath (Join-Path $stagingRoot "x64") -Recurse -Filter "*.msix" |
     Select-Object -First 1
-$arm64Msix = Get-ChildItem -LiteralPath (Join-Path $stagingRoot "arm64") -Recurse -Filter "*.msix" |
-    Select-Object -First 1
 
-if (-not $x64Msix -or -not $arm64Msix) {
-    throw "The expected x64 and ARM64 MSIX packages were not generated."
+if (-not $x64Msix) {
+    throw "The expected x64 MSIX package was not generated."
 }
 
 Copy-Item -LiteralPath $x64Msix.FullName -Destination (Join-Path $bundleInput "BiliRadar_${Version}_x64.msix")
-Copy-Item -LiteralPath $arm64Msix.FullName -Destination (Join-Path $bundleInput "BiliRadar_${Version}_arm64.msix")
 
 $windowsKitsBin = "${env:ProgramFiles(x86)}\Windows Kits\10\bin"
 $makeAppx = Get-ChildItem -Path $windowsKitsBin -Recurse -Filter "makeappx.exe" |
@@ -114,7 +109,7 @@ if (-not $makeAppx) {
     throw "makeappx.exe was not found under $windowsKitsBin."
 }
 
-$bundlePath = Join-Path $submissionRoot "BiliRadar_${Version}_x64_arm64.msixbundle"
+$bundlePath = Join-Path $submissionRoot "BiliRadar_${Version}_x64.msixbundle"
 & $makeAppx.FullName bundle /d $bundleInput /p $bundlePath /bv $Version /o
 if ($LASTEXITCODE -ne 0) {
     throw "MakeAppx failed to create the Store bundle."

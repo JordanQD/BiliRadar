@@ -582,7 +582,6 @@ Flyout 关闭
 
 - x64 Debug。
 - x64 Release。
-- ARM64 Release。
 - 非打包启动。
 - MSIX 安装后的启动、升级安装和退出。
 
