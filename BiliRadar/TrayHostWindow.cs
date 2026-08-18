@@ -3,7 +3,6 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System;
 using System.Runtime.InteropServices;
-using Windows.Graphics;
 using WinUIEx;
 using WinUIEx.Messaging;
 using WinRT.Interop;
@@ -17,10 +16,6 @@ internal sealed class TrayHostWindow : Window
     private readonly nint _hwnd;
 
     public event EventHandler? DisplayConfigurationChanged;
-
-    public ContentControl MainFlyoutAnchor { get; } = new();
-
-    public ContentControl ContextFlyoutAnchor { get; } = new();
 
     public TrayHostWindow()
     {
@@ -36,15 +31,9 @@ internal sealed class TrayHostWindow : Window
         this.SetWindowOpacity(0);
         ExtendsContentIntoTitleBar = true;
 
-        // 保留一个最小 XAML 根节点，给 WinUIEx 托盘对象和 WinUI Flyout 提供宿主线程与 XamlRoot。
-        Content = new Grid
-        {
-            Children =
-            {
-                MainFlyoutAnchor,
-                ContextFlyoutAnchor,
-            },
-        };
+        // DesktopFlyouts creates independent XAML island windows. This hidden root only
+        // keeps the WinUI dispatcher and application lifetime alive.
+        Content = new Grid();
 
         if (_appWindow.Presenter is OverlappedPresenter presenter)
         {
@@ -59,18 +48,6 @@ internal sealed class TrayHostWindow : Window
     {
         HideFromAltTabAndTaskbar();
         Activate();
-        _appWindow.Hide();
-    }
-
-    public void PrepareFlyoutHost(PointInt32 position)
-    {
-        Activate();
-        _appWindow.MoveAndResize(new RectInt32(position.X, position.Y, 0, 0));
-        SetForegroundWindow(_hwnd);
-    }
-
-    public void HideFlyoutHost()
-    {
         _appWindow.Hide();
     }
 
@@ -106,6 +83,4 @@ internal sealed class TrayHostWindow : Window
     [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")]
     private static extern nint SetWindowLongPtr(nint hWnd, int nIndex, nint dwNewLong);
 
-    [DllImport("user32.dll")]
-    private static extern bool SetForegroundWindow(nint hWnd);
 }

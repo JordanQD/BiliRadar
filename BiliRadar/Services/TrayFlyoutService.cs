@@ -1,48 +1,42 @@
 using BiliRadar.Controls;
 using BiliRadar.Helpers;
 using BiliRadar.Models;
-using Microsoft.UI;
+using DesktopFlyouts;
 using Microsoft.UI.Dispatching;
-using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Media;
 using Microsoft.Win32;
 using System;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Windows.ApplicationModel;
-using Windows.Foundation;
-using Windows.Graphics;
 using Windows.UI.ViewManagement;
-using WinUIEx;
-using Flyout = Microsoft.UI.Xaml.Controls.Flyout;
-using MenuFlyout = Microsoft.UI.Xaml.Controls.MenuFlyout;
 
 namespace BiliRadar.Services;
 
 internal sealed class TrayFlyoutService : IDisposable
 {
-    private const uint TrayIconId = 1;
+    private const double MainPanelWidth = 420d;
+    private const double MinimumPanelHeight = 320d;
+    private const double FlyoutWorkAreaInset = 24d;
+    private static readonly Guid TrayIconGuid = new("F0D7B8D0-7063-4F3D-A962-9E81BD766431");
     private static readonly TimeSpan TrayLightDismissReopenGuard = TimeSpan.FromMilliseconds(300);
 
-    private readonly Flyout _mainFlyout;
-    private readonly MenuFlyout _contextMenu;
     private readonly TrayHostWindow _containerWindow;
+    private readonly DesktopFlyout _mainFlyout;
+    private readonly DesktopFlyoutIsland _mainFlyoutIsland;
+    private readonly DesktopMenuFlyout _contextMenu;
     private readonly DispatcherQueueTimer _trayIconRefreshTimer;
-    private TrayIcon _trayIcon;
+    private readonly long _mainFlyoutIsOpenCallbackToken;
+    private readonly SystemTrayIcon _trayIcon;
     private MainWindowSnapshot? _lastSnapshot;
     private UISettings? _uiSettings;
     private DateTime _lastMainFlyoutClosedAt = DateTime.MinValue;
-    private CancellationTokenSource? _mainFlyoutCloseAnimationCts;
-    private bool _isRunningMainFlyoutCloseAnimation;
-    private bool _isMainFlyoutCloseAnimationComplete;
-    private bool _isMainFlyoutOpen;
+    private bool _isMainFlyoutShowPending;
     private bool _isDisposed;
 
     public TrayFlyoutService(
@@ -54,65 +48,232 @@ internal sealed class TrayFlyoutService : IDisposable
         _containerWindow = containerWindow;
         _lastSnapshot = initialSnapshot;
 
-        _trayIcon = CreateTrayIcon();
+        _uiSettings = new UISettings();
+        _uiSettings.ColorValuesChanged += OnColorValuesChanged;
+
+        _mainFlyoutIsland = new DesktopFlyoutIsland
+        {
+            IslandHeight = new GridLength(AppSettings.MainPanelHeight),
+        };
+
+        _mainFlyout = new DesktopFlyout
+        {
+            FlyoutWidth = new GridLength(MainPanelWidth),
+            FlyoutHeight = new GridLength(AppSettings.MainPanelHeight),
+            PopupDirection = DesktopFlyoutPopupDirection.Vertical,
+            Placement = DesktopFlyoutPlacementMode.BottomRight,
+            ActivationMode = DesktopFlyoutActivationMode.Activate,
+            HideOnLostFocus = true,
+            IsBackdropEnabled = true,
+            BackdropKind = DesktopFlyoutBackdropKind.DesktopAcrylic,
+            IsTransitionAnimationEnabled = _uiSettings.AnimationsEnabled,
+            PressedScale = 1d,
+            IsSwipeToDismissEnabled = false,
+        };
+        _mainFlyout.Islands.Add(_mainFlyoutIsland);
+        _mainFlyoutIsOpenCallbackToken = _mainFlyout.RegisterPropertyChangedCallback(
+            DesktopFlyout.IsOpenProperty,
+            OnMainFlyoutIsOpenChanged);
+
+        _contextMenu = CreateContextMenu(settingsAction, exitAction);
+
+        _trayIcon = new SystemTrayIcon(GetIconPath(), "BiliRadar", TrayIconGuid);
+        _trayIcon.LeftClicked += OnTrayIconLeftClicked;
+        _trayIcon.RightClicked += OnTrayIconRightClicked;
+        _trayIcon.Show();
+
         _containerWindow.DisplayConfigurationChanged += OnDisplayConfigurationChanged;
         _trayIconRefreshTimer = _containerWindow.DispatcherQueue.CreateTimer();
         _trayIconRefreshTimer.Interval = TimeSpan.FromMilliseconds(500);
         _trayIconRefreshTimer.IsRepeating = false;
         _trayIconRefreshTimer.Tick += OnTrayIconRefreshTimerTick;
 
-        _mainFlyout = new Flyout
-        {
-            LightDismissOverlayMode = LightDismissOverlayMode.On,
-            ShouldConstrainToRootBounds = false,
-            FlyoutPresenterStyle = CreateMainFlyoutPresenterStyle(),
-        };
-        _mainFlyout.AreOpenCloseAnimationsEnabled = true;
-        _mainFlyout.SystemBackdrop = new MicaBackdrop();
-        TraceFlyout($"_mainFlyout.AreOpenCloseAnimationsEnabled={_mainFlyout.AreOpenCloseAnimationsEnabled}");
-        _mainFlyout.Closing += OnMainFlyoutClosing;
-        _mainFlyout.Opened += OnMainFlyoutOpened;
-        _mainFlyout.Closed += OnMainFlyoutClosed;
-
-        _contextMenu = new MenuFlyout();
-        _contextMenu.SystemBackdrop = new MicaBackdrop();
-        _contextMenu.Placement = FlyoutPlacementMode.Top;
-        _contextMenu.ShouldConstrainToRootBounds = false;
-        _contextMenu.Closed += OnContextMenuClosed;
-        _contextMenu.Items.Add(new MenuFlyoutItem
-        {
-            Text = LocalizationHelper.GetString("TraySettings"),
-            Command = new DelegateCommand(settingsAction),
-        });
-        _contextMenu.Items.Add(new MenuFlyoutSeparator());
-        _contextMenu.Items.Add(new MenuFlyoutItem
-        {
-            Text = LocalizationHelper.GetString("TrayExit"),
-            Command = new DelegateCommand(() => RequestExit(exitAction)),
-        });
-
-        _uiSettings = new UISettings();
-        TraceFlyout($"UISettings.AnimationsEnabled={_uiSettings.AnimationsEnabled}");
-        _uiSettings.ColorValuesChanged += OnColorValuesChanged;
+        TraceFlyout($"DesktopFlyouts initialized. AnimationsEnabled={_uiSettings.AnimationsEnabled}");
     }
 
     public Task RefreshCurrentPanelPageAsync()
     {
-        return _mainFlyout.Content is MainPanelControl panel
+        return _mainFlyoutIsland.Content is MainPanelControl panel
             ? panel.RefreshCurrentPageAsync()
             : Task.CompletedTask;
     }
 
-    private TrayIcon CreateTrayIcon()
+    public void Dispose()
     {
-        var trayIcon = new TrayIcon(TrayIconId, GetIconPath(), "BiliRadar")
+        if (_isDisposed)
         {
-            IsVisible = true,
-        };
+            return;
+        }
 
-        trayIcon.Selected += OnTrayIconSelected;
-        trayIcon.ContextMenu += OnTrayIconContextMenu;
-        return trayIcon;
+        _isDisposed = true;
+
+        if (_uiSettings is not null)
+        {
+            _uiSettings.ColorValuesChanged -= OnColorValuesChanged;
+            _uiSettings = null;
+        }
+
+        _containerWindow.DisplayConfigurationChanged -= OnDisplayConfigurationChanged;
+        _trayIconRefreshTimer.Stop();
+        _trayIconRefreshTimer.Tick -= OnTrayIconRefreshTimerTick;
+
+        _trayIcon.LeftClicked -= OnTrayIconLeftClicked;
+        _trayIcon.RightClicked -= OnTrayIconRightClicked;
+        _trayIcon.Dispose();
+
+        _mainFlyout.UnregisterPropertyChangedCallback(
+            DesktopFlyout.IsOpenProperty,
+            _mainFlyoutIsOpenCallbackToken);
+
+        if (_mainFlyoutIsland.Content is MainPanelControl panel)
+        {
+            panel.OnFlyoutClosed();
+            panel.Dispose();
+        }
+
+        _mainFlyoutIsland.Content = null;
+        _mainFlyout.Dispose();
+        _contextMenu.Dispose();
+    }
+
+    private DesktopMenuFlyout CreateContextMenu(Action settingsAction, Action exitAction)
+    {
+        var menu = new DesktopMenuFlyout();
+        menu.Items.Add(new MenuFlyoutItem
+        {
+            Text = LocalizationHelper.GetString("TraySettings"),
+            Icon = new FontIcon { Glyph = "\uE713" },
+            Command = new DelegateCommand(settingsAction),
+        });
+        menu.Items.Add(new MenuFlyoutSeparator());
+        menu.Items.Add(new MenuFlyoutItem
+        {
+            Text = LocalizationHelper.GetString("TrayExit"),
+            Icon = new FontIcon { Glyph = "\uE8BB" },
+            Command = new DelegateCommand(() => RequestExit(exitAction)),
+        });
+        return menu;
+    }
+
+    private void OnTrayIconLeftClicked(object? sender, MouseEventReceivedEventArgs args)
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        TraceFlyout($"Tray icon left clicked. IsOpen={_mainFlyout.IsOpen}, pending={_isMainFlyoutShowPending}");
+
+        if (_contextMenu.IsOpen)
+        {
+            _contextMenu.Hide();
+        }
+
+        if (_mainFlyout.IsOpen)
+        {
+            _mainFlyout.Hide();
+            return;
+        }
+
+        if (_isMainFlyoutShowPending
+            || DateTime.UtcNow - _lastMainFlyoutClosedAt < TrayLightDismissReopenGuard)
+        {
+            return;
+        }
+
+        var panelHeight = GetMainPanelHeight(args.Point);
+        EnsureFlyoutContent(panelHeight);
+        ConfigureMainFlyout(panelHeight);
+
+        _mainFlyout.IsTransitionAnimationEnabled = _uiSettings?.AnimationsEnabled == true;
+        _isMainFlyoutShowPending = true;
+        _mainFlyout.Show(args.Point);
+    }
+
+    private void OnTrayIconRightClicked(object? sender, MouseEventReceivedEventArgs args)
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        if (_mainFlyout.IsOpen)
+        {
+            _mainFlyout.Hide();
+        }
+
+        if (_contextMenu.IsOpen)
+        {
+            _contextMenu.Hide();
+        }
+
+        _contextMenu.Show(GetContextMenuPoint(args.Point));
+    }
+
+    private void OnMainFlyoutIsOpenChanged(DependencyObject sender, DependencyProperty dependencyProperty)
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        if (_mainFlyout.IsOpen)
+        {
+            _isMainFlyoutShowPending = false;
+            TraceFlyout("DesktopFlyout opened");
+
+            if (_mainFlyoutIsland.Content is MainPanelControl panel)
+            {
+                // DesktopFlyouts owns the shell transition; suppress the legacy whole-panel animation.
+                panel.OnFlyoutOpened(playOpenAnimation: false);
+            }
+
+            return;
+        }
+
+        _isMainFlyoutShowPending = false;
+        _lastMainFlyoutClosedAt = DateTime.UtcNow;
+        TraceFlyout("DesktopFlyout closed");
+
+        if (_mainFlyoutIsland.Content is not MainPanelControl closedPanel)
+        {
+            return;
+        }
+
+        closedPanel.OnFlyoutClosed();
+        _lastSnapshot = closedPanel.Session.CreateSnapshot();
+        closedPanel.Dispose();
+        _mainFlyoutIsland.Content = null;
+    }
+
+    private void EnsureFlyoutContent(double panelHeight)
+    {
+        if (_mainFlyoutIsland.Content is MainPanelControl existingPanel)
+        {
+            existingPanel.SetHostHeight(panelHeight);
+            return;
+        }
+
+        var panel = new MainPanelControl(_lastSnapshot);
+        panel.SetHostHeight(panelHeight);
+        _mainFlyoutIsland.Content = panel;
+    }
+
+    private void ConfigureMainFlyout(double panelHeight)
+    {
+        var height = new GridLength(panelHeight);
+        _mainFlyout.FlyoutWidth = new GridLength(MainPanelWidth);
+        _mainFlyout.FlyoutHeight = height;
+        _mainFlyoutIsland.IslandHeight = height;
+    }
+
+    private void RequestExit(Action exitAction)
+    {
+        TraceFlyout("Exit requested from context menu");
+        _contextMenu.Hide();
+        _containerWindow.DispatcherQueue.TryEnqueue(
+            DispatcherQueuePriority.Low,
+            () => exitAction());
     }
 
     private void OnDisplayConfigurationChanged(object? sender, EventArgs e)
@@ -122,10 +283,6 @@ internal sealed class TrayFlyoutService : IDisposable
             return;
         }
 
-        // WinUIEx chooses an .ico frame from the DPI of its private hidden window only when
-        // the icon is loaded. Let the shell finish rearranging displays, then create a fresh
-        // TrayIcon so the image is loaded again at the new notification-area DPI.
-        TraceFlyout("Display configuration or DPI changed; scheduling tray icon recreation");
         _trayIconRefreshTimer.Stop();
         _trayIconRefreshTimer.Start();
     }
@@ -134,287 +291,67 @@ internal sealed class TrayFlyoutService : IDisposable
     {
         sender.Stop();
 
-        if (_isDisposed)
+        if (!_isDisposed)
         {
-            return;
+            _trayIcon.SetIcon(GetIconPath());
         }
-
-        TraceFlyout("Display configuration settled; recreating tray icon");
-        RecreateTrayIcon();
-    }
-
-    private void RecreateTrayIcon()
-    {
-        _trayIcon.Selected -= OnTrayIconSelected;
-        _trayIcon.ContextMenu -= OnTrayIconContextMenu;
-        _trayIcon.Dispose();
-        _trayIcon = CreateTrayIcon();
-    }
-
-    private void OnMainFlyoutClosing(FlyoutBase sender, FlyoutBaseClosingEventArgs args)
-    {
-        TraceFlyout("_mainFlyout.Closing");
-
-        if (_isDisposed || _isMainFlyoutCloseAnimationComplete)
-        {
-            _isMainFlyoutCloseAnimationComplete = false;
-            TraceFlyout("_mainFlyout.Closing allowed after close animation");
-            return;
-        }
-
-        if (_uiSettings?.AnimationsEnabled != true || _mainFlyout.Content is not MainPanelControl panel)
-        {
-            return;
-        }
-
-        args.Cancel = true;
-
-        if (_isRunningMainFlyoutCloseAnimation)
-        {
-            TraceFlyout("_mainFlyout.Closing ignored while close animation is already running");
-            return;
-        }
-
-        _isRunningMainFlyoutCloseAnimation = true;
-        _mainFlyoutCloseAnimationCts?.Cancel();
-        _mainFlyoutCloseAnimationCts?.Dispose();
-        _mainFlyoutCloseAnimationCts = new CancellationTokenSource();
-
-        _ = CompleteMainFlyoutCloseAfterAnimationAsync(panel, _mainFlyoutCloseAnimationCts.Token);
-    }
-
-    private void OnMainFlyoutOpened(object? sender, object e)
-    {
-        _isMainFlyoutOpen = true;
-
-        if (_mainFlyout.Content is MainPanelControl panel)
-        {
-            panel.OnFlyoutOpened(_uiSettings?.AnimationsEnabled == true);
-        }
-    }
-
-    private async Task CompleteMainFlyoutCloseAfterAnimationAsync(
-        MainPanelControl panel,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            TraceFlyout("MainPanelControl close animation started");
-            await panel.PlayFlyoutCloseAnimationAsync(cancellationToken);
-            TraceFlyout("MainPanelControl close animation completed");
-        }
-        catch (OperationCanceledException)
-        {
-            TraceFlyout("MainPanelControl close animation canceled");
-            return;
-        }
-        catch (Exception ex)
-        {
-            TraceFlyout($"MainPanelControl close animation failed: {ex.GetType().Name}");
-        }
-
-        if (_isDisposed || cancellationToken.IsCancellationRequested)
-        {
-            return;
-        }
-
-        _isRunningMainFlyoutCloseAnimation = false;
-        _isMainFlyoutCloseAnimationComplete = true;
-        TraceFlyout("_mainFlyout.Hide() requested after close animation");
-        _mainFlyout.Hide();
-    }
-
-    private void OnMainFlyoutClosed(object? sender, object e)
-    {
-        TraceFlyout("_mainFlyout.Closed");
-        _isRunningMainFlyoutCloseAnimation = false;
-        _isMainFlyoutCloseAnimationComplete = false;
-        _isMainFlyoutOpen = false;
-        _lastMainFlyoutClosedAt = DateTime.UtcNow;
-
-        if (_mainFlyout.Content is MainPanelControl panel)
-        {
-            panel.OnFlyoutClosed();
-            _lastSnapshot = panel.Session.CreateSnapshot();
-        }
-
-        TraceFlyout("TrayHostWindow.HideFlyoutHost() requested from _mainFlyout.Closed");
-        _containerWindow.HideFlyoutHost();
-    }
-
-    public void Dispose()
-    {
-        if (_isDisposed) return;
-        _isDisposed = true;
-
-        if (_uiSettings is not null)
-        {
-            _uiSettings.ColorValuesChanged -= OnColorValuesChanged;
-            _uiSettings = null;
-        }
-
-        _mainFlyoutCloseAnimationCts?.Cancel();
-        _mainFlyoutCloseAnimationCts?.Dispose();
-        _mainFlyoutCloseAnimationCts = null;
-        _mainFlyout.Opened -= OnMainFlyoutOpened;
-        _mainFlyout.Closing -= OnMainFlyoutClosing;
-        _mainFlyout.Closed -= OnMainFlyoutClosed;
-        _contextMenu.Closed -= OnContextMenuClosed;
-        _containerWindow.DisplayConfigurationChanged -= OnDisplayConfigurationChanged;
-        _trayIconRefreshTimer.Stop();
-        _trayIconRefreshTimer.Tick -= OnTrayIconRefreshTimerTick;
-        if (_mainFlyout.Content is IDisposable disposableContent)
-        {
-            disposableContent.Dispose();
-        }
-
-        _mainFlyout.Content = null;
-        _trayIcon.Selected -= OnTrayIconSelected;
-        _trayIcon.ContextMenu -= OnTrayIconContextMenu;
-        _trayIcon.Dispose();
-    }
-
-    private void OnTrayIconSelected(object? sender, TrayIconEventArgs args)
-    {
-        TraceFlyout($"Tray icon selected. IsOpen={_mainFlyout.IsOpen}, trackedOpen={_isMainFlyoutOpen}");
-
-        if (_isRunningMainFlyoutCloseAnimation)
-        {
-            args.Handled = true;
-            TraceFlyout("Tray icon selected while close animation is running; ignored duplicate hide request");
-            return;
-        }
-
-        if (_mainFlyout.IsOpen)
-        {
-            args.Handled = true;
-            TraceFlyout("_mainFlyout.Hide() requested from tray icon selected");
-            _mainFlyout.Hide();
-            return;
-        }
-
-        if (_isMainFlyoutOpen)
-        {
-            args.Handled = true;
-            TraceFlyout("Tray icon selected while _mainFlyout is closing; ignored duplicate hide request");
-            return;
-        }
-
-        if (DateTime.UtcNow - _lastMainFlyoutClosedAt < TrayLightDismissReopenGuard)
-        {
-            args.Handled = true;
-            return;
-        }
-
-        EnsureFlyoutContent();
-        args.Handled = true;
-        ShowMainFlyoutAtCursor();
-    }
-
-    private void EnsureFlyoutContent()
-    {
-        if (_mainFlyout.Content is not MainPanelControl)
-        {
-            _mainFlyout.FlyoutPresenterStyle = CreateMainFlyoutPresenterStyle();
-            _mainFlyout.Content = new MainPanelControl(_lastSnapshot);
-        }
-    }
-
-    private Style CreateMainFlyoutPresenterStyle()
-    {
-        var panelHeight = GetMainPanelHeight();
-
-        return new Style(typeof(FlyoutPresenter))
-        {
-            Setters =
-            {
-                new Setter(FrameworkElement.WidthProperty, 420d),
-                new Setter(FrameworkElement.HeightProperty, panelHeight),
-                new Setter(FrameworkElement.MarginProperty, new Thickness(0, -8, 0, 0)),
-                new Setter(FrameworkElement.MaxWidthProperty, 10000d),
-                new Setter(FrameworkElement.MaxHeightProperty, panelHeight),
-                new Setter(Control.BackgroundProperty, new SolidColorBrush(Colors.Transparent)),
-                new Setter(Control.BorderThicknessProperty, new Thickness(0)),
-                new Setter(FlyoutPresenter.PaddingProperty, new Thickness(0)),
-                new Setter(FlyoutPresenter.CornerRadiusProperty, new CornerRadius(8)),
-                new Setter(FlyoutPresenter.IsDefaultShadowEnabledProperty, true),
-                new Setter(ScrollViewer.VerticalScrollBarVisibilityProperty, ScrollBarVisibility.Disabled),
-            },
-        };
-    }
-
-    private double GetMainPanelHeight()
-    {
-        var scale = GetDpiForWindow(Win32Interop.GetWindowFromWindowId(_containerWindow.AppWindow.Id)) / 96.0;
-        var workArea = DisplayArea.GetFromWindowId(_containerWindow.AppWindow.Id, DisplayAreaFallback.Primary).WorkArea;
-        return Math.Min(workArea.Height / scale - 80, AppSettings.MainPanelHeight);
-    }
-
-    private void OnTrayIconContextMenu(object? sender, TrayIconEventArgs args)
-    {
-        args.Handled = true;
-        ShowContextMenuAtCursor();
-    }
-
-    private void ShowMainFlyoutAtCursor()
-    {
-        var cursor = GetCursorPosition();
-        _containerWindow.PrepareFlyoutHost(cursor);
-        if (_mainFlyout.Content is MainPanelControl panel)
-        {
-            panel.PrepareForFlyoutOpenAnimation(_uiSettings?.AnimationsEnabled == true);
-        }
-
-        var options = new FlyoutShowOptions
-        {
-            Placement = FlyoutPlacementMode.Top,
-            Position = new Point(0, 0),
-        };
-
-        _mainFlyout.ShowAt(_containerWindow.MainFlyoutAnchor, options);
-    }
-
-    private void ShowContextMenuAtCursor()
-    {
-        var cursor = GetCursorPosition();
-        _containerWindow.PrepareFlyoutHost(cursor);
-
-        var options = new FlyoutShowOptions
-        {
-            Position = new Point(0, 0),
-        };
-
-        _contextMenu.ShowAt(_containerWindow.ContextFlyoutAnchor, options);
-    }
-
-    private void OnContextMenuClosed(object? sender, object e)
-    {
-        if (!_mainFlyout.IsOpen && !_isMainFlyoutOpen)
-        {
-            TraceFlyout("TrayHostWindow.HideFlyoutHost() requested from context menu closed");
-            _containerWindow.HideFlyoutHost();
-        }
-    }
-
-    private void RequestExit(Action exitAction)
-    {
-        TraceFlyout("Exit requested from context menu");
-        _contextMenu.Hide();
-        _containerWindow.DispatcherQueue.TryEnqueue(
-            Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
-            () =>
-            {
-                TraceFlyout("Exit action running after context menu dismissed");
-                exitAction();
-            });
     }
 
     private void OnColorValuesChanged(UISettings sender, object args)
     {
         _containerWindow.DispatcherQueue.TryEnqueue(() =>
         {
-            _trayIcon.SetIcon(GetIconPath());
+            if (!_isDisposed)
+            {
+                _trayIcon.SetIcon(GetIconPath());
+            }
         });
+    }
+
+    private static double GetMainPanelHeight(Point anchorPoint)
+    {
+        var monitor = MonitorFromPoint(
+            new NativePoint(anchorPoint.X, anchorPoint.Y),
+            MonitorDefaultToNearest);
+        var monitorInfo = new MonitorInfo
+        {
+            Size = Marshal.SizeOf<MonitorInfo>(),
+        };
+
+        if (monitor == nint.Zero || !GetMonitorInfo(monitor, ref monitorInfo))
+        {
+            return AppSettings.MainPanelHeight;
+        }
+
+        var dpiY = 96u;
+        _ = GetDpiForMonitor(monitor, MonitorDpiType.Effective, out _, out dpiY);
+
+        var workAreaHeightInPixels = monitorInfo.WorkArea.Bottom - monitorInfo.WorkArea.Top;
+        var workAreaHeightInDips = workAreaHeightInPixels * 96d / Math.Max(96u, dpiY);
+        return Math.Max(
+            MinimumPanelHeight,
+            Math.Min(workAreaHeightInDips - FlyoutWorkAreaInset, AppSettings.MainPanelHeight));
+    }
+
+    private static Point GetContextMenuPoint(Point anchorPoint)
+    {
+        var monitor = MonitorFromPoint(
+            new NativePoint(anchorPoint.X, anchorPoint.Y),
+            MonitorDefaultToNearest);
+        var monitorInfo = new MonitorInfo
+        {
+            Size = Marshal.SizeOf<MonitorInfo>(),
+        };
+
+        if (monitor == nint.Zero || !GetMonitorInfo(monitor, ref monitorInfo))
+        {
+            return new Point(anchorPoint.X, anchorPoint.Y - 32);
+        }
+
+        var workAreaMiddle = monitorInfo.WorkArea.Top
+            + ((monitorInfo.WorkArea.Bottom - monitorInfo.WorkArea.Top) / 2);
+        var verticalOffset = anchorPoint.Y >= workAreaMiddle ? -32 : 16;
+        return new Point(anchorPoint.X, anchorPoint.Y + verticalOffset);
     }
 
     private static string GetIconPath()
@@ -433,13 +370,6 @@ internal sealed class TrayFlyoutService : IDisposable
         }
     }
 
-    private static PointInt32 GetCursorPosition()
-    {
-        return GetCursorPos(out var point)
-            ? new PointInt32(point.X, point.Y)
-            : new PointInt32(0, 0);
-    }
-
     private static bool IsSystemUsingLightTheme()
     {
         const string personalizeKey = @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize";
@@ -452,34 +382,51 @@ internal sealed class TrayFlyoutService : IDisposable
         Debug.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] [TrayFlyout] {message}");
     }
 
-    private static void CollectReleasedPanelResources()
+    private const uint MonitorDefaultToNearest = 2;
+
+    private enum MonitorDpiType
     {
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-        GC.Collect();
-
-        using var process = Process.GetCurrentProcess();
-        SetProcessWorkingSetSize(process.Handle, new IntPtr(-1), new IntPtr(-1));
+        Effective = 0,
     }
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern bool SetProcessWorkingSetSize(
-        IntPtr process,
-        IntPtr minimumWorkingSetSize,
-        IntPtr maximumWorkingSetSize);
-
-    [DllImport("user32.dll")]
-    private static extern uint GetDpiForWindow(IntPtr hWnd);
-
-    [DllImport("user32.dll")]
-    private static extern bool GetCursorPos(out POINT lpPoint);
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct POINT
+    private readonly struct NativePoint(int x, int y)
     {
-        public int X;
-        public int Y;
+        public readonly int X = x;
+        public readonly int Y = y;
     }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeRect
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+    private struct MonitorInfo
+    {
+        public int Size;
+        public NativeRect Monitor;
+        public NativeRect WorkArea;
+        public uint Flags;
+    }
+
+    [DllImport("user32.dll")]
+    private static extern nint MonitorFromPoint(NativePoint point, uint flags);
+
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetMonitorInfo(nint monitor, ref MonitorInfo monitorInfo);
+
+    [DllImport("shcore.dll")]
+    private static extern int GetDpiForMonitor(
+        nint monitor,
+        MonitorDpiType dpiType,
+        out uint dpiX,
+        out uint dpiY);
 
     private sealed class DelegateCommand : ICommand
     {

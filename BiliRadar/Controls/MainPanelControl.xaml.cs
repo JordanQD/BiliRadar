@@ -36,6 +36,7 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
     private CancellationTokenSource? _flyoutCts;
     private CancellationTokenSource? _pageSwitchCleanupCts;
     private StatusNotification? _currentStatusNotification;
+    private double _hostHeight = double.NaN;
     private int _statusNotificationAnimationVersion;
     private bool _isFlyoutOpen;
     private bool _isDisposed;
@@ -77,9 +78,22 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
 
     private void ApplyPanelHeight()
     {
+        if (!double.IsNaN(_hostHeight))
+        {
+            RootGrid.Height = _hostHeight;
+            Height = _hostHeight;
+            return;
+        }
+
         var scale = XamlRoot?.RasterizationScale ?? 1.0;
         var workAreaHeight = DisplayArea.Primary.WorkArea.Height / scale;
         RootGrid.Height = Math.Min(workAreaHeight - 80, AppSettings.MainPanelHeight);
+    }
+
+    public void SetHostHeight(double height)
+    {
+        _hostHeight = Math.Max(1d, height);
+        ApplyPanelHeight();
     }
 
     private void SelectDefaultPage()
