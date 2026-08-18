@@ -30,7 +30,6 @@ internal sealed class TrayFlyoutService : IDisposable
     private readonly DesktopFlyout _mainFlyout;
     private readonly DesktopFlyoutIsland _mainFlyoutIsland;
     private readonly DesktopMenuFlyout _contextMenu;
-    private readonly DispatcherQueueTimer _trayIconRefreshTimer;
     private readonly long _mainFlyoutIsOpenCallbackToken;
     private readonly SystemTrayIcon _trayIcon;
     private MainWindowSnapshot? _lastSnapshot;
@@ -82,12 +81,6 @@ internal sealed class TrayFlyoutService : IDisposable
         _trayIcon.RightClicked += OnTrayIconRightClicked;
         _trayIcon.Show();
 
-        _containerWindow.DisplayConfigurationChanged += OnDisplayConfigurationChanged;
-        _trayIconRefreshTimer = _containerWindow.DispatcherQueue.CreateTimer();
-        _trayIconRefreshTimer.Interval = TimeSpan.FromMilliseconds(500);
-        _trayIconRefreshTimer.IsRepeating = false;
-        _trayIconRefreshTimer.Tick += OnTrayIconRefreshTimerTick;
-
         TraceFlyout($"DesktopFlyouts initialized. AnimationsEnabled={_uiSettings.AnimationsEnabled}");
     }
 
@@ -112,10 +105,6 @@ internal sealed class TrayFlyoutService : IDisposable
             _uiSettings.ColorValuesChanged -= OnColorValuesChanged;
             _uiSettings = null;
         }
-
-        _containerWindow.DisplayConfigurationChanged -= OnDisplayConfigurationChanged;
-        _trayIconRefreshTimer.Stop();
-        _trayIconRefreshTimer.Tick -= OnTrayIconRefreshTimerTick;
 
         _trayIcon.LeftClicked -= OnTrayIconLeftClicked;
         _trayIcon.RightClicked -= OnTrayIconRightClicked;
@@ -224,8 +213,7 @@ internal sealed class TrayFlyoutService : IDisposable
 
             if (_mainFlyoutIsland.Content is MainPanelControl panel)
             {
-                // DesktopFlyouts owns the shell transition; suppress the legacy whole-panel animation.
-                panel.OnFlyoutOpened(playOpenAnimation: false);
+                panel.OnFlyoutOpened();
             }
 
             return;
@@ -274,27 +262,6 @@ internal sealed class TrayFlyoutService : IDisposable
         _containerWindow.DispatcherQueue.TryEnqueue(
             DispatcherQueuePriority.Low,
             () => exitAction());
-    }
-
-    private void OnDisplayConfigurationChanged(object? sender, EventArgs e)
-    {
-        if (_isDisposed)
-        {
-            return;
-        }
-
-        _trayIconRefreshTimer.Stop();
-        _trayIconRefreshTimer.Start();
-    }
-
-    private void OnTrayIconRefreshTimerTick(DispatcherQueueTimer sender, object args)
-    {
-        sender.Stop();
-
-        if (!_isDisposed)
-        {
-            _trayIcon.SetIcon(GetIconPath());
-        }
     }
 
     private void OnColorValuesChanged(UISettings sender, object args)

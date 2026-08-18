@@ -91,6 +91,7 @@ DesktopFlyouts 1.4.0 没有 `Opened` / `Closed` 事件，`IsOpen` 在动画完�
 - Release x64 自包含 MSIX：生成成功并通过签名验证。
 - 隔离测试包：`JordanQD.BiliRadar.DesktopFlyoutsPhase2` 安装成功。
 - 真实打包启动：进程持续运行且响应正常，隐藏宿主保持 `MainWindowHandle=0`，应用事件日志无新增启动崩溃。
+- 人工视觉/交互验收：2026-08-18 通过；主面板、重复开关、右键菜单及三页基本交互无阻断问题。
 - `mspdbcmf.exe` 缺失仍只影响符号包生成，不影响 MSIX 本体。
 
 ### 恢复工作检查点
@@ -103,3 +104,25 @@ Phase 2 结束后暂停，不进入后续迁移。恢复时从 `codex/desktopfly
 4. 在浅色/深色主题、不同 DPI 或第二显示器上各打开一次。
 
 用于恢复验证的隔离包已安装，包名为 `JordanQD.BiliRadar.DesktopFlyoutsPhase2`；测试进程在本阶段结束时关闭，不占用关机前的后台会话。
+
+## Phase 3：旧路径清理与依赖收口
+
+状态：实现、构建、打包和启动检查完成，等待人工视觉/交互验收。
+
+### 清理范围
+
+- 删除 `MainPanelControl` 中已经不再调用的整面板打开/关闭位移动画；状态通知自身的进入/退出动画继续保留。
+- 将 `TrayHostWindow` 收敛为只负责 Dispatcher 和应用生命周期的 1×1 隐藏窗口，不再保留 Flyout 锚点、托盘消息监视或 WinUIEx 扩展。
+- 使用最小 Win32 extended style + layered alpha 隐藏宿主窗口，移除 `WinUIEx` 2.9.3 依赖。
+- 删除显示配置变化后的旧托盘图标重建计时器。DesktopFlyouts 负责 Flyout 的工作区/DPI 定位，主题变化仍通过 `UISettings.ColorValuesChanged` 刷新深浅色托盘图标。
+
+### Phase 3 验收边界
+
+Codex 负责依赖审计、Debug/Release 构建、MSIX 打包、签名、安装和启动检查。主面板外观、动画感受、托盘点击、右键菜单和页面交互由用户人工验收；Codex 不代替用户操作界面。
+
+### Phase 3 自动验证
+
+- `WinUIEx` 已从项目引用和解析后的依赖图中移除。
+- Debug x64：通过，0 warning / 0 error。
+- Release x64 自包含 MSIX：生成成功并通过签名验证；仅保留不影响本体的 `mspdbcmf.exe` 符号包警告。
+- 隔离测试包 `JordanQD.BiliRadar.DesktopFlyoutsPhase3`：安装与真实启动通过；进程响应正常，隐藏宿主保持 `MainWindowHandle=0`，应用事件日志无新增启动崩溃。
