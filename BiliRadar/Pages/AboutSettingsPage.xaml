@@ -116,8 +116,8 @@
                                 Content="CommunityToolkit/Windows"
                                 NavigateUri="https://github.com/CommunityToolkit/Windows" />
                             <HyperlinkButton
-                                Content="MEHDIMYADI/SystemTrayWinUI3"
-                                NavigateUri="https://github.com/MEHDIMYADI/SystemTrayWinUI3" />
+                                Content="0x5bfa/DesktopFlyouts"
+                                NavigateUri="https://github.com/0x5bfa/DesktopFlyouts" />
                         </StackPanel>
                     </controls:SettingsCard>
                 </controls:SettingsExpander.Items>

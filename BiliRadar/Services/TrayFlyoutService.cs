@@ -35,6 +35,7 @@ internal sealed class TrayFlyoutService : IDisposable
     private MainWindowSnapshot? _lastSnapshot;
     private UISettings? _uiSettings;
     private DateTime _lastMainFlyoutClosedAt = DateTime.MinValue;
+    private Point? _pendingContextMenuPoint;
     private bool _isMainFlyoutShowPending;
     private bool _isDisposed;
 
@@ -99,6 +100,8 @@ internal sealed class TrayFlyoutService : IDisposable
         }
 
         _isDisposed = true;
+        _pendingContextMenuPoint = null;
+        _isMainFlyoutShowPending = false;
 
         if (_uiSettings is not null)
         {
@@ -153,6 +156,10 @@ internal sealed class TrayFlyoutService : IDisposable
 
         TraceFlyout($"Tray icon left clicked. IsOpen={_mainFlyout.IsOpen}, pending={_isMainFlyoutShowPending}");
 
+        // A left click is the latest user intent. Cancel a context menu that was
+        // waiting for the main flyout transition to finish.
+        _pendingContextMenuPoint = null;
+
         if (_contextMenu.IsOpen)
         {
             _contextMenu.Hide();
@@ -186,17 +193,31 @@ internal sealed class TrayFlyoutService : IDisposable
             return;
         }
 
-        if (_mainFlyout.IsOpen)
-        {
-            _mainFlyout.Hide();
-        }
-
         if (_contextMenu.IsOpen)
         {
             _contextMenu.Hide();
         }
 
-        _contextMenu.Show(GetContextMenuPoint(args.Point));
+        var menuPoint = GetContextMenuPoint(args.Point);
+        if (_mainFlyout.IsOpen || _isMainFlyoutShowPending)
+        {
+            // DesktopFlyouts ignores Hide while an open/close transition is in
+            // progress. Defer the menu until the main flyout is fully closed so
+            // the two independent host windows cannot overlap.
+            _pendingContextMenuPoint = menuPoint;
+            TraceFlyout(
+                $"Context menu deferred. IsOpen={_mainFlyout.IsOpen}, pending={_isMainFlyoutShowPending}");
+
+            if (_mainFlyout.IsOpen)
+            {
+                _mainFlyout.Hide();
+            }
+
+            return;
+        }
+
+        _pendingContextMenuPoint = null;
+        _contextMenu.Show(menuPoint);
     }
 
     private void OnMainFlyoutIsOpenChanged(DependencyObject sender, DependencyProperty dependencyProperty)
@@ -211,6 +232,12 @@ internal sealed class TrayFlyoutService : IDisposable
             _isMainFlyoutShowPending = false;
             TraceFlyout("DesktopFlyout opened");
 
+            if (_pendingContextMenuPoint.HasValue)
+            {
+                QueueMainFlyoutCloseForContextMenu();
+                return;
+            }
+
             if (_mainFlyoutIsland.Content is MainPanelControl panel)
             {
                 panel.OnFlyoutOpened();
@@ -223,15 +250,45 @@ internal sealed class TrayFlyoutService : IDisposable
         _lastMainFlyoutClosedAt = DateTime.UtcNow;
         TraceFlyout("DesktopFlyout closed");
 
-        if (_mainFlyoutIsland.Content is not MainPanelControl closedPanel)
+        if (_mainFlyoutIsland.Content is MainPanelControl closedPanel)
         {
-            return;
+            closedPanel.OnFlyoutClosed();
+            _lastSnapshot = closedPanel.Session.CreateSnapshot();
+            closedPanel.Dispose();
+            _mainFlyoutIsland.Content = null;
         }
 
-        closedPanel.OnFlyoutClosed();
-        _lastSnapshot = closedPanel.Session.CreateSnapshot();
-        closedPanel.Dispose();
-        _mainFlyoutIsland.Content = null;
+        QueuePendingContextMenuShow();
+    }
+
+    private void QueueMainFlyoutCloseForContextMenu()
+    {
+        _containerWindow.DispatcherQueue.TryEnqueue(() =>
+        {
+            if (!_isDisposed && _pendingContextMenuPoint.HasValue && _mainFlyout.IsOpen)
+            {
+                TraceFlyout("Closing DesktopFlyout before showing context menu");
+                _mainFlyout.Hide();
+            }
+        });
+    }
+
+    private void QueuePendingContextMenuShow()
+    {
+        _containerWindow.DispatcherQueue.TryEnqueue(() =>
+        {
+            if (_isDisposed
+                || _mainFlyout.IsOpen
+                || _isMainFlyoutShowPending
+                || _pendingContextMenuPoint is not Point menuPoint)
+            {
+                return;
+            }
+
+            _pendingContextMenuPoint = null;
+            TraceFlyout("Showing deferred context menu");
+            _contextMenu.Show(menuPoint);
+        });
     }
 
     private void EnsureFlyoutContent(double panelHeight)

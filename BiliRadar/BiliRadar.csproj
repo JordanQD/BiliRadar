@@ -29,6 +29,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Configurations>Debug;Release;ReleaseFull</Configurations>
     <UseProductionPackageIdentity Condition="'$(UseProductionPackageIdentity)' == ''">false</UseProductionPackageIdentity>
+    <DevelopmentPackageIdentityName Condition="'$(DevelopmentPackageIdentityName)' == ''">JordanQD.BiliRadar.Dev</DevelopmentPackageIdentityName>
     <OutputPath Condition="'$(UseProductionPackageIdentity)' != 'true'">bin\dev\$(Platform)\$(Configuration)\</OutputPath>
     <IntermediateOutputPath Condition="'$(UseProductionPackageIdentity)' != 'true'">obj\dev\$(Platform)\$(Configuration)\</IntermediateOutputPath>
   </PropertyGroup>
@@ -136,8 +137,9 @@
 
   <Target Name="FixGeneratedDesktopExtensionManifest" AfterTargets="_GenerateAppxPackageRecipeFile">
     <PropertyGroup>
-      <_GeneratedAppxManifest>$(OutDir)AppX\AppxManifest.xml</_GeneratedAppxManifest>
-      <_GeneratedPackageIdentityName Condition="'$(UseProductionPackageIdentity)' != 'true'">JordanQD.BiliRadar.Dev</_GeneratedPackageIdentityName>
+      <_GeneratedAppxManifest>$(OutDir)AppxManifest.xml</_GeneratedAppxManifest>
+      <_GeneratedAppxManifest Condition="!Exists('$(_GeneratedAppxManifest)')">$(OutDir)AppX\AppxManifest.xml</_GeneratedAppxManifest>
+      <_GeneratedPackageIdentityName Condition="'$(UseProductionPackageIdentity)' != 'true'">$(DevelopmentPackageIdentityName)</_GeneratedPackageIdentityName>
       <_GeneratedPackageIdentityName Condition="'$(_GeneratedPackageIdentityName)' == ''">JordanQD.BiliRadar</_GeneratedPackageIdentityName>
     </PropertyGroup>
     <ItemGroup Condition="Exists('$(_GeneratedAppxManifest)')">

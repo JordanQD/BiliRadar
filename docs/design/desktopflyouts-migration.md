@@ -1,8 +1,8 @@
 # BiliRadar 托盘迁移：DesktopFlyouts.WinUI
 
 > 分支：`codex/desktopflyouts-migration`  
-> 状态：Phase 0–2 完成
-> 最近检查：2026-08-18  
+> 状态：Phase 0–3 完成，Phase 4 自动验证与人工启动通过，待交互验收
+> 最近检查：2026-08-28
 > 参考项目：[0x5bfa/DesktopFlyouts](https://github.com/0x5bfa/DesktopFlyouts)
 
 ## 目标与优先级
@@ -107,7 +107,7 @@ Phase 2 结束后暂停，不进入后续迁移。恢复时从 `codex/desktopfly
 
 ## Phase 3：旧路径清理与依赖收口
 
-状态：实现、构建、打包和启动检查完成，等待人工视觉/交互验收。
+状态：完成；自动验证通过，并于 2026-08-27 进入 Phase 4 收口。
 
 ### 清理范围
 
@@ -126,3 +126,33 @@ Codex 负责依赖审计、Debug/Release 构建、MSIX 打包、签名、安装�
 - Debug x64：通过，0 warning / 0 error。
 - Release x64 自包含 MSIX：生成成功并通过签名验证；仅保留不影响本体的 `mspdbcmf.exe` 符号包警告。
 - 隔离测试包 `JordanQD.BiliRadar.DesktopFlyoutsPhase3`：安装与真实启动通过；进程响应正常，隐藏宿主保持 `MainWindowHandle=0`，应用事件日志无新增启动崩溃。
+
+## Phase 4：状态机加固与交付收口
+
+状态：实现和自动验证完成；用户于 2026-08-28 确认手动运行正常，等待交互验收。
+
+### 实施范围
+
+- 串行化主 `DesktopFlyout` 与右键 `DesktopMenuFlyout`：如果右键发生在主面板打开或关闭 transition 期间，记录最新菜单位置，等待主面板完整关闭后再显示菜单，避免两个独立 host window 重叠。
+- 恢复切页释放约束：当前页面在导航前 `Dispose`，再从会话内页面集合移除；继续保持 `Frame.CacheSize=0`。
+- 三个页面的异步命令捕获当前 `MainPanelSession`，在 `await` 返回后校验页面/会话仍有效；关闭 Flyout 或切页导致失效时静默停止后续 UI 与 InfoBar 回写。
+- 将解决方案、README、About credit 和代理上下文收敛到 DesktopFlyouts + x64-only 现状；旧 WinUIEx 设计文档保留为历史归档。
+- 自动验证 Debug/Release x64、依赖图、MSIX 签名、隔离安装、真实启动和应用事件日志。
+
+### Phase 4 验收边界
+
+Codex 负责代码、依赖、构建、打包、安装、启动和日志验证。以下视觉/交互项目仍由用户人工验收：
+
+1. 主面板打开/关闭 transition 中快速交错左键和右键，确认不会同时出现主面板与菜单。
+2. 三页来回切换、滚动加载、稍后再看移除、关注/取消关注和直播卡片操作。
+3. 浅色/深色主题、不同 DPI、第二显示器和 Explorer 重启后的托盘表现。
+
+### Phase 4 自动验证
+
+- Debug x64 项目与解决方案严格构建：通过，0 warning / 0 error。
+- Release x64 自包含 MSIX：生成成功；仍只有不影响本体的 `mspdbcmf.exe` 符号包警告。
+- 依赖检查：`DesktopFlyouts.WinUI` 保持 1.4.0，直接和传递依赖没有已知漏洞。`Microsoft.Windows.SDK.BuildTools` 有较新修订版，但不属于本阶段且没有安全告警，因此未混入升级。
+- 修正生成 manifest 后处理目标，使开发包不再错误沿用正式 `JordanQD.BiliRadar` Identity；支持通过 `DevelopmentPackageIdentityName` 生成隔离测试包。
+- 隔离包 Identity：`JordanQD.BiliRadar.DesktopFlyoutsPhase4`，x64，`Windows.FullTrustApplication`；包内包含 `BiliRadar.exe`、`DesktopFlyouts.Wasdk.dll` 和 `AppxSignature.p7x`。
+- 隔离 MSIX SHA-256：`380DD3CC42CDAD1EC74362A3093A2269C207508352F04BAF8BAFBAE9057B16C3`。
+- 当前机器尚未由 Codex 导入项目测试证书 `64B1137BFCCF4F831CE518E83C1E885401B35218`；证书信任边界保持不变。用户已确认手动运行正常，隔离 MSIX 的自动安装仍未执行。

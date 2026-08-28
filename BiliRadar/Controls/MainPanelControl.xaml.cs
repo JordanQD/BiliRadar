@@ -330,9 +330,15 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
     {
         if (ContentFrame.Content is IMainPanelPage page)
         {
-            page.Deactivate();
             if (page is IDisposable disposablePage)
+            {
+                disposablePage.Dispose();
                 _initializedPages.Remove(disposablePage);
+            }
+            else
+            {
+                page.Deactivate();
+            }
         }
     }
 
