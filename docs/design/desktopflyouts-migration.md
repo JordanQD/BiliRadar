@@ -1,7 +1,7 @@
 # BiliRadar 托盘迁移：DesktopFlyouts.WinUI
 
 > 分支：`codex/desktopflyouts-migration`  
-> 状态：Phase 0–3 完成，Phase 4 自动验证与人工启动通过，待交互验收
+> 状态：Phase 0–5 完成
 > 最近检查：2026-08-28
 > 参考项目：[0x5bfa/DesktopFlyouts](https://github.com/0x5bfa/DesktopFlyouts)
 
@@ -156,3 +156,21 @@ Codex 负责代码、依赖、构建、打包、安装、启动和日志验证�
 - 隔离包 Identity：`JordanQD.BiliRadar.DesktopFlyoutsPhase4`，x64，`Windows.FullTrustApplication`；包内包含 `BiliRadar.exe`、`DesktopFlyouts.Wasdk.dll` 和 `AppxSignature.p7x`。
 - 隔离 MSIX SHA-256：`380DD3CC42CDAD1EC74362A3093A2269C207508352F04BAF8BAFBAE9057B16C3`。
 - 当前机器尚未由 Codex 导入项目测试证书 `64B1137BFCCF4F831CE518E83C1E885401B35218`；证书信任边界保持不变。用户已确认手动运行正常，隔离 MSIX 的自动安装仍未执行。
+
+## Phase 5：Shell 环境适配核查
+
+状态：完成；只做核查，没有代码改动。
+
+### 人工验证结果
+
+用户确认深浅色托盘图标切换、显示器 DPI 变化和 Explorer 重启后的图标恢复均能正确响应，日常功能行为正常。
+
+### 任务栏边缘适配结论
+
+- DesktopFlyouts 1.4.0 使用 `SHAppBarMessage(ABM_GETTASKBARPOS)` 识别主任务栏的左、上、右、下四个边缘。
+- `SystemTrayIcon` 将通知图标矩形中心作为物理屏幕坐标传给 `DesktopFlyout.Show(Point)`；Flyout 按该点选择显示器的 `rcWork`，因此会避开任务栏占用区域并适配对应显示器。
+- 左/右任务栏时，面板贴工作区左/右边缘并以托盘图标为纵向中心；上/下任务栏时，面板贴工作区上/下边缘并以托盘图标为横向中心。最终矩形还会统一 clamp 到工作区内。
+- BiliRadar 当前使用 `PopupDirection=Vertical`：上方任务栏向下动画、下方任务栏向上动画；左/右任务栏的定位正确，但动画仍是上下方向，不会从侧边水平滑入。
+- 库对点击点所在显示器的工作区有适配，但 `ABM_GETTASKBARPOS` 只提供主任务栏信息；第三方 Shell 提供的副任务栏边缘不属于可靠保证范围。
+
+本项目的托盘图标通常位于主任务栏，现有 `Show(args.Point)` 用法可以直接利用库的四边定位能力。按照本阶段范围，不为左右边缘动画或第三方副任务栏增加应用层补丁。
