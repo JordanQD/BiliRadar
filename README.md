@@ -113,7 +113,7 @@ BiliRadar 使用到的第三方项目、库和服务可能适用各自的许可�
 - [Richasy/Bili.Copilot](https://github.com/Richasy/Bili.Copilot)
 - [Richasy/bili-kernel](https://github.com/Richasy/bili-kernel)
 - [microsoft/WindowsAppSDK](https://github.com/microsoft/WindowsAppSDK)
-- [microsoft/WinUI](https://github.com/microsoft/WinUI-Gallery)
+- [microsoft/WinUI-Gallery](https://github.com/microsoft/WinUI-Gallery)
 - [microsoft/microsoft-ui-xaml](https://github.com/microsoft/microsoft-ui-xaml)
 - [CommunityToolkit/Windows](https://github.com/CommunityToolkit/Windows)
 - [0x5bfa/DesktopFlyouts](https://github.com/0x5bfa/DesktopFlyouts)
