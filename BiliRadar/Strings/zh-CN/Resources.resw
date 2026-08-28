@@ -192,7 +192,6 @@
   <data name="OpenCreatorHomeTooltip" xml:space="preserve"><value>打开 UP 主主页</value></data>
   <data name="FollowCreatorMenuItem" xml:space="preserve"><value>关注</value></data>
   <data name="UnfollowCreatorMenuItem" xml:space="preserve"><value>取消关注</value></data>
-  <data name="TrayOpenBiliRadar" xml:space="preserve"><value>打开 BiliRadar</value></data>
   <data name="TraySettings" xml:space="preserve"><value>设置</value></data>
   <data name="TrayExit" xml:space="preserve"><value>退出</value></data>
   <data name="VideoNotificationTitle" xml:space="preserve"><value>{0} 发布了新视频</value></data>

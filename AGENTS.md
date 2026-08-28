@@ -12,7 +12,6 @@ BiliRadar 是一个 Windows 桌面应用（WinUI 3 + Windows App SDK），提供
 
 ```
 App.xaml.cs                    ← 应用入口，初始化托盘、数据监控
-├── TrayHostWindow             ← 1×1 隐藏窗口，仅维持 Dispatcher/应用生命周期
 ├── TrayFlyoutService          ← DesktopFlyouts SystemTrayIcon + DesktopFlyout/DesktopMenuFlyout
 │   └── MainPanelControl       ← Flyout 内容（420px 宽面板）
 │       ├── SelectorBar        ← 关注/历史/稍后再看 三页切换
@@ -79,7 +78,7 @@ Services/
 6. **切页后延迟资源回收** — 页面切换后延迟、低优先级执行 GC + working set trim，用于提前触发 WinUI/图片资源释放后的工作集回落。
 7. **Flyout 内容按需创建** — `MainPanelControl` 在托盘左键打开时创建，Flyout 关闭后导出 `MainWindowSnapshot`、Dispose 面板并低优先级修剪 working set。
 8. **右键菜单不提供“打开”** — 左键托盘图标负责打开/关闭主 Flyout；右键菜单只保留“设置”和“退出”。不要重新加入右键“打开”，之前尝试在 MenuFlyout 命令中主动 `ShowAt(...)` 会造成状态重入和卡死风险。
-9. **隐藏 TrayHostWindow** — DesktopFlyouts 使用独立 XAML island 窗口；`TrayHostWindow.InitializeHidden()` 只维持 Dispatcher 和应用生命周期，不再作为 Flyout 锚点。启动后应保持后台进程分组。
+9. **无旧宿主窗口** — DesktopFlyouts 使用独立 XAML island 窗口；应用直接使用 UI 线程 `DispatcherQueue`，不再创建透明锚点或隐藏 `TrayHostWindow`。
 
 ## 构建
 
@@ -140,7 +139,10 @@ dotnet build BiliRadar/BiliRadar.csproj -p:Platform=x64 --no-restore
 | Phase 0 (分支与构建基线) | ✅ |
 | Phase 1 (26100 TFM、依赖和 x64 打包准入) | ✅ |
 | Phase 2 (SystemTrayIcon + DesktopFlyout + DesktopMenuFlyout) | ✅ 已人工验收 |
-| Phase 3 (旧路径清理与 WinUIEx 依赖移除) | 🧪 自动验证通过，待人工视觉/交互验收 |
+| Phase 3 (旧路径清理与 WinUIEx 依赖移除) | ✅ |
+| Phase 4 (状态机加固与交付收口) | ✅ |
+| Phase 5 (Shell 环境适配核查) | ✅ |
+| Phase 6 (移除 WinUIEx 和旧宿主) | 🧪 自动验证通过，待人工生命周期/交互验收 |
 
 ### 旧 WinUIEx 架构迁移（历史）
 
@@ -159,15 +161,15 @@ DesktopFlyouts 迁移详见 `docs/design/desktopflyouts-migration.md`；旧架�
 ## 后续迁移约束
 
 1. **右键菜单范围** — 右键菜单只做设置和退出。左键托盘图标是唯一主面板入口，不要重新加入右键“打开”；之前尝试在 `MenuFlyout` 命令中主动打开主 Flyout，出现过状态重入和卡死。
-2. **隐藏宿主窗口** — DesktopFlyouts 自己创建 XAML island 窗口；`TrayHostWindow` 不负责 Flyout 定位、激活或 XamlRoot，只能作为隐藏生命周期宿主。不要重新添加透明锚点或 WinUIEx Flyout 路径。
+2. **不恢复旧宿主** — DesktopFlyouts 自己创建 XAML island 窗口；不要重新添加 `TrayHostWindow`、透明锚点、原生 `Flyout.ShowAt(...)` 或 WinUIEx 托盘路径。
 3. **Session 生命周期** — Flyout 关闭后 Dispose `MainPanelControl` 和 `MainPanelSession`，并用纯数据 `MainWindowSnapshot` 支撑下次重建。切页只 Dispose 当前 Page，`MainPanelSession` 在当前 Flyout 会话内保留。
 4. **页面缓存约束** — 当前以内存优先，`Frame.CacheSize=0`。不要重新启用 `NavigationCacheMode="Required"`，否则三页 UI 稳定内存会再次叠加。
 5. **取消请求链路** — 页面刷新和加载更多继续通过 `CancellationToken` 传到 `MainPanelSession`/`UpdateMonitorService`。Flyout 关闭触发取消时，不应显示错误 InfoBar。
 
 ## 建议下一步
 
-1. 完成 DesktopFlyouts Phase 3 的人工视觉/交互验收。
-2. 继续完整手测三页切换、滚动加载、稍后再看移除、关注/取消关注、直播卡片点击和右键菜单。
+1. 在 Phase 6 最终构建上验证无隐藏宿主时进程可持续驻留。
+2. 验证托盘左键主面板、右键仅“设置/退出”、关闭设置/登录窗口后继续驻留，以及右键“退出”能完整结束进程。
 
 ## 本地化
 

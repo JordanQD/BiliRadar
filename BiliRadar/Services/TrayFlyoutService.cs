@@ -26,7 +26,7 @@ internal sealed class TrayFlyoutService : IDisposable
     private static readonly Guid TrayIconGuid = new("F0D7B8D0-7063-4F3D-A962-9E81BD766431");
     private static readonly TimeSpan TrayLightDismissReopenGuard = TimeSpan.FromMilliseconds(300);
 
-    private readonly TrayHostWindow _containerWindow;
+    private readonly DispatcherQueue _dispatcherQueue;
     private readonly DesktopFlyout _mainFlyout;
     private readonly DesktopFlyoutIsland _mainFlyoutIsland;
     private readonly DesktopMenuFlyout _contextMenu;
@@ -40,12 +40,12 @@ internal sealed class TrayFlyoutService : IDisposable
     private bool _isDisposed;
 
     public TrayFlyoutService(
-        TrayHostWindow containerWindow,
+        DispatcherQueue dispatcherQueue,
         Action settingsAction,
         Action exitAction,
         MainWindowSnapshot? initialSnapshot = null)
     {
-        _containerWindow = containerWindow;
+        _dispatcherQueue = dispatcherQueue;
         _lastSnapshot = initialSnapshot;
 
         _uiSettings = new UISettings();
@@ -263,7 +263,7 @@ internal sealed class TrayFlyoutService : IDisposable
 
     private void QueueMainFlyoutCloseForContextMenu()
     {
-        _containerWindow.DispatcherQueue.TryEnqueue(() =>
+        _dispatcherQueue.TryEnqueue(() =>
         {
             if (!_isDisposed && _pendingContextMenuPoint.HasValue && _mainFlyout.IsOpen)
             {
@@ -275,7 +275,7 @@ internal sealed class TrayFlyoutService : IDisposable
 
     private void QueuePendingContextMenuShow()
     {
-        _containerWindow.DispatcherQueue.TryEnqueue(() =>
+        _dispatcherQueue.TryEnqueue(() =>
         {
             if (_isDisposed
                 || _mainFlyout.IsOpen
@@ -316,14 +316,14 @@ internal sealed class TrayFlyoutService : IDisposable
     {
         TraceFlyout("Exit requested from context menu");
         _contextMenu.Hide();
-        _containerWindow.DispatcherQueue.TryEnqueue(
+        _dispatcherQueue.TryEnqueue(
             DispatcherQueuePriority.Low,
             () => exitAction());
     }
 
     private void OnColorValuesChanged(UISettings sender, object args)
     {
-        _containerWindow.DispatcherQueue.TryEnqueue(() =>
+        _dispatcherQueue.TryEnqueue(() =>
         {
             if (!_isDisposed)
             {

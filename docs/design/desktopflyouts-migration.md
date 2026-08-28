@@ -1,7 +1,7 @@
 # BiliRadar 托盘迁移：DesktopFlyouts.WinUI
 
 > 分支：`codex/desktopflyouts-migration`  
-> 状态：Phase 0–5 完成
+> 状态：Phase 0–5 完成；Phase 6 实现与自动验证完成，待人工生命周期/交互验收
 > 最近检查：2026-08-28
 > 参考项目：[0x5bfa/DesktopFlyouts](https://github.com/0x5bfa/DesktopFlyouts)
 
@@ -13,7 +13,7 @@
 
 ## Phase 0：迁移基线
 
-状态：完成。
+状态：实现与自动验证完成，待人工生命周期/交互验收。
 
 - 从 `main` 创建独立分支 `codex/desktopflyouts-migration`。
 - 改动前的 Debug x64 构建通过，0 warning / 0 error。
@@ -174,3 +174,29 @@ Codex 负责代码、依赖、构建、打包、安装、启动和日志验证�
 - 库对点击点所在显示器的工作区有适配，但 `ABM_GETTASKBARPOS` 只提供主任务栏信息；第三方 Shell 提供的副任务栏边缘不属于可靠保证范围。
 
 本项目的托盘图标通常位于主任务栏，现有 `Show(args.Point)` 用法可以直接利用库的四边定位能力。按照本阶段范围，不为左右边缘动画或第三方副任务栏增加应用层补丁。
+
+## Phase 6：移除 WinUIEx 和旧宿主
+
+状态：完成。
+
+### 清理结果
+
+- 删除 `TrayHostWindow.cs`，应用启动时不再创建、激活或隐藏 1×1 WinUI 窗口。
+- `App.xaml.cs` 直接使用 UI 线程的 `DispatcherQueue` 初始化托盘服务；`TrayFlyoutService` 只接收该队列，不再依赖任何宿主 `Window`。
+- 运行时代码中不再存在 WinUI 原生 `Flyout.ShowAt(...)` 锚点、WinUIEx `TrayIcon`、`WindowMessageMonitor`、透明锚点或条件编译双路径。
+- `WinUIEx` 已从直接引用和解析后的依赖图中移除；DesktopFlyouts 是唯一托盘/Flyout 实现。
+- 旧整面板动画状态机已删除。保留 `_isMainFlyoutShowPending`、关闭后短时防重开和延迟右键菜单逻辑，因为它们处理的是 DesktopFlyouts transition 期间的当前重入问题，而非旧 WinUIEx 状态。
+- 右键菜单仍只有“设置”和“退出”；左键托盘图标仍是主面板唯一入口。
+
+### Phase 6 自动验证
+
+- Debug x64 严格构建：通过，0 warning / 0 error。
+- Release x64 严格编译：通过，0 warning / 0 error。
+- Release x64 自包含 MSIX bundle：生成成功；仍只有不影响本体的 `mspdbcmf.exe` 符号包警告。
+- 隔离包 Identity：`JordanQD.BiliRadar.DesktopFlyoutsPhase6`，x64，`Windows.FullTrustApplication`；包内包含 `BiliRadar.exe`、`DesktopFlyouts.Wasdk.dll` 和内外层签名。
+- 隔离 MSIX bundle SHA-256：`DEDCC45525C2FAD9B56DF684B92CB49DCDA4F11AE62DAD77397F9974270D799C`。
+- 直接和传递依赖中无 `WinUIEx`；运行时代码中无旧宿主、旧锚点、`WindowMessageMonitor` 或条件编译双路径。
+
+### Phase 6 验收边界
+
+Codex 负责代码残留检查、依赖检查和 x64 构建/打包验证。无隐藏宿主时的后台驻留、托盘左右键、设置/退出和视觉交互由用户在最终构建上人工验收。
