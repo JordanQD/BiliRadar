@@ -51,11 +51,11 @@ public sealed partial class AboutSettingsPage : Page
         try
         {
             var version = Package.Current.Id.Version;
-            return $"{version.Major}.{version.Minor}.{version.Build}.{version.Revision}";
+            return $"{version.Major}.{version.Minor}.{version.Build}";
         }
         catch
         {
-            return typeof(AboutSettingsPage).Assembly.GetName().Version?.ToString() ?? "未知";
+            return typeof(AboutSettingsPage).Assembly.GetName().Version?.ToString(3) ?? "未知";
         }
     }
 }

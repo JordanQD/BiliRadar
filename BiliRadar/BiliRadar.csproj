@@ -25,6 +25,10 @@
     <PublishProfile Condition="'$(Configuration)' == 'ReleaseFull'">win-$(Platform)-full.pubxml</PublishProfile>
     <DefaultItemExcludes>$(DefaultItemExcludes);artifacts\**;bin\**;obj\**</DefaultItemExcludes>
     <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
+    <Version>2.0.0</Version>
+    <AssemblyVersion>2.0.0.0</AssemblyVersion>
+    <FileVersion>2.0.0.0</FileVersion>
+    <InformationalVersion>2.0.0</InformationalVersion>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Configurations>Debug;Release;ReleaseFull</Configurations>
