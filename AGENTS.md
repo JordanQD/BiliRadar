@@ -88,6 +88,14 @@ dotnet build BiliRadar/BiliRadar.csproj -p:Platform=x64
 
 Debug 配置：框架依赖（`WinUISDKReferences=true`）；Release：自包含 MSIX 包。
 
+## Subagent 自动委派
+
+1. 对能够拆成独立、边界清晰子任务的工作，主代理应主动委派给 subagent，不需要等待用户再次明确要求。
+2. 优先委派代码检索、影响面梳理、文档核对、测试/日志分析和独立审查等读多写少的任务；可并行的子任务应并行执行。
+3. 简单的一步任务、无法独立推进的任务，以及可能与主代理或其他 subagent 修改同一文件的写密集型任务，不要为了使用 subagent 而强行委派。
+4. 主代理负责划定每个子任务的范围、汇总结果、解决冲突并完成最终验证；不要把整项任务原样转交给 subagent。
+5. 项目级 `.codex/config.toml` 已将默认 subagent 配置为 `gpt-5.6-luna`、`high` 推理强度；除非用户明确指定其他模型或任务确有不同需求，否则不要在派生时覆盖它。
+
 ### Codex 环境中的 NuGet 还原
 
 本机普通终端或 Visual Studio 能访问 NuGet，但 Codex 受限沙箱内的 Windows Schannel 可能报以下错误：
