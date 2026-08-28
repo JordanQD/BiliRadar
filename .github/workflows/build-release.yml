@@ -25,17 +25,20 @@ jobs:
 
       - name: Set version from tag
         shell: bash
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          if [[ "${{ github.ref_type }}" == "tag" ]]; then
-            VERSION="${{ github.ref_name }}"
+          if [[ "$REF_TYPE" == "tag" ]]; then
+            VERSION="$REF_NAME"
             VERSION="${VERSION#v}"
             if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              echo "Release tags must use vMAJOR.MINOR.PATCH, for example v1.0.1."
+              echo "Release tags must use vMAJOR.MINOR.PATCH, for example v2.0.0."
               exit 1
             fi
-            echo "APP_VERSION=${VERSION}.0" >> $GITHUB_ENV
+            echo "APP_VERSION=${VERSION}.0" >> "$GITHUB_ENV"
           else
-            echo "APP_VERSION=0.0.0.0" >> $GITHUB_ENV
+            echo "APP_VERSION=0.0.0.0" >> "$GITHUB_ENV"
           fi
 
       - name: Set package manifest version
@@ -79,42 +82,25 @@ jobs:
           -p:UapAppxPackageBuildMode=SideloadOnly
           -p:AppxPackageDir="${{ github.workspace }}\packages\x64\"
 
-      - name: Build and package ARM64
-        run: >
-          dotnet build BiliRadar/BiliRadar.csproj
-          -c Release
-          -p:Platform=ARM64
-          -p:Version=${{ env.APP_VERSION }}
-          -p:UseProductionPackageIdentity=true
-          -p:AppxBundle=Never
-          -p:AppxAutoIncrementPackageRevision=false
-          -p:PackageCertificateThumbprint=$env:CERT_THUMBPRINT
-          -p:GenerateAppxPackageOnBuild=true
-          -p:UapAppxPackageBuildMode=SideloadOnly
-          -p:AppxPackageDir="${{ github.workspace }}\packages\arm64\"
-
       - name: Create AppxBundle
         shell: pwsh
         env:
           PFX_PASSWORD: ${{ secrets.BILIRADAR_CERTIFICATE_PASSWORD }}
         run: |
           $x64Msix = Get-ChildItem -Path "packages/x64" -Recurse -Filter "*.msix" | Select-Object -First 1
-          $arm64Msix = Get-ChildItem -Path "packages/arm64" -Recurse -Filter "*.msix" | Select-Object -First 1
 
-          if (-not $x64Msix -or -not $arm64Msix) {
+          if (-not $x64Msix) {
             Write-Host "=== All files under packages/ ==="
             Get-ChildItem -Path packages -Recurse | ForEach-Object { Write-Host "  $($_.FullName)" }
-            Write-Error "MSIX not found. x64: $x64Msix, ARM64: $arm64Msix"
+            Write-Error "x64 MSIX not found."
             exit 1
           }
 
-          Write-Host "x64 MSIX:  $($x64Msix.FullName)"
-          Write-Host "ARM64 MSIX: $($arm64Msix.FullName)"
+          Write-Host "x64 MSIX: $($x64Msix.FullName)"
 
           New-Item -ItemType Directory -Force -Path bundle-input | Out-Null
           New-Item -ItemType Directory -Force -Path artifacts | Out-Null
           Copy-Item $x64Msix.FullName bundle-input/
-          Copy-Item $arm64Msix.FullName bundle-input/
 
           $windowsKitsBin = "${env:ProgramFiles(x86)}\Windows Kits\10\bin"
           $makeappx = Get-ChildItem -Path $windowsKitsBin -Recurse -Filter makeappx.exe |
@@ -173,7 +159,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: BiliRadar-StoreSubmission
-          path: BiliRadar/artifacts/StoreSubmission-${{ env.APP_VERSION }}/BiliRadar_${{ env.APP_VERSION }}_x64_arm64.msixbundle
+          path: BiliRadar/artifacts/StoreSubmission-${{ env.APP_VERSION }}/BiliRadar_${{ env.APP_VERSION }}_x64.msixbundle
 
   release:
     needs: build

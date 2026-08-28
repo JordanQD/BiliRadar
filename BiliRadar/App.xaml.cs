@@ -20,7 +20,6 @@ public partial class App : Application
     private const string MainInstanceKey = "BiliRadar.Main";
     private const string SignInAction = "signIn";
 
-    private TrayHostWindow? _trayHostWindow;
     private SettingsWindow? _settingsWindow;
     private WebSignInWindow? _signInWindow;
     private TrayFlyoutService? _trayFlyoutService;
@@ -40,6 +39,8 @@ public partial class App : Application
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
+        DispatcherShutdownMode = DispatcherShutdownMode.OnExplicitShutdown;
+
         var activatedArgs = AppInstance.GetCurrent().GetActivatedEventArgs();
         if (await RedirectToMainInstanceIfNeededAsync(activatedArgs))
         {
@@ -49,9 +50,7 @@ public partial class App : Application
 
         AppInstance.GetCurrent().Activated += AppInstance_Activated;
 
-        _trayHostWindow = new TrayHostWindow();
-        _trayHostWindow.InitializeHidden();
-        _trayHostWindow.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, InitializeTrayAndData);
+        InitializeTrayAndData();
         HandleActivation(activatedArgs, isRedirectedActivation: false);
 
         if (!_cookieStore.HasCookie)
@@ -79,15 +78,10 @@ public partial class App : Application
 
     private void InitializeTrayAndData()
     {
-        if (_trayHostWindow is null)
-        {
-            return;
-        }
-
         if (_trayFlyoutService is null)
         {
             _trayFlyoutService = new TrayFlyoutService(
-                _trayHostWindow,
+                _dispatcherQueue,
                 ShowSettingsWindow,
                 ExitApplication,
                 _backgroundNotificationMonitor?.GetSnapshot());
@@ -137,8 +131,14 @@ public partial class App : Application
         _notificationManager = null;
         _settingsWindow?.Close();
         _settingsWindow = null;
-        _trayHostWindow?.Close();
-        _trayHostWindow = null;
+        if (_signInWindow is not null)
+        {
+            _signInWindow.SignInSucceeded -= OnSignInSucceeded;
+            _signInWindow.Closed -= OnSignInWindowClosed;
+            _signInWindow.Close();
+            _signInWindow = null;
+        }
+
         Exit();
     }
 

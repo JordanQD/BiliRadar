@@ -245,30 +245,36 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
 
     private async void HandleAddToViewLaterClick(VideoUpdateRow item)
     {
-        if (_session is null) return;
+        var session = _session;
+        if (session is null) return;
         try
         {
-            await _session.AddToViewLaterAsync(item.Aid);
-            _session.ShowStatus(LocalizationHelper.Format("AddedToViewLaterToast", item.Title), InfoBarSeverity.Success);
+            await session.AddToViewLaterAsync(item.Aid);
+            if (_isDisposed || !ReferenceEquals(session, _session)) return;
+            session.ShowStatus(LocalizationHelper.Format("AddedToViewLaterToast", item.Title), InfoBarSeverity.Success);
         }
         catch (Exception ex)
         {
-            _session.ShowStatus(LocalizationHelper.Format("AddToViewLaterFailedToast", ex.Message), InfoBarSeverity.Error);
+            if (_isDisposed || !ReferenceEquals(session, _session)) return;
+            session.ShowStatus(LocalizationHelper.Format("AddToViewLaterFailedToast", ex.Message), InfoBarSeverity.Error);
         }
     }
 
     private async void HandleRemoveViewLaterClick(VideoUpdateRow item)
     {
-        if (_session is null) return;
+        var session = _session;
+        if (session is null) return;
         try
         {
-            await _session.RemoveFromViewLaterAsync(item.Aid);
-            _session.RemoveViewLaterItem(item);
-            _session.ShowStatus(LocalizationHelper.Format("RemovedFromViewLater", item.Title), InfoBarSeverity.Success);
+            await session.RemoveFromViewLaterAsync(item.Aid);
+            if (_isDisposed || !ReferenceEquals(session, _session)) return;
+            session.RemoveViewLaterItem(item);
+            session.ShowStatus(LocalizationHelper.Format("RemovedFromViewLater", item.Title), InfoBarSeverity.Success);
         }
         catch (Exception ex)
         {
-            _session.ShowStatus(LocalizationHelper.Format("RemoveFromViewLaterFailed", ex.Message), InfoBarSeverity.Error);
+            if (_isDisposed || !ReferenceEquals(session, _session)) return;
+            session.ShowStatus(LocalizationHelper.Format("RemoveFromViewLaterFailed", ex.Message), InfoBarSeverity.Error);
         }
     }
 
@@ -299,12 +305,14 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
 
         flyout.Opening += async (_, _) =>
         {
-            if (_session is null) return;
+            var session = _session;
+            if (session is null) return;
             if (notifyItem is not null)
             {
                 try
                 {
-                    var followed = await _session.IsCreatorFollowedAsync(item.CreatorMid);
+                    var followed = await session.IsCreatorFollowedAsync(item.CreatorMid);
+                    if (_isDisposed || !ReferenceEquals(session, _session)) return;
                     if (!followed)
                     {
                         notifyItem.Visibility = Visibility.Collapsed;
@@ -315,13 +323,16 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
                 }
                 catch
                 {
+                    if (_isDisposed || !ReferenceEquals(session, _session)) return;
                     notifyItem.Visibility = Visibility.Collapsed;
                     notifyItem.IsEnabled = false;
                 }
 
+                if (_isDisposed || !ReferenceEquals(session, _session)) return;
                 RefreshNotificationListMenuItem(notifyItem);
             }
 
+            if (_isDisposed || !ReferenceEquals(session, _session)) return;
             await RefreshCreatorRelationMenuItemAsync(relationItem);
         };
 
@@ -333,7 +344,8 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
 
     private async Task RefreshCreatorRelationMenuItemAsync(MenuFlyoutItem menuItem)
     {
-        if (_session is null) return;
+        var session = _session;
+        if (session is null) return;
         if (menuItem.DataContext is not VideoUpdateRow item || item.CreatorMid <= 0)
         {
             menuItem.IsEnabled = false;
@@ -343,11 +355,12 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
         menuItem.IsEnabled = false;
         try
         {
-            var isFollowed = await _session.IsCreatorFollowedAsync(item.CreatorMid);
+            var isFollowed = await session.IsCreatorFollowedAsync(item.CreatorMid);
+            if (_isDisposed || !ReferenceEquals(session, _session)) return;
             if (isFollowed)
-                _session.AddFollowingCreator(item);
+                session.AddFollowingCreator(item);
             else
-                _session.RemoveFollowingCreator(item.CreatorMid);
+                session.RemoveFollowingCreator(item.CreatorMid);
 
             ConfigureCreatorRelationMenuItem(
                 menuItem,
@@ -355,11 +368,13 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
         }
         catch
         {
-            ConfigureCreatorRelationMenuItem(menuItem, _session.GetCreatorRelationActionMode(item));
+            if (_isDisposed || !ReferenceEquals(session, _session)) return;
+            ConfigureCreatorRelationMenuItem(menuItem, session.GetCreatorRelationActionMode(item));
         }
         finally
         {
-            menuItem.IsEnabled = true;
+            if (!_isDisposed && ReferenceEquals(session, _session))
+                menuItem.IsEnabled = true;
         }
     }
 
@@ -411,18 +426,38 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
 
     private async Task FollowCreatorAsync(VideoUpdateRow item)
     {
-        if (_session is null) return;
-        await _session.FollowCreatorAsync(item.CreatorMid);
-        _session.AddFollowingCreator(item);
-        _session.ShowStatus(LocalizationHelper.Format("Followed", item.CreatorName), InfoBarSeverity.Success);
+        var session = _session;
+        if (session is null) return;
+        try
+        {
+            await session.FollowCreatorAsync(item.CreatorMid);
+        }
+        catch when (_isDisposed || !ReferenceEquals(session, _session))
+        {
+            return;
+        }
+
+        if (_isDisposed || !ReferenceEquals(session, _session)) return;
+        session.AddFollowingCreator(item);
+        session.ShowStatus(LocalizationHelper.Format("Followed", item.CreatorName), InfoBarSeverity.Success);
     }
 
     private async Task UnfollowCreatorAsync(VideoUpdateRow item)
     {
-        if (_session is null) return;
-        await _session.UnfollowCreatorAsync(item.CreatorMid);
-        _session.RemoveFollowingCreator(item.CreatorMid);
-        _session.ShowStatus(LocalizationHelper.Format("Unfollowed", item.CreatorName), InfoBarSeverity.Success);
+        var session = _session;
+        if (session is null) return;
+        try
+        {
+            await session.UnfollowCreatorAsync(item.CreatorMid);
+        }
+        catch when (_isDisposed || !ReferenceEquals(session, _session))
+        {
+            return;
+        }
+
+        if (_isDisposed || !ReferenceEquals(session, _session)) return;
+        session.RemoveFollowingCreator(item.CreatorMid);
+        session.ShowStatus(LocalizationHelper.Format("Unfollowed", item.CreatorName), InfoBarSeverity.Success);
     }
 
     private void NotificationListMenuItem_Click(object sender, RoutedEventArgs e)
@@ -666,8 +701,9 @@ public sealed partial class FollowingPage : Page, IMainPanelPage, IDisposable
         if (_updatesScrollViewer is null) return;
 
         var distanceToBottom = _updatesScrollViewer.ScrollableHeight - _updatesScrollViewer.VerticalOffset;
-        if (distanceToBottom <= 120 && _session is not null)
-            await _session.LoadMoreUpdatesAsync(_flyoutCancellationToken);
+        var session = _session;
+        if (distanceToBottom <= 120 && session is not null)
+            await session.LoadMoreUpdatesAsync(_flyoutCancellationToken);
     }
 
     public void ResetScrollPosition()

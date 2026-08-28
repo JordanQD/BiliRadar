@@ -1,5 +1,7 @@
 # BiliRadar 托盘主面板迁移设计：采用 WinUI 原生 Flyout
 
+> 历史归档：本文记录旧 WinUIEx/WinUI 原生 Flyout 迁移方案，不代表当前运行时架构。当前实现与验收状态请参阅 [`desktopflyouts-migration.md`](./desktopflyouts-migration.md)。
+>
 > 状态：实施基线
 > 最近检查：2026-06-03
 > 参考项目：`C:\Users\Q\Data\Visual Studio\FluentFlyouts`
@@ -582,7 +584,6 @@ Flyout 关闭
 
 - x64 Debug。
 - x64 Release。
-- ARM64 Release。
 - 非打包启动。
 - MSIX 安装后的启动、升级安装和退出。
 

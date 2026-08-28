@@ -62,7 +62,7 @@ BiliRadar 依赖 Bilibili 的网页登录和公开接口行为。如果 Bilibili
 - Windows 10 1809 或更高版本。
 - Visual Studio 2022，建议安装“.NET 桌面开发”和 Windows 应用 SDK / WinUI 相关工作负载。
 - .NET SDK 9 或更高版本。
-- Windows App SDK 2.1.3。
+- Windows App SDK 2.4.0。
 - WebView2 Runtime。
 
 项目使用：
@@ -71,8 +71,8 @@ BiliRadar 依赖 Bilibili 的网页登录和公开接口行为。如果 Bilibili
 - Windows App SDK
 - CommunityToolkit.Mvvm
 - CommunityToolkit.WinUI
+- DesktopFlyouts.WinUI
 - Microsoft.Web.WebView2
-- SystemTrayWinUI3
 
 ## 编译
 
@@ -88,19 +88,13 @@ dotnet restore BiliRadar.slnx
 dotnet build BiliRadar.slnx -c Release -p:Platform=x64 --no-restore
 ```
 
-编译 ARM64：
-
-```powershell
-dotnet build BiliRadar.slnx -c Release -p:Platform=ARM64 --no-restore
-```
-
 生成用于 Partner Center 的 Microsoft Store 上传包：
 
 ```powershell
 .\scripts\Build-StorePackage.ps1
 ```
 
-脚本会读取 `Package.appxmanifest` 中的版本，生成未签名的 x64 + ARM64 自包含 `.msixbundle`。Microsoft Store 要求四段版本号的最后一段保持为 `0`，例如 `1.0.1.0`。
+项目当前仅支持 x64。脚本会读取 `Package.appxmanifest` 中的版本，生成未签名的 x64 `.msixbundle`；Microsoft Store 要求四段版本号的最后一段保持为 `0`，例如 `1.0.1.0`。
 
 ## 贡献
 
@@ -119,7 +113,7 @@ BiliRadar 使用到的第三方项目、库和服务可能适用各自的许可�
 - [Richasy/Bili.Copilot](https://github.com/Richasy/Bili.Copilot)
 - [Richasy/bili-kernel](https://github.com/Richasy/bili-kernel)
 - [microsoft/WindowsAppSDK](https://github.com/microsoft/WindowsAppSDK)
-- [microsoft/WinUI](https://github.com/microsoft/WinUI-Gallery)
+- [microsoft/WinUI-Gallery](https://github.com/microsoft/WinUI-Gallery)
 - [microsoft/microsoft-ui-xaml](https://github.com/microsoft/microsoft-ui-xaml)
 - [CommunityToolkit/Windows](https://github.com/CommunityToolkit/Windows)
-- [MEHDIMYADI/SystemTrayWinUI3](https://github.com/MEHDIMYADI/SystemTrayWinUI3)
+- [0x5bfa/DesktopFlyouts](https://github.com/0x5bfa/DesktopFlyouts)

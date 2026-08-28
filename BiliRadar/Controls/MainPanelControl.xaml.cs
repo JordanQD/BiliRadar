@@ -22,20 +22,19 @@ namespace BiliRadar.Controls;
 
 public sealed partial class MainPanelControl : UserControl, IDisposable
 {
-    private static readonly TimeSpan FlyoutOpenAnimationDuration = TimeSpan.FromMilliseconds(267);
-    private static readonly TimeSpan FlyoutCloseAnimationDuration = TimeSpan.FromMilliseconds(200);
-    private static readonly Vector2 FlyoutOpenAnimationControlPoint1 = new(0.1f, 0.9f);
-    private static readonly Vector2 FlyoutOpenAnimationControlPoint2 = new(0.4f, 1.0f);
-    private static readonly Vector2 FlyoutCloseAnimationControlPoint1 = new(0.2f, 0.0f);
-    private static readonly Vector2 FlyoutCloseAnimationControlPoint2 = new(0.9f, 0.0f);
     private static readonly TimeSpan StatusNotificationEnterAnimationDuration = TimeSpan.FromMilliseconds(180);
     private static readonly TimeSpan StatusNotificationExitAnimationDuration = TimeSpan.FromMilliseconds(160);
+    private static readonly Vector2 StatusNotificationEnterControlPoint1 = new(0.1f, 0.9f);
+    private static readonly Vector2 StatusNotificationEnterControlPoint2 = new(0.4f, 1.0f);
+    private static readonly Vector2 StatusNotificationExitControlPoint1 = new(0.2f, 0.0f);
+    private static readonly Vector2 StatusNotificationExitControlPoint2 = new(0.9f, 0.0f);
 
     private int _previousSelectedPageIndex = -1;
     private readonly HashSet<IDisposable> _initializedPages = [];
     private CancellationTokenSource? _flyoutCts;
     private CancellationTokenSource? _pageSwitchCleanupCts;
     private StatusNotification? _currentStatusNotification;
+    private double _hostHeight = double.NaN;
     private int _statusNotificationAnimationVersion;
     private bool _isFlyoutOpen;
     private bool _isDisposed;
@@ -77,9 +76,22 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
 
     private void ApplyPanelHeight()
     {
+        if (!double.IsNaN(_hostHeight))
+        {
+            RootGrid.Height = _hostHeight;
+            Height = _hostHeight;
+            return;
+        }
+
         var scale = XamlRoot?.RasterizationScale ?? 1.0;
         var workAreaHeight = DisplayArea.Primary.WorkArea.Height / scale;
         RootGrid.Height = Math.Min(workAreaHeight - 80, AppSettings.MainPanelHeight);
+    }
+
+    public void SetHostHeight(double height)
+    {
+        _hostHeight = Math.Max(1d, height);
+        ApplyPanelHeight();
     }
 
     private void SelectDefaultPage()
@@ -110,21 +122,12 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
     /// <summary>
     /// Flyout 打开时调用：创建新的 CancellationTokenSource，触发当前可见页面的数据刷新。
     /// </summary>
-    public void OnFlyoutOpened(bool playOpenAnimation)
+    public void OnFlyoutOpened()
     {
         _isFlyoutOpen = true;
         _flyoutCts?.Cancel();
         _flyoutCts?.Dispose();
         _flyoutCts = new CancellationTokenSource();
-
-        if (playOpenAnimation)
-        {
-            _ = PlayFlyoutOpenAnimationAsync(_flyoutCts.Token);
-        }
-        else
-        {
-            ResetFlyoutVisual();
-        }
 
         if (!AppSettings.SaveMainPanelPosition)
         {
@@ -152,99 +155,6 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
         }
 
         return page.ActivateAsync(_flyoutCts?.Token ?? CancellationToken.None);
-    }
-
-    public void PrepareForFlyoutOpenAnimation(bool playOpenAnimation)
-    {
-        var visual = ElementCompositionPreview.GetElementVisual(RootGrid);
-        visual.Opacity = 1f;
-        visual.Offset = playOpenAnimation
-            ? new Vector3(0f, GetFlyoutTransitionOffset(), 0f)
-            : Vector3.Zero;
-    }
-
-    private async Task PlayFlyoutOpenAnimationAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            await AnimateFlyoutOffsetAsync(
-                GetFlyoutTransitionOffset(),
-                0f,
-                FlyoutOpenAnimationDuration,
-                FlyoutOpenAnimationControlPoint1,
-                FlyoutOpenAnimationControlPoint2,
-                cancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-        }
-    }
-
-    public async Task PlayFlyoutCloseAnimationAsync(CancellationToken cancellationToken)
-    {
-        var visual = ElementCompositionPreview.GetElementVisual(RootGrid);
-        visual.Opacity = 1f;
-        visual.Offset = Vector3.Zero;
-
-        await AnimateFlyoutOffsetAsync(
-            0f,
-            GetFlyoutTransitionOffset(),
-            FlyoutCloseAnimationDuration,
-            FlyoutCloseAnimationControlPoint1,
-            FlyoutCloseAnimationControlPoint2,
-            cancellationToken);
-    }
-
-    private async Task AnimateFlyoutOffsetAsync(
-        float from,
-        float to,
-        TimeSpan duration,
-        Vector2 controlPoint1,
-        Vector2 controlPoint2,
-        CancellationToken cancellationToken)
-    {
-        var visual = ElementCompositionPreview.GetElementVisual(RootGrid);
-        visual.Opacity = 1f;
-        visual.Offset = new Vector3(0f, from, 0f);
-
-        var compositor = visual.Compositor;
-        var easing = compositor.CreateCubicBezierEasingFunction(controlPoint1, controlPoint2);
-        var offsetAnimation = compositor.CreateScalarKeyFrameAnimation();
-        offsetAnimation.Duration = duration;
-        offsetAnimation.InsertKeyFrame(0f, from);
-        offsetAnimation.InsertKeyFrame(1f, to, easing);
-
-        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        using var registration = cancellationToken.Register(() => completion.TrySetCanceled(cancellationToken));
-
-        var batch = compositor.CreateScopedBatch(CompositionBatchTypes.Animation);
-        batch.Completed += (_, _) => completion.TrySetResult();
-        visual.StartAnimation("Offset.Y", offsetAnimation);
-        batch.End();
-
-        await completion.Task;
-        visual.Offset = new Vector3(0f, to, 0f);
-    }
-
-    private void ResetFlyoutVisual()
-    {
-        var visual = ElementCompositionPreview.GetElementVisual(RootGrid);
-        visual.Opacity = 1f;
-        visual.Offset = Vector3.Zero;
-    }
-
-    private float GetFlyoutTransitionOffset()
-    {
-        var height = RootGrid.ActualHeight > 0
-            ? RootGrid.ActualHeight
-            : RootGrid.Height;
-
-        if (double.IsNaN(height) || height <= 0)
-        {
-            height = AppSettings.MainPanelHeight;
-        }
-
-        return (float)Math.Max(1d, height);
     }
 
     public void Dispose()
@@ -420,9 +330,15 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
     {
         if (ContentFrame.Content is IMainPanelPage page)
         {
-            page.Deactivate();
             if (page is IDisposable disposablePage)
+            {
+                disposablePage.Dispose();
                 _initializedPages.Remove(disposablePage);
+            }
+            else
+            {
+                page.Deactivate();
+            }
         }
     }
 
@@ -549,8 +465,8 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
 
         var compositor = visual.Compositor;
         var easing = compositor.CreateCubicBezierEasingFunction(
-            FlyoutOpenAnimationControlPoint1,
-            FlyoutOpenAnimationControlPoint2);
+            StatusNotificationEnterControlPoint1,
+            StatusNotificationEnterControlPoint2);
 
         var opacityAnimation = compositor.CreateScalarKeyFrameAnimation();
         opacityAnimation.Duration = StatusNotificationEnterAnimationDuration;
@@ -587,8 +503,8 @@ public sealed partial class MainPanelControl : UserControl, IDisposable
 
         var compositor = visual.Compositor;
         var easing = compositor.CreateCubicBezierEasingFunction(
-            FlyoutCloseAnimationControlPoint1,
-            FlyoutCloseAnimationControlPoint2);
+            StatusNotificationExitControlPoint1,
+            StatusNotificationExitControlPoint2);
 
         var opacityAnimation = compositor.CreateScalarKeyFrameAnimation();
         opacityAnimation.Duration = StatusNotificationExitAnimationDuration;
