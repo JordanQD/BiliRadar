@@ -39,6 +39,8 @@ public partial class App : Application
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
+        DispatcherShutdownMode = DispatcherShutdownMode.OnExplicitShutdown;
+
         var activatedArgs = AppInstance.GetCurrent().GetActivatedEventArgs();
         if (await RedirectToMainInstanceIfNeededAsync(activatedArgs))
         {

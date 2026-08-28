@@ -177,24 +177,24 @@ Codex 负责代码、依赖、构建、打包、安装、启动和日志验证�
 
 ## Phase 6：移除 WinUIEx 和旧宿主
 
-状态：完成。
+状态：生命周期修复与自动构建完成，待用户手动编译运行验收。
 
 ### 清理结果
 
 - 删除 `TrayHostWindow.cs`，应用启动时不再创建、激活或隐藏 1×1 WinUI 窗口。
+- `App.xaml.cs` 在 `OnLaunched` 中将官方 `Application.DispatcherShutdownMode` 设为 `OnExplicitShutdown`，关闭最后一个设置/登录窗口后不再自动停止 UI 消息循环；右键“退出”仍通过 `Application.Exit()` 明确终止应用。不能在 `App` 构造函数中设置，因为后续 `Application.Start` 会将其覆盖为默认 `OnLastWindowClose`。
 - `App.xaml.cs` 直接使用 UI 线程的 `DispatcherQueue` 初始化托盘服务；`TrayFlyoutService` 只接收该队列，不再依赖任何宿主 `Window`。
 - 运行时代码中不再存在 WinUI 原生 `Flyout.ShowAt(...)` 锚点、WinUIEx `TrayIcon`、`WindowMessageMonitor`、透明锚点或条件编译双路径。
 - `WinUIEx` 已从直接引用和解析后的依赖图中移除；DesktopFlyouts 是唯一托盘/Flyout 实现。
 - 旧整面板动画状态机已删除。保留 `_isMainFlyoutShowPending`、关闭后短时防重开和延迟右键菜单逻辑，因为它们处理的是 DesktopFlyouts transition 期间的当前重入问题，而非旧 WinUIEx 状态。
 - 右键菜单仍只有“设置”和“退出”；左键托盘图标仍是主面板唯一入口。
 
+删除生命周期窗口后的首版曾沿用默认 `OnLastWindowClose`，导致用户关闭设置窗口时进程退出。该回归已改为使用 Windows App SDK 官方 `OnExplicitShutdown` 模式；没有恢复隐藏窗口或 WinUIEx 依赖。
+
 ### Phase 6 自动验证
 
 - Debug x64 严格构建：通过，0 warning / 0 error。
-- Release x64 严格编译：通过，0 warning / 0 error。
-- Release x64 自包含 MSIX bundle：生成成功；仍只有不影响本体的 `mspdbcmf.exe` 符号包警告。
-- 隔离包 Identity：`JordanQD.BiliRadar.DesktopFlyoutsPhase6`，x64，`Windows.FullTrustApplication`；包内包含 `BiliRadar.exe`、`DesktopFlyouts.Wasdk.dll` 和内外层签名。
-- 隔离 MSIX bundle SHA-256：`DEDCC45525C2FAD9B56DF684B92CB49DCDA4F11AE62DAD77397F9974270D799C`。
+- Debug x64 MSIX bundle：生成成功；仍只有不影响本体的 `mspdbcmf.exe` 符号包警告。
 - 直接和传递依赖中无 `WinUIEx`；运行时代码中无旧宿主、旧锚点、`WindowMessageMonitor` 或条件编译双路径。
 
 ### Phase 6 验收边界

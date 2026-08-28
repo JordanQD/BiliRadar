@@ -78,7 +78,7 @@ Services/
 6. **切页后延迟资源回收** — 页面切换后延迟、低优先级执行 GC + working set trim，用于提前触发 WinUI/图片资源释放后的工作集回落。
 7. **Flyout 内容按需创建** — `MainPanelControl` 在托盘左键打开时创建，Flyout 关闭后导出 `MainWindowSnapshot`、Dispose 面板并低优先级修剪 working set。
 8. **右键菜单不提供“打开”** — 左键托盘图标负责打开/关闭主 Flyout；右键菜单只保留“设置”和“退出”。不要重新加入右键“打开”，之前尝试在 MenuFlyout 命令中主动 `ShowAt(...)` 会造成状态重入和卡死风险。
-9. **无旧宿主窗口** — DesktopFlyouts 使用独立 XAML island 窗口；应用直接使用 UI 线程 `DispatcherQueue`，不再创建透明锚点或隐藏 `TrayHostWindow`。
+9. **无旧宿主窗口** — DesktopFlyouts 使用独立 XAML island 窗口；应用在 `OnLaunched` 中将 `DispatcherShutdownMode` 设为 `OnExplicitShutdown`，关闭最后一个设置/登录窗口后仍由托盘驻留，只有显式退出才停止 UI 消息循环。不要把设置移到 `App` 构造函数，`Application.Start` 会在随后覆盖它。不再创建透明锚点或隐藏 `TrayHostWindow`。
 
 ## 构建
 
@@ -107,7 +107,7 @@ Debug 配置：框架依赖（`WinUISDKReferences=true`）；Release：自包含
 ## 后续迁移约束
 
 1. **右键菜单范围** — 右键菜单只做设置和退出。左键托盘图标是唯一主面板入口，不要重新加入右键“打开”；之前尝试在 `MenuFlyout` 命令中主动打开主 Flyout，出现过状态重入和卡死。
-2. **不恢复旧宿主** — DesktopFlyouts 自己创建 XAML island 窗口；不要重新添加 `TrayHostWindow`、透明锚点、原生 `Flyout.ShowAt(...)` 或 WinUIEx 托盘路径。
+2. **不恢复旧宿主** — DesktopFlyouts 自己创建 XAML island 窗口，应用通过 `DispatcherShutdownMode.OnExplicitShutdown` 维持无窗口时的托盘生命周期；不要重新添加 `TrayHostWindow`、透明锚点、原生 `Flyout.ShowAt(...)` 或 WinUIEx 托盘路径。
 3. **Session 生命周期** — Flyout 关闭后 Dispose `MainPanelControl` 和 `MainPanelSession`，并用纯数据 `MainWindowSnapshot` 支撑下次重建。切页只 Dispose 当前 Page，`MainPanelSession` 在当前 Flyout 会话内保留。
 4. **页面缓存约束** — 当前以内存优先，`Frame.CacheSize=0`。不要重新启用 `NavigationCacheMode="Required"`，否则三页 UI 稳定内存会再次叠加。
 5. **取消请求链路** — 页面刷新和加载更多继续通过 `CancellationToken` 传到 `MainPanelSession`/`UpdateMonitorService`。Flyout 关闭触发取消时，不应显示错误 InfoBar。
